@@ -12,6 +12,9 @@ public enum InputEvent: Sendable, Equatable {
     case mouseMoved(CGPoint)
     case leftMouseDown(CGPoint)
     case leftMouseUp(CGPoint)
+    /// Cancels an open ring.
+    case rightMouseDown
+    case rightMouseUp
     /// Point delta. InputService maps one mouse-wheel notch to `TriggerMachine.scrollStepPoints`
     /// and drops trackpad momentum to 0.
     case scroll(deltaY: Double)
@@ -57,6 +60,7 @@ public struct TriggerMachine: Sendable {
     public private(set) var isOpen = false
     private var scrollAccumulator: Double = 0
     private var swallowNextMouseUp = false
+    private var swallowNextRightMouseUp = false
     /// Key codes whose key-down was swallowed and whose key-up hasn't arrived yet.
     private var swallowedKeys: Set<UInt16> = []
     /// Set by the owner (event tap) while the frontmost app is excluded: no ring, no hotkeys.
@@ -92,6 +96,15 @@ public struct TriggerMachine: Sendable {
             guard swallowNextMouseUp || isOpen else { return .ignored }
             swallowNextMouseUp = false
             return TriggerResult(outputs: [], suppress: true)
+        case .rightMouseDown:
+            guard isOpen else { return .ignored }
+            isOpen = false
+            swallowNextRightMouseUp = true
+            return TriggerResult(outputs: [.cancel], suppress: true)
+        case .rightMouseUp:
+            guard swallowNextRightMouseUp else { return .ignored }
+            swallowNextRightMouseUp = false
+            return TriggerResult(outputs: [], suppress: true)
         case .scroll(let deltaY):
             guard isOpen else { return .ignored }
             // Swallow every scroll while open (incl. zero/momentum) so the window below never scrolls.
@@ -109,6 +122,8 @@ public struct TriggerMachine: Sendable {
         isOpen = false
         armed = true
         scrollAccumulator = 0
+        // The matching right-up may have been lost; never swallow an unrelated one later.
+        swallowNextRightMouseUp = false
         return wasOpen ? [.cancel] : []
     }
 

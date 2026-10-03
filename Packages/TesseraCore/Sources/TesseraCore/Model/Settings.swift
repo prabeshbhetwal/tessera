@@ -7,6 +7,8 @@ public struct TriggerChord: Codable, Equatable, Sendable {
 }
 
 public struct RingSettings: Codable, Equatable, Sendable {
+    /// No longer drives selection (the ring's empty middle is the cancel area, see `cancelRadius`).
+    /// Kept so settings files keep their shape and validation.
     public var deadZone: Double = 10
     public var flickDistance: Double = 90
     /// 8 wedges, first centred straight up, clockwise.
@@ -18,6 +20,11 @@ public struct RingSettings: Codable, Equatable, Sendable {
     public var thickness: Double = 22
     public var topBand: Double = 0.30
     public var bottomBand: Double = 0.30
+
+    /// The ring's empty middle: nothing is selected inside it, so releasing there cancels.
+    public var cancelRadius: Double { max(radius - thickness / 2, 8) }
+    /// Outer edge of the drawn ring.
+    public var outerRadius: Double { radius + thickness / 2 }
 
     public init() {}
     public static let `default` = RingSettings()

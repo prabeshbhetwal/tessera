@@ -82,7 +82,7 @@ final class OverlayController {
     /// Hot path: called on every mouse move while the menu is open.
     func update(
         selection: Selection, layers: PreviewLayers?, thumbnail: CGImage?,
-        displays: [DisplayContext], pointMode: Bool
+        displays: [DisplayContext], pointMode: Bool, cancelling: Bool
     ) {
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let activeWedge: Int? = switch selection {
@@ -100,6 +100,7 @@ final class OverlayController {
         CATransaction.setDisableActions(true)
         for (id, scene) in scenes {
             scene.ring.setActive(activeWedge)
+            scene.ring.setCancelling(cancelling)
             scene.ring.setPointMode(pointMode)
             updateGrid(scene, display: gridDisplay?.id == id ? gridDisplay : nil)
             if let visibleLayers {

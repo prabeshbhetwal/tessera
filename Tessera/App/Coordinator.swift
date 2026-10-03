@@ -189,6 +189,7 @@ final class Coordinator {
         session = Session(id: id, origin: origin, target: target, current: current,
                           displays: displays.displays, cursor: origin)
         overlay.show(origin: origin, displays: displays.displays, ring: model.settings.ring, theme: model.settings.activeTheme)
+        refreshSelection() // the cursor starts in the middle: show the cancel mark lit
         loadContext(for: id, target: target)
     }
 
@@ -263,8 +264,10 @@ final class Coordinator {
         }
         var pointMode = false
         if case .span = selection { pointMode = true }
+        let cancelling = s.nav == nil
+            && hypot(s.cursor.x - s.origin.x, s.cursor.y - s.origin.y) < model.settings.ring.cancelRadius
         overlay.update(selection: selection, layers: layers, thumbnail: s.thumbnail,
-                       displays: s.displays, pointMode: pointMode)
+                       displays: s.displays, pointMode: pointMode, cancelling: cancelling)
     }
 
     private func targetFrame(for selection: Selection, in s: Session) -> CGRect? {

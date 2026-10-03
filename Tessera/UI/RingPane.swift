@@ -17,15 +17,16 @@ struct RingPane: View {
                     Label("**Direction** — move a little toward an edge or corner. The wedge you head for lights up and shows its layout.", systemImage: "arrow.up.right.circle")
                     Label("**Point** — keep going past the dashed circle and the ring fades. Point at a column of the grid; click to span several.", systemImage: "rectangle.split.3x1")
                     Label("Come back inside the dashed circle to return to directions. Release the trigger to snap.", systemImage: "arrow.uturn.backward.circle")
+                    Label("**Cancel** — release in the ring's empty middle (✕), press Esc, or right-click. Nothing moves.", systemImage: "xmark.circle")
                 }
                 .font(.callout)
                 .foregroundStyle(.secondary)
             }
 
             Section("Zones") {
-                SliderRow(title: "Nothing picked within", value: ring.deadZone, range: 0...max(1, r.flickDistance - 1))
-                SliderRow(title: "Pointing starts at", value: ring.flickDistance, range: (r.deadZone + 1)...max(r.deadZone + 2, 400))
-                Caption("The dashed circle on screen sits at \"Pointing starts at\". Make it bigger if you slip into pointing by accident.")
+                let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
+                SliderRow(title: "Pointing starts at", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
+                Caption("The dashed circle on screen sits here. Make it bigger if you slip into pointing by accident.")
             }
 
             Section("Wedges") {
@@ -39,9 +40,10 @@ struct RingPane: View {
             }
 
             Section("Size") {
-                SliderRow(title: "Radius", value: ring.radius, range: 20...150)
-                SliderRow(title: "Thickness", value: ring.thickness, range: 4...max(5, min(80, r.radius * 2)))
-                Caption("Thickness can't exceed twice the radius.")
+                SliderRow(title: "Radius", value: ring.radius, range: 20...max(21, min(150, r.flickDistance - r.thickness / 2)))
+                SliderRow(title: "Thickness", value: ring.thickness,
+                          range: 4...max(5, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2)))
+                Caption("The ring's empty middle is the cancel area (\(Int(r.cancelRadius)) pt). The ring always stays inside the dashed circle.")
             }
 
             ResetSection {
@@ -57,7 +59,7 @@ struct RingPane: View {
     }
 }
 
-/// Dead zone, direction zone (with the dashed pointing boundary) and wedge boundaries, scaled to fit.
+/// Cancel area, direction zone (with the dashed pointing boundary) and wedge boundaries, scaled to fit.
 private struct ZoneDiagram: View {
     let ring: RingSettings
 
@@ -66,7 +68,7 @@ private struct ZoneDiagram: View {
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let scale = (min(size.width, size.height) / 2 - 24) / CGFloat(max(ring.flickDistance, 1))
             let flick = CGFloat(ring.flickDistance) * scale
-            let dead = CGFloat(ring.deadZone) * scale
+            let dead = CGFloat(ring.cancelRadius) * scale
 
             func circle(_ r: CGFloat) -> Path {
                 Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2))
@@ -86,10 +88,11 @@ private struct ZoneDiagram: View {
 
             context.draw(Text("Point beyond").font(.caption), at: CGPoint(x: center.x + flick + 4, y: center.y - flick + 8), anchor: .leading)
             context.draw(Text("Direction").font(.caption2), at: CGPoint(x: center.x, y: center.y - (flick + dead) / 2))
+            context.draw(Text("✕ Cancel").font(.caption2.weight(.semibold)), at: center)
         }
         .background(.quinary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .accessibilityElement()
-        .accessibilityLabel("Zone diagram: nothing picked within \(Int(ring.deadZone)) points, directions up to \(Int(ring.flickDistance)) points, pointing beyond.")
+        .accessibilityLabel("Zone diagram: cancel within \(Int(ring.cancelRadius)) points, directions up to \(Int(ring.flickDistance)) points, pointing beyond.")
     }
 }
 
