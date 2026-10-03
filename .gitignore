@@ -1,0 +1,18 @@
+# Reference clone of upstream Loop (GPL-3.0) — never imported
+loop/
+
+# Build output
+.build/
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+
+# Secrets / env
+.env*
+
+# OS / tooling noise
+.DS_Store
+logs/
+tmp/
+.remember/
