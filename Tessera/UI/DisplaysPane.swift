@@ -48,9 +48,7 @@ struct DisplaysPane: View {
         )
         SliderRow(title: "Widest column", value: s.maxColumnWidth, range: v.idealColumnWidth...max(v.idealColumnWidth + 1, 3000), step: 8)
         SliderRow(title: "Shortest row", value: s.minRowHeight, range: 200...1200, step: 8)
-        Stepper(value: s.maxColumns, in: 1...16) {
-            LabeledContent("Most columns", value: "\(v.maxColumns)")
-        }
+        StepperRow(title: "Most columns", value: s.maxColumns, range: 1...16)
         Caption("Narrowest ≤ ideal ≤ widest. Column ranges update when displays are next re-read.")
     }
 
@@ -98,10 +96,8 @@ private struct DisplayRow: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
 
-            Stepper(value: binding(\.columns), in: range.minCols...range.maxCols) {
-                LabeledContent(range.isPortrait ? "Rows" : "Columns", value: "\(profile.columns)")
-            }
-            .disabled(range.minCols == range.maxCols)
+            StepperRow(title: range.isPortrait ? "Rows" : "Columns", value: binding(\.columns), range: range.minCols...range.maxCols)
+                .disabled(range.minCols == range.maxCols)
             if range.minCols == range.maxCols {
                 Caption("This display only fits \(range.minCols) with the current sizing constants.")
             }

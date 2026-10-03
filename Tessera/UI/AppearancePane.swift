@@ -15,7 +15,7 @@ struct AppearancePane: View {
 
     var body: some View {
         Form {
-            Section("Theme") {
+            Section {
                 Picker("Theme", selection: Binding(
                     get: { model.settings.themeName },
                     set: { name in

@@ -34,11 +34,7 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
             return
         }
         if let pane { navigation.pane = pane }
-        let window = settingsWindow ?? makeWindow(
-            title: "Tessera Settings",
-            controller: NSHostingController(rootView: SettingsView(model: model, navigation: navigation, displays: displays)),
-            resizable: true
-        )
+        let window = settingsWindow ?? makeSettingsWindow()
         settingsWindow = window
         (window.contentViewController as? NSHostingController<SettingsView>)?.rootView =
             SettingsView(model: model, navigation: navigation, displays: displays)
@@ -64,6 +60,19 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
             onboardingWindow = window
             present(window)
         }
+    }
+
+    private func makeSettingsWindow() -> NSWindow {
+        let controller = NSHostingController(rootView: SettingsView(model: model, navigation: navigation, displays: displays))
+        // The split view reports its tallest pane as intrinsic height, taller than the screen. AppKit then keeps
+        // the oversized view bottom-anchored and the top (sidebar, pane header) is clipped under the title bar.
+        // Size the window here and let the view fill it instead.
+        controller.sizingOptions = []
+        let window = makeWindow(title: "Tessera Settings", controller: controller, resizable: true)
+        window.setContentSize(NSSize(width: 820, height: 640))
+        window.contentMinSize = NSSize(width: 760, height: 540)
+        window.center()
+        return window
     }
 
     private func makeWindow(title: String, controller: NSViewController, resizable: Bool = false) -> NSWindow {

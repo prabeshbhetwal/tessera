@@ -8,7 +8,7 @@ struct ExcludedAppsPane: View {
 
     var body: some View {
         Form {
-            Section("Tessera ignores the trigger while these apps are in front") {
+            Section {
                 if model.settings.excludedBundleIDs.isEmpty {
                     ContentUnavailableView {
                         Label("No excluded apps", systemImage: "nosign")

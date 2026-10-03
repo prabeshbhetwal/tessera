@@ -236,13 +236,12 @@ struct CommandEditor: View {
         }
         switch change {
         case .set(let n):
-            Stepper(value: Binding(get: { n }, set: { command = .columns(.set($0), display: display) }), in: 1...16) {
-                LabeledContent("Columns", value: "\(n)")
-            }
+            StepperRow(title: "Columns", value: Binding(get: { n }, set: { command = .columns(.set($0), display: display) }), range: 1...16)
         case .delta(let d):
-            Stepper(value: Binding(get: { d }, set: { command = .columns(.delta($0), display: display) }), in: -8...8) {
-                LabeledContent("By", value: d > 0 ? "+\(d)" : "\(d)")
-            }
+            StepperRow(
+                title: "By", value: Binding(get: { d }, set: { command = .columns(.delta($0), display: display) }),
+                range: -8...8, format: { $0 > 0 ? "+\($0)" : "\($0)" }
+            )
         }
         DisplaySelectorEditor(title: "Display", selector: Binding(get: { display }, set: { command = .columns(change, display: $0) }))
     }
@@ -261,9 +260,7 @@ struct CommandEditor: View {
             Text("Display number").tag(2)
         }
         if case .index(let n) = step {
-            Stepper(value: Binding(get: { n }, set: { command = .moveToDisplay(.index($0)) }), in: 1...16) {
-                LabeledContent("Display", value: "\(n)")
-            }
+            StepperRow(title: "Display", value: Binding(get: { n }, set: { command = .moveToDisplay(.index($0)) }), range: 1...16)
         }
     }
 }

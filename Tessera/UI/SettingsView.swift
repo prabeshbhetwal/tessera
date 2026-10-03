@@ -122,7 +122,6 @@ struct SettingsView: View {
                 if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
                 paneView
             }
-            .navigationTitle(navigation.pane.title)
         }
         .background {
             ForEach(SettingsPane.allCases, id: \.self) { pane in
@@ -182,8 +181,8 @@ struct PaneHeader: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
         .padding(.bottom, 4)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)

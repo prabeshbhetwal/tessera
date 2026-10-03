@@ -27,6 +27,23 @@ struct SliderRow: View {
     static func seconds(_ v: Double) -> String { v == 0 ? "Off" : String(format: "%.2f s", v) }
 }
 
+/// Labelled stepper with its value shown next to the control, like `SliderRow`.
+struct StepperRow: View {
+    let title: String
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    var format: (Int) -> String = { "\($0)" }
+
+    var body: some View {
+        LabeledContent(title) {
+            HStack(spacing: 10) {
+                Text(format(value)).monospacedDigit()
+                Stepper(title, value: $value, in: range).labelsHidden()
+            }
+        }
+    }
+}
+
 /// Secondary explanatory text, used under controls that are disabled or have side effects.
 struct Caption: View {
     let text: String
