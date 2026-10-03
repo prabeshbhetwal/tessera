@@ -37,7 +37,8 @@ actor WindowService {
     private var history: [UndoKey] = []
 
     func frontmostWindow() -> WindowRef? {
-        guard let pid = Self.frontmostPID(), pid != ProcessInfo.processInfo.processIdentifier else { return nil }
+        // Own windows are allowed (onboarding demo). AX to our own pid is serviced by the free main run loop.
+        guard let pid = Self.frontmostPID() else { return nil }
         let app = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app, Self.timeout)
         guard let window = AX.element(app, kAXFocusedWindowAttribute) ?? AX.element(app, kAXMainWindowAttribute) else {

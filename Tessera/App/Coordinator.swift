@@ -158,7 +158,7 @@ final class Coordinator {
             return nil
         case let .wedge(_, action):
             // Flicks act on the display where the ring opened.
-            guard let display = s.displays.first(where: { $0.visibleFrame.contains(s.origin) })
+            guard let display = s.displays.display(at: s.origin)
                 ?? s.displays.first else { return nil }
             return GridGeometry.frame(for: action, display: display, current: s.current ?? .zero)
         case let .span(id, span):
@@ -169,7 +169,7 @@ final class Coordinator {
 
     private func step(_ delta: Int) {
         guard let s = session,
-              let display = s.displays.first(where: { $0.visibleFrame.contains(s.cursor) }) else { return }
+              let display = s.displays.display(at: s.cursor) else { return }
         let columns = min(max(display.profile.columns + delta, display.range.minCols), display.range.maxCols)
         guard columns != display.profile.columns else { return }
         var profile = display.profile
@@ -188,7 +188,7 @@ final class Coordinator {
         overlay.hide()
         guard let frame = s.targetFrame else { return }
         let fromDisplay = s.current.flatMap { cur in
-            s.displays.first { $0.visibleFrame.contains(CGPoint(x: cur.midX, y: cur.midY)) }?.id
+            s.displays.display(at: CGPoint(x: cur.midX, y: cur.midY))?.id
         }
         let toDisplay = s.displays.first { $0.visibleFrame.intersects(frame) }?.id
         let result = await windows.apply(frame, to: s.target, primaryHeight: DisplayService.primaryHeight,

@@ -194,4 +194,18 @@ private func cursor(at degrees: Double, distance: Double = 50) -> CGPoint {
         #expect(top == .span(display: sideID, span: ColumnSpan(columns: 0...0, band: .full)))
         #expect(bottom == .span(display: sideID, span: ColumnSpan(columns: 2...2, band: .full)))
     }
+
+    // Review fix: the menu bar / Dock strips belong to the display (no dead zone).
+    @Test func testMenuBarAndDockStripsSelectDisplay() {
+        let base = chg()
+        let d = DisplayContext(
+            id: chgID, frame: CGRect(x: 0, y: -60, width: 3840, height: 1140),  // Dock below, menu bar above
+            visibleFrame: base.visibleFrame, range: base.range, profile: base.profile)
+        let menuBar = engine.select(origin: .zero, cursor: CGPoint(x: 1600, y: 1070), displays: [d], anchor: nil)
+        #expect(menuBar == .span(display: chgID, span: ColumnSpan(columns: 2...2, band: .top)))
+        let dock = engine.select(origin: CGPoint(x: 2000, y: 500), cursor: CGPoint(x: 10, y: -30), displays: [d], anchor: nil)
+        #expect(dock == .span(display: chgID, span: ColumnSpan(columns: 0...0, band: .bottom)))
+        #expect(engine.anchor(at: CGPoint(x: 1600, y: 1070), displays: [d]) != nil)
+        #expect(engine.select(origin: .zero, cursor: CGPoint(x: 1600, y: 1300), displays: [d], anchor: nil) == .none)
+    }
 }

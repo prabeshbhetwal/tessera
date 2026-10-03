@@ -36,7 +36,7 @@ final class DisplayService {
     }
 
     func display(containing p: CGPoint) -> DisplayContext? {
-        displays.first { $0.visibleFrame.contains(p) }
+        displays.display(at: p)
     }
 
     private static func context(for screen: NSScreen, settings: TesseraSettings) -> DisplayContext? {
@@ -51,12 +51,11 @@ final class DisplayService {
         )
 
         let override = settings.displayOverrides[id.storageKey]
-        let padding = override?.padding ?? settings.defaultPadding
-        let usable = screen.visibleFrame.insetBy(dx: padding, dy: padding)
-        let range = SizingRule.range(for: usable.isNull ? .zero : usable.size, constants: settings.sizing)
+        // Sized from the visible frame before padding, so padding never costs a column (CHG90 → 3–6).
+        let range = SizingRule.range(for: screen.visibleFrame.size, constants: settings.sizing)
         let profile = override?.clamped(to: range)
             ?? .auto(range: range, gap: settings.defaultGap, padding: settings.defaultPadding)
-        return DisplayContext(id: id, visibleFrame: screen.visibleFrame, range: range, profile: profile)
+        return DisplayContext(id: id, frame: screen.frame, visibleFrame: screen.visibleFrame, range: range, profile: profile)
     }
 
     private static func uuidString(for display: CGDirectDisplayID) -> String? {

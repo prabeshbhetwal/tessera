@@ -64,17 +64,28 @@ public struct DisplayProfile: Codable, Equatable, Sendable {
     }
 }
 
-/// A display as seen by the engine. `visibleFrame` is AppKit global coords, before padding.
+/// A display as seen by the engine. Frames are AppKit global coords; `visibleFrame` is before padding.
 public struct DisplayContext: Equatable, Sendable {
     public let id: DisplayID
+    /// Whole screen including menu bar and Dock strips. Used for hit-testing the cursor.
+    public let frame: CGRect
     public let visibleFrame: CGRect
     public let range: ColumnRange
     public let profile: DisplayProfile
 
-    public init(id: DisplayID, visibleFrame: CGRect, range: ColumnRange, profile: DisplayProfile) {
+    public init(id: DisplayID, frame: CGRect? = nil, visibleFrame: CGRect, range: ColumnRange, profile: DisplayProfile) {
         self.id = id
+        self.frame = frame ?? visibleFrame
         self.visibleFrame = visibleFrame
         self.range = range
         self.profile = profile
+    }
+}
+
+extension Collection where Element == DisplayContext {
+    /// The display whose whole screen contains `point`. The menu bar and Dock strips count, so the cursor
+    /// never falls into a dead zone; points outside every screen return nil.
+    public func display(at point: CGPoint) -> DisplayContext? {
+        first { $0.frame.contains(point) }
     }
 }

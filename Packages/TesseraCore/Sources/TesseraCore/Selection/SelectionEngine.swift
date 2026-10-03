@@ -31,7 +31,7 @@ public struct SelectionEngine: Sendable {
         if distance < ring.deadZone { return .none }
         if distance < ring.flickDistance { return wedge(dx: dx, dy: dy) }
 
-        guard let display = displays.first(where: { $0.visibleFrame.contains(cursor) }) else {
+        guard let display = displays.display(at: cursor) else {
             return .none
         }
         let here = cell(at: cursor, in: display)
@@ -47,7 +47,7 @@ public struct SelectionEngine: Sendable {
     }
 
     public func anchor(at cursor: CGPoint, displays: [DisplayContext]) -> SpanAnchor? {
-        guard let display = displays.first(where: { $0.visibleFrame.contains(cursor) }) else {
+        guard let display = displays.display(at: cursor) else {
             return nil
         }
         let c = cell(at: cursor, in: display)

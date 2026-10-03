@@ -8,6 +8,9 @@ public enum InputEvent: Sendable, Equatable {
     case keyDown(keyCode: UInt16, location: CGPoint)
     case mouseMoved(CGPoint)
     case leftMouseDown(CGPoint)
+    case leftMouseUp(CGPoint)
+    /// Point delta. InputService maps one mouse-wheel notch to `TriggerMachine.scrollStepPoints`
+    /// and drops trackpad momentum to 0.
     case scroll(deltaY: Double)
 }
 
@@ -37,10 +40,14 @@ public struct TriggerResult: Equatable, Sendable {
 /// it can decide synchronously whether to suppress an event (spec §5.3).
 public struct TriggerMachine: Sendable {
     private static let escapeKeyCode: UInt16 = 53
+    /// Accumulated scroll distance that changes the column count by one.
+    public static let scrollStepPoints: Double = 60
 
     private let chord: Set<UInt16>
     private var armed = true
     public private(set) var isOpen = false
+    private var scrollAccumulator: Double = 0
+    private var swallowNextMouseUp = false
 
     public init(chord: TriggerChord) { self.chord = chord.keyCodes }
 
@@ -55,11 +62,32 @@ public struct TriggerMachine: Sendable {
         case .mouseMoved(let p):
             return isOpen ? TriggerResult(outputs: [.move(p)], suppress: false) : .ignored
         case .leftMouseDown(let p):
-            return isOpen ? TriggerResult(outputs: [.anchor(p)], suppress: true) : .ignored
+            guard isOpen else { return .ignored }
+            swallowNextMouseUp = true
+            return TriggerResult(outputs: [.anchor(p)], suppress: true)
+        case .leftMouseUp:
+            // Pair every swallowed mouse-down with a swallowed mouse-up, even if the ring closed in between.
+            guard swallowNextMouseUp || isOpen else { return .ignored }
+            swallowNextMouseUp = false
+            return TriggerResult(outputs: [], suppress: true)
         case .scroll(let deltaY):
-            guard isOpen, deltaY != 0 else { return .ignored }
-            return TriggerResult(outputs: [.step(deltaY > 0 ? 1 : -1)], suppress: true)
+            guard isOpen else { return .ignored }
+            // Swallow every scroll while open (incl. zero/momentum) so the window below never scrolls.
+            scrollAccumulator += deltaY
+            guard abs(scrollAccumulator) >= Self.scrollStepPoints else { return TriggerResult(outputs: [], suppress: true) }
+            let step = scrollAccumulator > 0 ? 1 : -1
+            scrollAccumulator = 0
+            return TriggerResult(outputs: [.step(step)], suppress: true)
         }
+    }
+
+    /// Called when the system disabled the tap: key-ups may have been lost, so close without applying.
+    public mutating func reset() -> [TriggerOutput] {
+        let wasOpen = isOpen
+        isOpen = false
+        armed = true
+        scrollAccumulator = 0
+        return wasOpen ? [.cancel] : []
     }
 
     private mutating func flagsChanged(_ pressed: Set<UInt16>, _ location: CGPoint) -> TriggerResult {
@@ -74,6 +102,7 @@ public struct TriggerMachine: Sendable {
         } else if armed, !chord.isEmpty, held.count == chord.count {
             isOpen = true
             armed = false
+            scrollAccumulator = 0
             outputs.append(.open(origin: location))
         }
 

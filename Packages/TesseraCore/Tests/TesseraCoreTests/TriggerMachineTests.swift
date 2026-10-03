@@ -135,14 +135,39 @@ private func opened() -> TriggerMachine {
     }
 
     @Test func testScrollSteps() {
+        let notch = TriggerMachine.scrollStepPoints
         var m = opened()
-        let up = m.handle(.scroll(deltaY: 3))
-        let down = m.handle(.scroll(deltaY: -0.5))
+        let up = m.handle(.scroll(deltaY: notch))
+        let down = m.handle(.scroll(deltaY: -notch))
         let zero = m.handle(.scroll(deltaY: 0))
         #expect(up.outputs == [.step(1)] && up.suppress)
         #expect(down.outputs == [.step(-1)] && down.suppress)
-        #expect(zero.outputs.isEmpty)
+        #expect(zero.outputs.isEmpty && zero.suppress)  // swallowed while open
         #expect(m.isOpen)
+    }
+
+    @Test func testTrackpadScrollAccumulates() {
+        var m = opened()
+        var steps: [TriggerOutput] = []
+        for _ in 0..<12 { steps += m.handle(.scroll(deltaY: 10)).outputs }  // 120 pt of swipe
+        #expect(steps == [.step(1), .step(1)])
+    }
+
+    @Test func testMouseUpAfterAnchorSwallowed() {
+        var m = opened()
+        _ = m.handle(.leftMouseDown(here))
+        _ = m.handle(flags([]))  // ring applies before the button is released
+        let up = m.handle(.leftMouseUp(here))
+        #expect(up.suppress && up.outputs.isEmpty)
+        #expect(!m.handle(.leftMouseUp(here)).suppress)  // only the paired one
+    }
+
+    @Test func testResetCancelsOpenRing() {
+        var m = opened()
+        #expect(m.reset() == [.cancel])
+        #expect(!m.isOpen)
+        #expect(m.reset().isEmpty)
+        #expect(m.handle(flags(chord)).outputs == [.open(origin: here)])  // usable again
     }
 
     @Test func testExtraModifierStillOpens() {
@@ -158,7 +183,7 @@ private func opened() -> TriggerMachine {
         var m = newMachine()
         let events: [InputEvent] = [
             .keyDown(keyCode: 53, location: here), .keyDown(keyCode: 0, location: here),
-            .mouseMoved(here), .leftMouseDown(here), .scroll(deltaY: 5),
+            .mouseMoved(here), .leftMouseDown(here), .leftMouseUp(here), .scroll(deltaY: 5),
         ]
         for e in events {
             let r = m.handle(e)

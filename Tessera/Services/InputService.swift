@@ -28,7 +28,7 @@ final class InputService: @unchecked Sendable {
     func start() -> Bool {
         if shared.withLock({ $0.session != nil }) { return true }
 
-        let types: [CGEventType] = [.flagsChanged, .keyDown, .leftMouseDown, .scrollWheel, .mouseMoved, .leftMouseDragged]
+        let types: [CGEventType] = [.flagsChanged, .keyDown, .leftMouseDown, .leftMouseUp, .scrollWheel, .mouseMoved, .leftMouseDragged]
         let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
         let session = TapSession(service: self, chord: shared.withLock { $0.chord })
         guard let tap = CGEvent.tapCreate(
@@ -145,6 +145,8 @@ private final class TapSession: @unchecked Sendable {
     /// Returns true when the event must be suppressed.
     func handle(_ type: CGEventType, _ event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            // Key-ups may have been lost while disabled: close the ring instead of leaving it stuck.
+            for output in machine.reset() { service.onOutput(output) }
             service.tapWasDisabled(self)
             return false
         }
@@ -171,9 +173,17 @@ private final class TapSession: @unchecked Sendable {
             return .mouseMoved(location)
         case .leftMouseDown:
             return .leftMouseDown(location)
+        case .leftMouseUp:
+            return .leftMouseUp(location)
         case .scrollWheel:
-            // Line delta: small trackpad jitter reads as 0, which the machine ignores.
-            return .scroll(deltaY: Double(event.getIntegerValueField(.scrollWheelEventDeltaAxis1)))
+            // Trackpad: point deltas accumulate in the machine; momentum is swallowed but never steps.
+            // Mouse wheel: one notch = one step.
+            if event.getIntegerValueField(.scrollWheelEventMomentumPhase) != 0 { return .scroll(deltaY: 0) }
+            if event.getIntegerValueField(.scrollWheelEventIsContinuous) != 0 {
+                return .scroll(deltaY: event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1))
+            }
+            let notches = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+            return .scroll(deltaY: Double(notches.signum()) * TriggerMachine.scrollStepPoints)
         default:
             return nil
         }

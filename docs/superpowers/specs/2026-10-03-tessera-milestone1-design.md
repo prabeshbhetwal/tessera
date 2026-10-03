@@ -76,7 +76,8 @@ Allowed where needed, with these rules:
 
 ### 3.1 Inputs
 For each display:
-- The **usable frame in points**: `NSScreen.visibleFrame` (this already excludes the menu bar and Dock and accounts for Retina scaling), minus the screen padding.
+- The **usable frame in points**: `NSScreen.visibleFrame` (this already excludes the menu bar and Dock and accounts for Retina scaling). The sizing rule uses it **before** padding, so padding never costs a column; padding is applied when frames are computed.
+- The **whole screen frame** (`NSScreen.frame`) is used only to hit-test the cursor, so the menu bar and Dock strips are never dead zones.
 - Its **stable identity**: vendor + model + serial, from `CGDisplayVendorNumber`, `CGDisplayModelNumber` and `CGDisplaySerialNumber`. If the serial is 0, fall back to `CGDisplayCreateUUIDFromDisplayID`.
 
 ### 3.2 Tunable constants
