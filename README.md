@@ -17,19 +17,73 @@ The preview shows:
 
 Everything is customisable. Settings export and import as one JSON file.
 
-## Status
+## Keyboard-only use
 
-Milestone 1 of 5:
+Everything works without a mouse.
+
+**The ring.** While you hold the trigger, these keys control it:
+
+| Key | Action |
+|---|---|
+| ← / → | Move one column |
+| ⇧← / ⇧→ | Extend the span |
+| ↑ / ↓ | Bottom, full or top band |
+| 1–9 | Jump to that column |
+| = / − | Change the column count |
+| Tab | Next display |
+| Return | Apply |
+| Esc | Cancel |
+
+**Hotkeys.** These work without the ring, and you can rebind all of them in Settings → Shortcuts:
+
+| Key | Action |
+|---|---|
+| ⌃⌥← / ⌃⌥→ | Cycle: half, edge column, two columns |
+| ⌃⌥↑ | Maximize |
+| ⌃⌥↓ | Center |
+| ⌃⌥1–9 | Column N |
+| ⌃⌥= / ⌃⌥− | Columns ±1 |
+| ⌃⌥N / ⌃⌥P | Next / previous display |
+| ⌃⌥Z | Undo |
+| ⌃⌥⌘, | Settings |
+
+**Settings window.** ⌘1–8 switches panes, and every control can be reached with Tab.
+
+## Automation
+
+Every surface below runs the same commands.
+
+```bash
+tessera apply --cols 2-4 --band top     # columns 2–4, top half
+tessera action leftHalf
+tessera cycle left
+tessera columns --set 6 --display 2
+tessera move next
+tessera displays --json
+tessera settings export ~/tessera.json
+```
+
+**Install the CLI.** In Settings → General, choose **Install CLI**. It links the tool into `~/.local/bin/tessera`.
+
+**URL scheme.** For example, `open "tessera://apply?cols=2-4&band=top"`. URLs cannot read or write files.
+
+**AppleScript.** For example: `tell application "Tessera" to apply columns "2-4" band top`.
+
+**Shortcuts and Spotlight.** Search for "Tessera" in the Shortcuts app.
+
+## Status
 
 | # | Milestone | Status |
 |---|---|---|
-| 1 | Engine, radial ring, display profiles, rich preview | in progress |
-| 2 | Keyboard shortcuts and cycles | planned |
+| 1 | Engine, radial ring, display profiles, rich preview | built, awaiting hands-on test |
+| 2 | Full keyboard control and automation (hotkeys, cycles, CLI, URL, AppleScript, Shortcuts) | built, awaiting hands-on test |
 | 3 | Drag-to-snap | planned |
 | 4 | Saved layouts with auto-restore on dock | planned |
 | 5 | Multi-display throw and Spaces | planned |
 
-Design: [`docs/superpowers/specs/2026-10-03-tessera-milestone1-design.md`](docs/superpowers/specs/2026-10-03-tessera-milestone1-design.md)
+Design documents:
+- [Milestone 1](docs/superpowers/specs/2026-10-03-tessera-milestone1-design.md)
+- [Milestone 2](docs/superpowers/specs/2026-10-03-tessera-milestone2-keyboard-automation-design.md)
 
 ## Requirements
 
