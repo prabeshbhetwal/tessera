@@ -31,16 +31,31 @@ enum CLIInstaller {
         (try? FileManager.default.destinationOfSymbolicLink(atPath: linkURL.path)) == bundledURL.path
     }
 
-    /// Creates (or repoints) the symlink. Never replaces a regular file the user put there.
+    /// A link Tessera created points at some build's bundled CLI. Each dev build lives in its own
+    /// folder and old ones get deleted, so the target may be another (or a missing) Tessera.app.
+    static func isTesseraLink(destination: String) -> Bool {
+        destination.hasSuffix("/Tessera.app/Contents/Helpers/tessera")
+    }
+
+    /// At launch: repoints an installed link that targets a different build (moved, rebuilt elsewhere
+    /// or deleted) at this one. Does nothing if the CLI was never installed or the file isn't ours.
+    static func repairIfStale() -> Result<URL, Error>? {
+        guard let destination = try? FileManager.default.destinationOfSymbolicLink(atPath: linkURL.path),
+              destination != bundledURL.path, isTesseraLink(destination: destination) else { return nil }
+        return install()
+    }
+
+    /// Creates (or repoints) the symlink. Never replaces a file or link the user put there.
     static func install() -> Result<URL, Error> {
         let fm = FileManager.default
         let link = linkURL
         guard fm.isExecutableFile(atPath: bundledURL.path) else { return .failure(InstallError.missingBinary(bundledURL)) }
         do {
             try fm.createDirectory(at: link.deletingLastPathComponent(), withIntermediateDirectories: true)
-            if (try? fm.destinationOfSymbolicLink(atPath: link.path)) != nil {
-                try fm.removeItem(at: link) // our old link, possibly to a moved app
-            } else if fm.fileExists(atPath: link.path) {
+            if let destination = try? fm.destinationOfSymbolicLink(atPath: link.path), isTesseraLink(destination: destination) {
+                try fm.removeItem(at: link) // our old link, possibly to a moved or deleted build
+            } else if (try? fm.attributesOfItem(atPath: link.path)) != nil {
+                // Exists (fileExists follows links, so a dangling foreign link needs this check).
                 return .failure(InstallError.occupied(link))
             }
             try fm.createSymbolicLink(at: link, withDestinationURL: bundledURL)
