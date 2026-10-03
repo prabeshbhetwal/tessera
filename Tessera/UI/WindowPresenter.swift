@@ -79,8 +79,12 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
 
     private func present(_ window: NSWindow) {
         NSApp.setActivationPolicy(.regular)
+        if !window.isVisible { window.center() }
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        window.orderFrontRegardless()
+        // Plain activate() is "cooperative" on macOS 14+ and is often ignored for a background agent,
+        // which left the setup window hidden behind other apps.
+        NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps])
     }
 
     func windowWillClose(_ notification: Notification) {

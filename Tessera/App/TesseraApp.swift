@@ -33,23 +33,22 @@ struct TesseraApp: App {
 private struct MenuContent: View {
     let delegate: AppDelegate
 
+    // Static item list on purpose: SwiftUI drops conditional (`if`) items from MenuBarExtra menus when
+    // the condition changes after the menu is first built, leaving only Quit. Items toggle `disabled` instead.
     var body: some View {
+        let granted = delegate.state.accessibilityGranted
         // Plain Text in a menu renders as a disabled line: a one-line reminder of how to use the app.
-        if delegate.state.accessibilityGranted {
-            Text("Hold \(ModifierKey.describe(delegate.model.settings.trigger.keyCodes)) to snap")
-            Divider()
-            Button("Undo last move") { delegate.coordinator?.undoLast() }
-            Divider()
-            Button("Settings…") { delegate.coordinator?.presenter.showSettings() }
-                .keyboardShortcut(",")
-            Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
-        } else {
-            // Nothing works without Accessibility, so setup is the only thing on offer.
-            Text("Accessibility permission needed")
-            Button("Finish setup…") {
-                delegate.coordinator?.presenter.showOnboarding(startStep: OnboardingView.accessibilityStep)
-            }
-        }
+        Text(granted
+            ? "Hold \(ModifierKey.describe(delegate.model.settings.trigger.keyCodes)) to snap"
+            : "Accessibility not granted")
+        Divider()
+        // Always available: routes to setup until Accessibility is granted, then to Settings.
+        Button(granted ? "Settings…" : "Finish setup…") { delegate.coordinator?.presenter.showSettings() }
+            .keyboardShortcut(",")
+        Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
+            .disabled(!granted)
+        Button("Undo last move") { delegate.coordinator?.undoLast() }
+            .disabled(!granted)
         Divider()
         Button("Quit Tessera") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
