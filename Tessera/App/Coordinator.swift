@@ -8,8 +8,9 @@ final class Coordinator {
     let model: SettingsModel
     let displays: DisplayService
     let presenter: WindowPresenter
+    let executor: CommandExecutor
     private let store: SettingsStore
-    private let windows = WindowService()
+    private let windows: WindowService
     private let thumbnails = ThumbnailService()
     private let overlay = OverlayController()
     private var input: InputService?
@@ -18,6 +19,9 @@ final class Coordinator {
     private var sessionCounter = 0
     private var saveTask: Task<Void, Never>?
     private let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "coordinator")
+
+    /// A mouse move this far from the last nav key hands selection back to the cursor (M2 spec §3).
+    private static let navReleaseDistance: CGFloat = 10
 
     private struct Session {
         let id: Int
@@ -30,6 +34,12 @@ final class Coordinator {
         var neighbours: [CGRect] = []
         var thumbnail: CGImage?
         var targetFrame: CGRect?
+        /// Keyboard selection; overrides the cursor while set.
+        var nav: NavState?
+        /// Cursor position at the last nav key.
+        var navCursor: CGPoint?
+        /// Last label posted to VoiceOver, so unchanged selections aren't re-announced.
+        var announced: String?
     }
 
     init(model: SettingsModel, store: SettingsStore) {
@@ -38,7 +48,12 @@ final class Coordinator {
         self.engine = SelectionEngine(ring: model.settings.ring)
         let displays = DisplayService(settings: { [unowned model] in model.settings })
         self.displays = displays
-        self.presenter = WindowPresenter(model: model, displays: displays.displays)
+        let presenter = WindowPresenter(model: model, displays: displays.displays)
+        self.presenter = presenter
+        let windows = WindowService()
+        self.windows = windows
+        self.executor = CommandExecutor(model: model, displays: displays, windows: windows,
+                                        presenter: presenter, store: store)
         displays.onChange = { [weak self] in self?.displaysChanged() }
         model.onChange = { [weak self] in self?.settingsChanged($0) }
     }
@@ -51,6 +66,7 @@ final class Coordinator {
         let (stream, continuation) = AsyncStream.makeStream(of: TriggerOutput.self)
         let service = InputService(chord: model.settings.trigger) { continuation.yield($0) }
         service.updatePrimaryHeight(DisplayService.primaryHeight)
+        service.updateHotkeys(model.settings.hotkeys, ringKeyNavigation: model.settings.ringKeyNavigation)
         guard service.start() else {
             log.error("event tap could not be created")
             return false
@@ -73,24 +89,47 @@ final class Coordinator {
         Task { _ = await windows.undoLast() }
     }
 
+    /// Runs a command through the bridge; a failure is shown in the HUD.
+    func run(_ command: Command) async {
+        let result = await CommandBridge.execute(command)
+        if !result.ok {
+            let message = result.message ?? "Command failed"
+            log.notice("command failed: \(message, privacy: .public)")
+            overlay.showHUD(message)
+        }
+    }
+
+    func showHUD(_ text: String) {
+        overlay.showHUD(text)
+    }
+
     // MARK: - Trigger outputs
 
     private func handle(_ output: TriggerOutput) async {
         switch output {
         case let .open(origin): await open(at: origin)
         case let .move(point):
-            session?.cursor = point
+            guard var s = session else { return }
+            s.cursor = point
+            if let from = s.navCursor, hypot(point.x - from.x, point.y - from.y) >= Self.navReleaseDistance {
+                s.nav = nil
+                s.navCursor = nil
+            }
+            session = s
             refreshSelection()
         case let .anchor(point):
             guard var s = session else { return }
             s.anchor = engine.anchor(at: point, displays: s.displays)
             s.cursor = point
+            s.nav = nil
+            s.navCursor = nil
             session = s
             refreshSelection()
         case let .step(delta): step(delta)
         case .apply: await apply()
         case .cancel: cancelSession()
-        case .nav, .command: break // M2 Track I wires these.
+        case let .nav(key): await navigate(key)
+        case let .command(command): await run(command)
         }
     }
 
@@ -134,11 +173,39 @@ final class Coordinator {
         }
     }
 
+    /// Ring keyboard navigation (M2 spec §3). The first nav key starts at the window's display and column.
+    private func navigate(_ key: NavKey) async {
+        guard var s = session else { return }
+        if key == .apply {
+            await apply()
+            return
+        }
+        if s.nav == nil { s.nav = KeyNavigator.start(windowFrame: s.current, displays: s.displays) }
+        s.navCursor = s.cursor
+        session = s
+        switch key {
+        case .columnsPlus: step(1)
+        case .columnsMinus: step(-1)
+        default:
+            if let nav = s.nav { session?.nav = KeyNavigator.reduce(nav, key, displays: s.displays) }
+        }
+        refreshSelection()
+    }
+
     private func refreshSelection() {
         guard var s = session else { return }
-        let selection = engine.select(origin: s.origin, cursor: s.cursor, displays: s.displays, anchor: s.anchor)
+        let selection = s.nav.map { KeyNavigator.selection($0, displays: s.displays) }
+            ?? engine.select(origin: s.origin, cursor: s.cursor, displays: s.displays, anchor: s.anchor)
         let frame = targetFrame(for: selection, in: s)
         s.targetFrame = frame
+        if model.settings.announceSelection,
+           let label = frame.flatMap({ PreviewModel.label(for: selection, frame: $0) }), label != s.announced {
+            s.announced = label
+            NSAccessibility.post(element: NSApplication.shared, notification: .announcementRequested, userInfo: [
+                .announcement: label,
+                .priority: NSAccessibilityPriorityLevel.high.rawValue,
+            ])
+        }
         session = s
         let layers = frame.map {
             PreviewModel.layers(
@@ -168,18 +235,19 @@ final class Coordinator {
         }
     }
 
+    /// Column count ±1 on the keyboard-selected display, else the one under the cursor.
     private func step(_ delta: Int) {
-        guard let s = session,
-              let display = s.displays.display(at: s.cursor) else { return }
-        let columns = min(max(display.profile.columns + delta, display.range.minCols), display.range.maxCols)
-        guard columns != display.profile.columns else { return }
-        var profile = display.profile
-        profile.columns = columns
-        profile.isUserOverride = true
-        // Mutating settings triggers settingsChanged → save + display refresh.
-        model.settings.displayOverrides[display.id.storageKey] = profile
+        guard let s = session else { return }
+        let ordered = DisplayResolver.ordered(s.displays)
+        let navDisplay = s.nav.flatMap { ordered.indices.contains($0.displayIndex) ? ordered[$0.displayIndex] : nil }
+        guard let display = navDisplay ?? s.displays.display(at: s.cursor),
+              executor.setColumns(.delta(delta), on: display) != nil else { return }
+        // setColumns mutated settings → settingsChanged already refreshed `displays`.
         session?.displays = displays.displays
         session?.anchor = nil
+        if let nav = s.nav {
+            session?.nav = KeyNavigator.reduce(nav, delta > 0 ? .columnsPlus : .columnsMinus, displays: displays.displays)
+        }
         refreshSelection()
     }
 
@@ -188,12 +256,7 @@ final class Coordinator {
         session = nil
         overlay.hide()
         guard let frame = s.targetFrame else { return }
-        let fromDisplay = s.current.flatMap { cur in
-            s.displays.display(at: CGPoint(x: cur.midX, y: cur.midY))?.id
-        }
-        let toDisplay = s.displays.first { $0.visibleFrame.intersects(frame) }?.id
-        let result = await windows.apply(frame, to: s.target, primaryHeight: DisplayService.primaryHeight,
-                                         crossingDisplays: fromDisplay != toDisplay)
+        let result = await executor.place(s.target, current: s.current, goal: frame)
         if case let .failed(reason) = result {
             log.notice("apply failed for \(s.target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
             overlay.showHUD("Can't move this window")
@@ -217,6 +280,7 @@ final class Coordinator {
     private func settingsChanged(_ settings: TesseraSettings) {
         engine = SelectionEngine(ring: settings.ring)
         input?.updateChord(settings.trigger)
+        input?.updateHotkeys(settings.hotkeys, ringKeyNavigation: settings.ringKeyNavigation)
         displays.refresh()
         presenter.updateDisplays(displays.displays)
         saveTask?.cancel()
