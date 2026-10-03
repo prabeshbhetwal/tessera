@@ -2,9 +2,13 @@ import Observation
 import SwiftUI
 import TesseraCore
 
-/// Settings panes in sidebar order; ⌘1–8 selects them.
+/// Settings panes in sidebar order; ⌘1–9 selects them.
+///
+/// One question per pane, so a setting has exactly one home:
+/// Ring = how the ring *behaves*, Preview = what the preview *shows*,
+/// Appearance = how both *look*, Motion = how fast anything *moves*.
 enum SettingsPane: Int, CaseIterable, Hashable {
-    case general, shortcuts, displays, ring, preview, appearance, excludedApps, about
+    case general, shortcuts, displays, ring, preview, appearance, motion, excludedApps, about
 
     var title: String {
         switch self {
@@ -14,6 +18,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .ring: "Ring"
         case .preview: "Preview"
         case .appearance: "Appearance"
+        case .motion: "Motion"
         case .excludedApps: "Excluded Apps"
         case .about: "About"
         }
@@ -27,6 +32,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .ring: "smallcircle.filled.circle"
         case .preview: "rectangle.lefthalf.filled"
         case .appearance: "paintpalette.fill"
+        case .motion: "hare.fill"
         case .excludedApps: "hand.raised.fill"
         case .about: "info"
         }
@@ -40,6 +46,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .ring: .indigo
         case .preview: .teal
         case .appearance: .pink
+        case .motion: .green
         case .excludedApps: .red
         case .about: .gray
         }
@@ -50,12 +57,13 @@ enum SettingsPane: Int, CaseIterable, Hashable {
     /// One sentence under the pane title: what the pane controls.
     var blurb: String {
         switch self {
-        case .general: "The trigger chord, snap speed, launch behaviour, settings files and the command-line tool."
+        case .general: "The trigger chord, launch behaviour, settings files and the command-line tool."
         case .shortcuts: "Global hotkeys, named cycles and keyboard control of the open ring."
         case .displays: "Column count, gap and padding for each connected display."
-        case .ring: "Where directions end and pointing begins, and what each direction does."
+        case .ring: "Where directions end and pointing begins, what each direction does, and how pointing splits rows."
         case .preview: "What the snap preview shows while you hold the trigger."
-        case .appearance: "Themes and colours for the ring and preview."
+        case .appearance: "Themes, colours and sizes for the ring and preview."
+        case .motion: "How fast windows glide into place and the preview animates."
         case .excludedApps: "Apps in front of which the trigger stays off."
         case .about: ""
         }
@@ -79,7 +87,7 @@ enum SettingsGroup: CaseIterable {
         switch self {
         case .setup: [.general, .shortcuts]
         case .snapping: [.displays, .ring, .preview]
-        case .customise: [.appearance, .excludedApps]
+        case .customise: [.appearance, .motion, .excludedApps]
         case .about: [.about]
         }
     }
@@ -148,6 +156,7 @@ struct SettingsView: View {
         case .ring: RingPane(model: model)
         case .preview: PreviewPane(model: model)
         case .appearance: AppearancePane(model: model)
+        case .motion: MotionPane(model: model)
         case .excludedApps: ExcludedAppsPane(model: model)
         case .about: AboutPane()
         }

@@ -28,8 +28,6 @@ struct GeneralPane: View {
                 ChordRecorder(chord: $model.settings.trigger)
             }
 
-            SnapSpeedSection(model: model)
-
             Section("App") {
                 Toggle("Launch at login", isOn: Binding(
                     get: { model.settings.launchAtLogin },
@@ -120,34 +118,6 @@ struct GeneralPane: View {
             ioMessage = "Import rejected: \(problem)"
         } catch {
             ioMessage = "Import rejected: this isn't a Tessera settings file."
-        }
-    }
-}
-
-/// Preset speeds plus a seconds slider; both edit the one stored duration.
-private struct SnapSpeedSection: View {
-    @Bindable var model: SettingsModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        let seconds = model.settings.snapSeconds
-        Section("Snap speed") {
-            Picker("Speed", selection: Binding(
-                get: { SnapSpeed(seconds: seconds) },
-                set: { if let speed = $0 { model.settings.snapSeconds = speed.seconds } }
-            )) {
-                ForEach(SnapSpeed.allCases, id: \.self) { Text($0.displayName).tag(Optional($0)) }
-            }
-            .pickerStyle(.segmented)
-            SliderRow(title: "Duration", value: $model.settings.snapSeconds, range: 0...SnapSpeed.maxSeconds,
-                      step: 0.01, format: { $0 == 0 ? "Instant" : String(format: "%.2f s", $0) })
-            if reduceMotion, seconds > 0 {
-                Caption("Reduce Motion is on in System Settings, so windows jump instead of gliding.")
-            } else {
-                Caption(SnapSpeed(seconds: seconds) == nil
-                    ? "Custom speed. Pick a preset above or drag to any duration."
-                    : "How long a window takes to glide into place, for the ring and shortcuts alike. Instant jumps straight there.")
-            }
         }
     }
 }

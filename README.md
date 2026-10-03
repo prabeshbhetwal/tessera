@@ -47,7 +47,7 @@ Everything works without a mouse.
 | ⌃⌥Z | Undo |
 | ⌃⌥⌘, | Settings |
 
-**Settings window.** ⌘1–8 switches panes, and every control can be reached with Tab.
+**Settings window.** ⌘1–9 switches panes, and every control can be reached with Tab.
 
 ## Automation
 

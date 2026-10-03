@@ -38,10 +38,14 @@ struct RingPane: View {
                 }
             }
 
-            Section("Size") {
-                SliderRow(title: "Radius", value: ring.radius, range: 20...150)
-                SliderRow(title: "Thickness", value: ring.thickness, range: 4...max(5, min(80, r.radius * 2)))
-                Caption("Thickness can't exceed twice the radius.")
+            Section("Pointing rows") {
+                SliderRow(title: "Top band", value: ring.topBand, range: 0.1...max(0.11, 0.9 - r.bottomBand), step: 0.05, format: SliderRow.percent)
+                SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
+                Caption("While pointing, the top and bottom bands of a column snap to half height; the middle is full height.")
+            }
+
+            Section {
+                Caption("The ring's size and colours are in Appearance.")
             }
 
             ResetSection {
@@ -49,8 +53,8 @@ struct RingPane: View {
                 model.settings.ring.deadZone = d.deadZone
                 model.settings.ring.flickDistance = d.flickDistance
                 model.settings.ring.wedges = d.wedges
-                model.settings.ring.radius = d.radius
-                model.settings.ring.thickness = d.thickness
+                model.settings.ring.topBand = d.topBand
+                model.settings.ring.bottomBand = d.bottomBand
             }
         }
         .formStyle(.grouped)

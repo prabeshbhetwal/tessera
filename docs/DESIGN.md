@@ -10,7 +10,7 @@ Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the le
 
 - Surfaces, text and separators: system semantic colours only (`windowBackground`, `.primary`, `.secondary`, `.separator`, `.quinary`).
 - Accent: the user's system accent (`Color.accentColor`). Used for selection, focus rings, the live wedge in diagrams and the primary button. Never decoration.
-- Pane icon tiles: one solid system colour per pane (gray, orange, blue, indigo, teal, pink, red), white symbol. This is the only place colour is used for identity.
+- Pane icon tiles: one solid system colour per pane (gray, orange, blue, indigo, teal, pink, green, red), white symbol. This is the only place colour is used for identity.
 - State: `.green` for granted permissions, `.orange` for warnings. Always paired with a symbol and text.
 
 ## Typography

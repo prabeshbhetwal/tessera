@@ -1,10 +1,10 @@
 import SwiftUI
 import TesseraCore
 
+/// What the preview shows. Its look lives in Appearance, its animation in Motion.
 struct PreviewPane: View {
     @Bindable var model: SettingsModel
     @State private var screenCaptureAllowed = Permissions.isScreenCaptureAllowed
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let p = $model.settings.preview
@@ -44,40 +44,27 @@ struct PreviewPane: View {
                 if !s.showNeighbours { Caption("Turn on neighbour dimming to adjust its strength.") }
             }
 
-            Section("Morph") {
-                Toggle("Animate between selections", isOn: p.morph)
-                SliderRow(title: "Spring response", value: p.springResponse, range: 0...0.4, step: 0.01, format: SliderRow.seconds)
-                    .disabled(!s.morph)
-                if !s.morph {
-                    Caption("Turn on the morph to adjust its spring.")
-                } else if reduceMotion {
-                    Caption("Reduce Motion is on in System Settings, so the preview jumps instead of animating.")
-                } else {
-                    Caption("0 turns the animation off.")
-                }
-            }
-
-            Section("Style") {
-                SliderRow(title: "Fill opacity", value: p.opacity, range: 0...1, step: 0.05, format: SliderRow.percent)
-                SliderRow(title: "Border width", value: p.borderWidth, range: 0...10, step: 0.5)
-                Toggle("Use the window's own corner radius", isOn: p.useWindowCornerRadius)
-                SliderRow(title: "Corner radius", value: p.cornerRadius, range: 0...30)
-                    .disabled(s.useWindowCornerRadius)
-                if s.useWindowCornerRadius { Caption("Using the window's corner radius instead of a fixed one.") }
+            Section {
+                Caption("Colours, border and corners are in Appearance. Animation speed is in Motion.")
             }
 
             ResetSection {
-                model.settings.preview = model.settings.selectedTheme.preview
+                let theme = model.settings.selectedTheme.preview
+                model.settings.preview.showThumbnail = theme.showThumbnail
+                model.settings.preview.showLabel = theme.showLabel
+                model.settings.preview.labelPosition = theme.labelPosition
+                model.settings.preview.showNeighbours = theme.showNeighbours
+                model.settings.preview.dimStrength = theme.dimStrength
             }
-            .help("Restores the preview settings of the selected theme.")
+            .help("Restores what the selected theme's preview shows.")
         }
         .formStyle(.grouped)
         .onAppear { screenCaptureAllowed = Permissions.isScreenCaptureAllowed }
     }
 }
 
-/// Static mock of the overlay preview, reflecting the current style values.
-private struct PreviewSample: View {
+/// Static mock of the overlay preview, reflecting the current style values. Shared with Appearance.
+struct PreviewSample: View {
     let settings: PreviewSettings
     let accent: Color
 

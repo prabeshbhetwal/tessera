@@ -1,10 +1,10 @@
 import SwiftUI
 import TesseraCore
 
+/// How the ring and preview look: theme-bound colours plus the free sizes and preview style.
 struct AppearancePane: View {
     @Bindable var model: SettingsModel
     @State private var newThemeName = ""
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var customIndex: Int? {
         model.settings.customThemes.firstIndex { $0.name == model.settings.themeName }
@@ -14,6 +14,10 @@ struct AppearancePane: View {
     private var nameTakenByBuiltIn: Bool { Theme.builtIn.contains { $0.name == trimmedName } }
 
     var body: some View {
+        let p = $model.settings.preview
+        let s = model.settings.preview
+        let ring = $model.settings.ring
+        let r = model.settings.ring
         Form {
             Section {
                 Picker("Theme", selection: Binding(
@@ -27,10 +31,27 @@ struct AppearancePane: View {
                         Text(theme.name).tag(theme.name)
                     }
                 }
-                Caption("Choosing a theme also replaces the Preview pane's look with the theme's.")
+                PreviewSample(settings: s, accent: Color(hex: model.settings.selectedTheme.accentHex))
+                    .frame(height: 150)
+                Caption("Choosing a theme replaces the preview style below with the theme's.")
             }
 
-            Section("Ring and accent") {
+            Section("Ring size") {
+                SliderRow(title: "Radius", value: ring.radius, range: 20...150)
+                SliderRow(title: "Thickness", value: ring.thickness, range: 4...max(5, min(80, r.radius * 2)))
+                Caption("Thickness can't exceed twice the radius.")
+            }
+
+            Section("Preview style") {
+                SliderRow(title: "Fill opacity", value: p.opacity, range: 0...1, step: 0.05, format: SliderRow.percent)
+                SliderRow(title: "Border width", value: p.borderWidth, range: 0...10, step: 0.5)
+                Toggle("Use the window's own corner radius", isOn: p.useWindowCornerRadius)
+                SliderRow(title: "Corner radius", value: p.cornerRadius, range: 0...30)
+                    .disabled(s.useWindowCornerRadius)
+                if s.useWindowCornerRadius { Caption("Using the window's corner radius instead of a fixed one.") }
+            }
+
+            Section("Ring colours and accent") {
                 ColorPicker("Ring fill", selection: colorBinding(\.ring.fillHex), supportsOpacity: false)
                 ColorPicker("Ring outline", selection: colorBinding(\.ring.strokeHex), supportsOpacity: false)
                 SliderRow(
@@ -69,15 +90,11 @@ struct AppearancePane: View {
                 }
             }
 
-            Section("Motion") {
-                Caption(reduceMotion
-                    ? "Reduce Motion is on in System Settings, so the overlay doesn't animate."
-                    : "The overlay follows System Settings › Accessibility › Display › Reduce Motion.")
-            }
-
             ResetSection {
                 model.settings.themeName = Theme.default.name
                 model.settings.preview = Theme.default.preview
+                model.settings.ring.radius = RingSettings.default.radius
+                model.settings.ring.thickness = RingSettings.default.thickness
             }
             Caption("Reset keeps your custom themes.")
         }

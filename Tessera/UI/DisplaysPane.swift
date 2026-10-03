@@ -22,7 +22,6 @@ struct DisplaysPane: View {
             Section {
                 DisclosureGroup("Advanced") {
                     sizingControls
-                    bandControls
                 }
             }
 
@@ -31,8 +30,6 @@ struct DisplaysPane: View {
                 model.settings.sizing = .default
                 model.settings.defaultGap = TesseraSettings.defaults.defaultGap
                 model.settings.defaultPadding = TesseraSettings.defaults.defaultPadding
-                model.settings.ring.topBand = RingSettings.default.topBand
-                model.settings.ring.bottomBand = RingSettings.default.bottomBand
             }
         }
         .formStyle(.grouped)
@@ -50,14 +47,6 @@ struct DisplaysPane: View {
         SliderRow(title: "Shortest row", value: s.minRowHeight, range: 200...1200, step: 8)
         StepperRow(title: "Most columns", value: s.maxColumns, range: 1...16)
         Caption("Narrowest ≤ ideal ≤ widest. Column ranges update when displays are next re-read.")
-    }
-
-    @ViewBuilder private var bandControls: some View {
-        let ring = $model.settings.ring
-        let r = model.settings.ring
-        SliderRow(title: "Top band", value: ring.topBand, range: 0.1...max(0.11, 0.9 - r.bottomBand), step: 0.05, format: SliderRow.percent)
-        SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
-        Caption("In point mode, the top and bottom bands snap to half height; the middle is full height.")
     }
 }
 
