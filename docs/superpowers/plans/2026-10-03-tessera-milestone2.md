@@ -83,14 +83,14 @@ The coordinator has already committed **Track 0′**: the contract types, settin
 
 **Syntax:** exactly as in M2 spec §2.
 
-- [ ] Write tests:
+- [x] Write tests:
   - every URL and CLI example in the spec
   - Review Focus 1 and 2
   - `-2..-1` on 5 columns → `3...4`
   - `index(2)` uses left-to-right order
   - `next` from the last display wraps to the first
   - relocate: columns 2–3 of 5 → columns 2–3 of 6, using the rule `round(start*to/from)…max(start, round((end+1)*to/from)-1)`
-- [ ] Watch them fail, implement, watch them pass, commit `feat(commands): parser and resolvers`.
+- [x] Watch them fail, implement, watch them pass, commit `feat(commands): parser and resolvers`.
 
 ---
 
