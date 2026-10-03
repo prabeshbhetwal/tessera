@@ -24,7 +24,7 @@ struct AppearancePane: View {
                     get: { model.settings.themeName },
                     set: { name in
                         model.settings.themeName = name
-                        model.settings.preview = model.settings.selectedTheme.preview
+                        applyStyle(of: model.settings.selectedTheme)
                     }
                 )) {
                     ForEach(model.settings.allThemes, id: \.name) { theme in
@@ -92,13 +92,22 @@ struct AppearancePane: View {
 
             ResetSection {
                 model.settings.themeName = Theme.default.name
-                model.settings.preview = Theme.default.preview
+                applyStyle(of: .default)
                 model.settings.ring.radius = RingSettings.default.radius
                 model.settings.ring.thickness = RingSettings.default.thickness
             }
             Caption("Reset keeps your custom themes.")
         }
         .formStyle(.grouped)
+    }
+
+    /// Copies only the preview style this pane shows. Preview owns what is shown and Motion owns the morph,
+    /// so picking or resetting a theme here must leave those fields alone.
+    private func applyStyle(of theme: Theme) {
+        model.settings.preview.opacity = theme.preview.opacity
+        model.settings.preview.borderWidth = theme.preview.borderWidth
+        model.settings.preview.cornerRadius = theme.preview.cornerRadius
+        model.settings.preview.useWindowCornerRadius = theme.preview.useWindowCornerRadius
     }
 
     private func editCustom(_ change: (inout Theme) -> Void) {
