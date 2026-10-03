@@ -61,7 +61,7 @@ struct GeneralPane: View {
                     Button(cliInstalled ? "Reinstall command-line tool" : "Install command-line tool", action: installCLI)
                     Spacer()
                 }
-                Caption(cliMessage ?? "Links the tessera command into ~/.local/bin so scripts and terminals can run every Tessera command.")
+                Caption(cliMessage ?? "Links the tessera command to \(CLIInstaller.linkURL.path(percentEncoded: false)) so scripts and terminals can run every Tessera command.")
             }
 
             ResetSection {
@@ -87,7 +87,8 @@ struct GeneralPane: View {
         switch CLIInstaller.install() {
         case .success(let url):
             cliInstalled = true
-            cliMessage = "Installed at \(url.path). If your shell can't find tessera, add this line to ~/.zshrc: export PATH=\"$HOME/.local/bin:$PATH\""
+            let folder = url.deletingLastPathComponent().path(percentEncoded: false)
+            cliMessage = "Installed at \(url.path(percentEncoded: false)). \(folder) must be on your PATH; if your shell can't find tessera, add this line to ~/.zshrc: export PATH=\"\(folder):$PATH\""
         case .failure(let error):
             cliMessage = "Couldn't install the command-line tool: \(error.localizedDescription)"
         }
