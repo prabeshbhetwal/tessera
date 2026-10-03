@@ -36,7 +36,7 @@ struct OverlayPane: View {
                 // Re-picking the current theme must not throw away preview changes made since it was picked.
                 Picker("Theme", selection: Binding.choice(model.settings.themeName) { name in
                     model.settings.themeName = name
-                    model.settings.preview = model.settings.selectedTheme.preview
+                    applyPreview(of: model.settings.selectedTheme)
                 }) {
                     ForEach(model.settings.allThemes, id: \.name) { Text($0.name).tag($0.name) }
                 }
@@ -56,7 +56,7 @@ struct OverlayPane: View {
                         Button("Delete \u{201C}\(model.settings.customThemes[customIndex].name)\u{201D}", role: .destructive) {
                             model.settings.customThemes.remove(at: customIndex)
                             model.settings.themeName = Theme.default.name
-                            model.settings.preview = Theme.default.preview
+                            applyPreview(of: .default)
                         }
                     }
                 }
@@ -136,7 +136,7 @@ struct OverlayPane: View {
 
             ResetSection(keeps: "Keeps your custom themes.") {
                 model.settings.themeName = Theme.default.name
-                model.settings.preview = Theme.default.preview
+                applyPreview(of: .default)
             }
         }
         .formStyle(.grouped)
@@ -164,6 +164,14 @@ struct OverlayPane: View {
                 if let i = customIndex { model.settings.customThemes[i].preview = model.settings.preview }
             }
         )
+    }
+
+    /// Applies a theme's preview settings except the morph and its spring, which the Motion pane owns.
+    private func applyPreview(of theme: Theme) {
+        let (morph, springResponse) = (model.settings.preview.morph, model.settings.preview.springResponse)
+        model.settings.preview = theme.preview
+        model.settings.preview.morph = morph
+        model.settings.preview.springResponse = springResponse
     }
 
     private func colorBinding(_ field: WritableKeyPath<Theme, String>) -> Binding<Color> { model.themeColor(field) }
