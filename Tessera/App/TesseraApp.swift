@@ -37,6 +37,7 @@ private struct MenuContent: View {
         }
         Button("Settings…") { delegate.coordinator?.presenter.showSettings() }
             .keyboardShortcut(",")
+        Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
         Button("Undo last move") { delegate.coordinator?.undoLast() }
             .disabled(!delegate.state.accessibilityGranted)
         Divider()

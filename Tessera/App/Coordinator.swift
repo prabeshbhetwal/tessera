@@ -56,6 +56,29 @@ final class Coordinator {
                                         presenter: presenter, store: store)
         displays.onChange = { [weak self] in self?.displaysChanged() }
         model.onChange = { [weak self] in self?.settingsChanged($0) }
+        // Shortcut recorders need raw keys: pause the trigger and hotkeys while one is recording.
+        recorderObserver = NotificationCenter.default.addObserver(
+            forName: .tesseraRecorderActive, object: nil, queue: .main
+        ) { [weak self] note in
+            let active = note.userInfo?["active"] as? Bool ?? false
+            MainActor.assumeIsolated { self?.setRecording(active) }
+        }
+    }
+
+    private var recorderObserver: NSObjectProtocol?
+    private var isRecording = false
+
+    private func setRecording(_ active: Bool) {
+        isRecording = active
+        if active { cancelSession() }
+        applyInputConfig()
+    }
+
+    /// Pushes trigger + hotkeys to the tap; an empty chord never opens while a recorder is active.
+    private func applyInputConfig() {
+        let s = model.settings
+        input?.updateChord(isRecording ? TriggerChord(keyCodes: []) : s.trigger)
+        input?.updateHotkeys(isRecording ? [] : s.hotkeys, ringKeyNavigation: s.ringKeyNavigation)
     }
 
     /// Starts the event tap. Returns false when Accessibility is missing or the tap can't be created.
@@ -279,8 +302,7 @@ final class Coordinator {
 
     private func settingsChanged(_ settings: TesseraSettings) {
         engine = SelectionEngine(ring: settings.ring)
-        input?.updateChord(settings.trigger)
-        input?.updateHotkeys(settings.hotkeys, ringKeyNavigation: settings.ringKeyNavigation)
+        applyInputConfig()
         displays.refresh()
         presenter.updateDisplays(displays.displays)
         saveTask?.cancel()

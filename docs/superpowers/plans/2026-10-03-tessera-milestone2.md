@@ -216,7 +216,7 @@ Until G merges, stub its signatures in `Tessera/_Stubs/TrackGStubs.swift`, and i
 
 The AppDelegate wiring for `SocketServer().start()` is done by the coordinator at merge. Tell the coordinator the exact call.
 
-- [ ] Build passes. Then `swift build --product tessera` passes. → commit `feat(automation): CLI, socket server, AppleScript`.
+- [x] Build passes. Then `swift build --product tessera` passes. → commit `feat(automation): CLI, socket server, AppleScript`.
 
 ---
 
@@ -251,13 +251,13 @@ The AppDelegate wiring for `SocketServer().start()` is done by the coordinator a
 
 Until G, H and J merge, stub their signatures in `Tessera/_Stubs/TrackGHJStubs.swift`.
 
-- [ ] Build passes → commit `feat(ui): App Intents, Shortcuts pane, keyboard pass`.
+- [x] Build passes → commit `feat(ui): App Intents, Shortcuts pane, keyboard pass`.
 
 ---
 
 ### Track L: Integration (coordinator)
-- [ ] Merge G and H, then I, J and K. Delete every `_Stubs` file. Wire the SocketServer start/stop and the menu item.
-- [ ] Run `swift test`. Build the app and `swift build --product tessera`. Smoke tests:
+- [x] Merge G and H, then I, J and K. Delete every `_Stubs` file. Wire the SocketServer start/stop and the menu item.
+- [x] Run `swift test`. Build the app and `swift build --product tessera`. Smoke tests:
   - launch the app
   - `tessera displays --json` against the running app; it may fail without a window session. Exit code 0 or 1 is fine; 3 is not.
 - [ ] Reviewer pass on the keyboard and automation paths. Fix what it confirms.
