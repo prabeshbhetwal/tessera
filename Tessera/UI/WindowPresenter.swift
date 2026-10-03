@@ -36,6 +36,7 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         if let pane { navigation.pane = pane }
         let window = settingsWindow ?? makeSettingsWindow()
         settingsWindow = window
+        if !window.isVisible { fitSettingsWindow(window) }
         (window.contentViewController as? NSHostingController<SettingsView>)?.rootView =
             SettingsView(model: model, navigation: navigation, displays: displays)
         present(window)
@@ -68,30 +69,39 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         // the oversized view bottom-anchored and the top (sidebar, pane header) is clipped under the title bar.
         // Size the window here and let the view fill it instead.
         controller.sizingOptions = []
-        let window = makeWindow(title: "Tessera Settings", controller: controller, resizable: true)
-        // Like System Settings: fixed width, height adjustable for long panes, never zoomed or full screen.
-        let width = SettingsView.width
-        window.setContentSize(NSSize(width: width, height: 640))
-        window.contentMinSize = NSSize(width: width, height: 540)
-        window.contentMaxSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
+        // Fixed size, never resized by the user, zoomed or made full screen. Only the position is remembered.
+        let window = makeWindow(title: "Tessera Settings", controller: controller)
         window.collectionBehavior.insert(.fullScreenNone)
-        window.standardWindowButton(.zoomButton)?.isEnabled = false
         window.center()
-        // Restores the last size and position (saved by AppKit on every move/resize) and keeps saving them.
         window.setFrameAutosaveName("TesseraSettings")
-        // A saved frame can predate the fixed width, or sit on a display that's gone.
-        let content = window.contentRect(forFrameRect: window.frame)
-        if content.width != width {
-            window.setContentSize(NSSize(width: width, height: max(content.height, window.contentMinSize.height)))
-        }
-        if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(window.frame) }) { window.center() }
+        fitSettingsWindow(window)
         return window
     }
 
-    private func makeWindow(title: String, controller: NSViewController, resizable: Bool = false) -> NSWindow {
+    /// The window's one size for the screen it is on: 820 × 720 points, smaller only when the screen is.
+    /// Re-applied on every open, so a frame saved by an older build or on another display can't stick.
+    private func fitSettingsWindow(_ window: NSWindow) {
+        let screen = window.screen ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let size = NSSize(width: min(SettingsView.width, visible.width - 40),
+                          height: min(SettingsView.height, visible.height - 60))
+        window.contentMinSize = size
+        window.contentMaxSize = size
+        if window.contentRect(forFrameRect: window.frame).size != size {
+            let top = window.frame.maxY
+            window.setContentSize(size)
+            window.setFrameTopLeftPoint(NSPoint(x: window.frame.minX, y: top))
+        }
+        if !visible.contains(window.frame) {
+            if NSScreen.screens.contains(where: { $0.visibleFrame.contains(window.frame) }) { return }
+            window.center()
+        }
+    }
+
+    private func makeWindow(title: String, controller: NSViewController) -> NSWindow {
         let window = NSWindow(contentViewController: controller)
         window.title = title
-        window.styleMask = resizable ? [.titled, .closable, .miniaturizable, .resizable] : [.titled, .closable, .miniaturizable]
+        window.styleMask = [.titled, .closable, .miniaturizable]
         window.toolbarStyle = .unified
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -112,6 +122,9 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         guard let closing = notification.object as? NSWindow else { return }
+        // Closing setup (Done, Esc or the close button) ends it; quitting the app does not close windows,
+        // so a "Quit & Reopen" keeps the saved step and setup resumes there.
+        if closing === onboardingWindow { OnboardingView.saveStep(nil) }
         let stillOpen = [settingsWindow, onboardingWindow].contains { $0 !== closing && $0?.isVisible == true }
         if !stillOpen { NSApp.setActivationPolicy(.accessory) }
     }

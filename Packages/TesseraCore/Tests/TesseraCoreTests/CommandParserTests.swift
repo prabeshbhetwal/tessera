@@ -31,6 +31,13 @@ import Testing
             == .apply(.span(columns: 2...4, band: .top), display: .cursor))
     }
 
+    @Test func tileCommand() throws {
+        #expect(try Self.cli("tile") == .tileWindows(display: .current))
+        #expect(try Self.cli("tile --display 2") == .tileWindows(display: .index(2)))
+        #expect(try Self.url("tessera://tile?display=cursor") == .tileWindows(display: .cursor))
+        Self.expectInvalid("unexpected argument") { try Self.cli("tile now") }
+    }
+
     @Test func urlApplyDefaults() throws {
         #expect(try Self.url("tessera://apply?cols=3") == .apply(.span(columns: 3...3, band: .full), display: .current))
     }

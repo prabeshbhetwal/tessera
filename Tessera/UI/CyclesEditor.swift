@@ -21,20 +21,17 @@ struct CyclesEditor: View {
                     stepRow(cycle: c, step: s)
                 }
                 HStack {
-                    Button("Add step") { cycles[c].steps.append(.action(.maximize)) }
+                    Button("Add Step") { cycles[c].steps.append(.action(.maximize)) }
                     Spacer()
-                    Button("Remove cycle", role: .destructive) { cycles.remove(at: c) }
+                    Button("Remove Cycle", role: .destructive) { cycles.remove(at: c) }
                 }
                 if cycles[c].steps.isEmpty { Caption("A cycle with no steps does nothing.") }
             }
         }
         Section {
-            HStack {
-                Button("Add cycle", action: addCycle)
-                Spacer()
-                Button("Restore default cycles") { cycles = Cycle.defaults }
-            }
-            Caption("Select a step's number, then press ⌘↑ or ⌘↓ to reorder. Renaming a cycle doesn't update hotkeys that run it.")
+            Button("Add Cycle", action: addCycle)
+        } footer: {
+            Footer("Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle doesn't update hotkeys that run it.")
         }
     }
 
@@ -108,10 +105,9 @@ struct TargetEditor: View {
 
     var body: some View {
         HStack {
-            Picker("Kind", selection: Binding(
-                get: { if case .action = target { 0 } else { 1 } },
-                set: { target = $0 == 0 ? .action(.maximize) : .span(columns: 1...1, band: .full) }
-            )) {
+            Picker("Kind", selection: Binding.choice(target.isAction ? 0 : 1) {
+                target = $0 == 0 ? .action(.maximize) : .span(columns: 1...1, band: .full)
+            }) {
                 Text("Action").tag(0)
                 Text("Columns").tag(1)
             }
@@ -193,14 +189,14 @@ struct DisplaySelectorEditor: View {
     var body: some View {
         LabeledContent(title) {
             HStack {
-                Picker(title, selection: Binding(get: { kind }, set: { k in
+                Picker(title, selection: Binding.choice(kind) { k in
                     switch k {
                     case .current: selector = .current
                     case .cursor: selector = .cursor
                     case .index: selector = .index(1)
                     case .id: selector = .id("")
                     }
-                })) {
+                }) {
                     Text("Window's display").tag(Kind.current)
                     Text("Under the cursor").tag(Kind.cursor)
                     Text("Number (left to right)").tag(Kind.index)
@@ -227,6 +223,8 @@ struct DisplaySelectorEditor: View {
 }
 
 extension Target {
+    var isAction: Bool { if case .action = self { true } else { false } }
+
     var summary: String {
         switch self {
         case .action(let action):

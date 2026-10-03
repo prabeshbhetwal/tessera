@@ -8,6 +8,7 @@ import TesseraCore
 final class PreviewLayer {
     let root = CALayer()
     private let dim = CAShapeLayer()
+    private let fromOutlineHalo = CAShapeLayer()
     private let fromOutline = CAShapeLayer()
     private let fill = CALayer()
     private let border = CALayer()
@@ -17,22 +18,34 @@ final class PreviewLayer {
 
     // ponytail: no public API exposes a window's corner radius; 10 pt matches macOS 15 windows.
     private static let windowCornerRadius: CGFloat = 10
-    private static let labelFont = NSFont.systemFont(ofSize: 13, weight: .medium)
-    private static let pillPadding = CGSize(width: 12, height: 5)
+    private static let labelFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
+    private static let pillPadding = CGSize(width: 12, height: 6)
 
     init() {
-        for layer in [dim, fromOutline, fill, border, pill] as [CALayer] {
+        for layer in [dim, fromOutlineHalo, fromOutline, fill, border, pill] as [CALayer] {
             root.addSublayer(layer)
         }
         pill.addSublayer(text)
         dim.fillColor = CGColor(gray: 0, alpha: 1)
-        fromOutline.fillColor = nil
-        fromOutline.strokeColor = CGColor(gray: 1, alpha: 0.85)
+        for outline in [fromOutlineHalo, fromOutline] {
+            outline.fillColor = nil
+            outline.lineDashPattern = [6, 4]
+            outline.lineCap = .round
+        }
+        fromOutlineHalo.strokeColor = CGColor(gray: 0, alpha: 0.35)
+        fromOutlineHalo.lineWidth = 3.5
+        fromOutline.strokeColor = CGColor(gray: 1, alpha: 0.9)
         fromOutline.lineWidth = 1.5
-        fromOutline.lineDashPattern = [6, 4]
         fill.masksToBounds = true
         fill.contentsGravity = .resizeAspectFill
-        pill.backgroundColor = CGColor(gray: 0, alpha: 0.72)
+        // The border carries a soft shadow so the preview lifts off the windows beneath it.
+        border.shadowColor = CGColor(gray: 0, alpha: 1)
+        border.shadowOpacity = 0.3
+        border.shadowRadius = 8
+        border.shadowOffset = CGSize(width: 0, height: -2)
+        pill.backgroundColor = CGColor(gray: 0.08, alpha: 0.78)
+        pill.borderColor = CGColor(gray: 1, alpha: 0.14)
+        pill.borderWidth = 0.5
         text.font = Self.labelFont
         text.fontSize = Self.labelFont.pointSize
         text.foregroundColor = CGColor(gray: 1, alpha: 1)
@@ -44,7 +57,8 @@ final class PreviewLayer {
         root.frame = bounds
         dim.frame = bounds
         fromOutline.frame = bounds
-        for layer in [root, dim, fromOutline, fill, border, pill, text] as [CALayer] {
+        fromOutlineHalo.frame = bounds
+        for layer in [root, dim, fromOutlineHalo, fromOutline, fill, border, pill, text] as [CALayer] {
             layer.contentsScale = scale
         }
     }
@@ -56,18 +70,30 @@ final class PreviewLayer {
     }
 
     /// `offset` is the panel origin in global AppKit coordinates; every rect in `layers` is global.
+    /// `theme` supplies every colour: preview, label pill and text, outline and dimming.
     func render(
         _ layers: PreviewLayers, thumbnail: CGImage?, offset: CGPoint,
-        style: PreviewSettings, accent: CGColor, animate: Bool
+        style: PreviewSettings, theme: Theme, animate: Bool
     ) {
         root.isHidden = false
         func local(_ r: CGRect) -> CGRect { r.offsetBy(dx: -offset.x, dy: -offset.y) }
+        let accent = HexColor.cgColor(theme.previewHex)
 
         let dimPath = CGMutablePath()
         for r in layers.dimRects { dimPath.addRect(local(r)) }
         dim.path = dimPath
+        dim.fillColor = HexColor.cgColor(theme.dimHex)
         dim.opacity = Float(style.dimStrength)
-        fromOutline.path = layers.fromOutline.map { CGPath(rect: local($0), transform: nil) }
+        let outline = layers.fromOutline.map {
+            CGPath(roundedRect: local($0), cornerWidth: Self.windowCornerRadius, cornerHeight: Self.windowCornerRadius, transform: nil)
+        }
+        fromOutline.path = outline
+        fromOutlineHalo.path = outline
+        fromOutline.strokeColor = HexColor.cgColor(theme.outlineHex, alpha: 0.9)
+        // A light outline gets a dark halo and a dark one a light halo, so it reads on any wallpaper.
+        fromOutlineHalo.strokeColor = CGColor(gray: HexColor.isLight(theme.outlineHex) ? 0 : 1, alpha: 0.35)
+        pill.backgroundColor = HexColor.cgColor(theme.labelHex, alpha: 0.82)
+        text.foregroundColor = HexColor.cgColor(theme.labelTextHex)
 
         let radius = style.useWindowCornerRadius ? Self.windowCornerRadius : CGFloat(style.cornerRadius)
         fill.cornerRadius = radius

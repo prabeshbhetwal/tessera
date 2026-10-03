@@ -58,7 +58,7 @@ public enum KeyNavigator {
         case .nextDisplay, .previousDisplay:
             let step = key == .nextDisplay ? 1 : ordered.count - 1
             let to = (s.displayIndex + step) % ordered.count
-            s.columns = relocate(s.columns, from: n, to: columnCount(ordered[to]))
+            s.columns = TargetResolver.relocate(s.columns, from: n, to: columnCount(ordered[to]))
             s.displayIndex = to
         }
         return s
@@ -73,9 +73,10 @@ public enum KeyNavigator {
 
     // MARK: - Private
 
-    /// Same rule as `DisplayResolver.ordered`: frame.minX, then frame.minY.
+    /// The one ordering rule, so Tab in the ring and `--display N` on the CLI agree even for
+    /// displays that share an origin (mirrored sets).
     private static func ordered(_ displays: [DisplayContext]) -> [DisplayContext] {
-        displays.sorted { ($0.frame.minX, $0.frame.minY) < ($1.frame.minX, $1.frame.minY) }
+        DisplayResolver.ordered(displays)
     }
 
     private static func columnCount(_ d: DisplayContext) -> Int { max(d.profile.columns, 1) }
@@ -88,13 +89,5 @@ public enum KeyNavigator {
         let lo = min(max(s.columns.lowerBound, 0), n - 1)
         let hi = min(max(s.columns.upperBound, lo), n - 1)
         return NavState(displayIndex: index, columns: lo...hi, band: s.band)
-    }
-
-    /// Keeps the column ratio: `round(start*to/from)...max(start', round((end+1)*to/from)-1)`.
-    private static func relocate(_ span: ClosedRange<Int>, from: Int, to: Int) -> ClosedRange<Int> {
-        let ratio = Double(to) / Double(from)
-        let start = min(Int((Double(span.lowerBound) * ratio).rounded()), to - 1)
-        let end = min(max(start, Int((Double(span.upperBound + 1) * ratio).rounded()) - 1), to - 1)
-        return start...end
     }
 }

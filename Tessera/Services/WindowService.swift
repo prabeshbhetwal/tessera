@@ -34,10 +34,16 @@ actor WindowService {
     private static let frameInterval: Duration = .milliseconds(16)
 
     private var stacks: [UndoKey: UndoStack] = [:]
-    /// Bumped per window by every move, so a glide still running gives way to the newer move.
+    /// The generation of each window's latest move, so a glide still running gives way to the newer
+    /// move. Generations come from one monotonic counter, so a value never repeats after a reset.
     private var generations: [UndoKey: Int] = [:]
-    /// Chronological move history; entries whose stack has run dry are skipped on undo.
-    private var history: [UndoKey] = []
+    private var nextGeneration = 0
+    /// Where each gliding window started, so a move that takes over mid-glide records undo from
+    /// the real starting frame, not from mid-air.
+    private var glideStart: [UndoKey: CGRect] = [:]
+    /// Chronological move history. Each entry is one undo step: usually one window, several after a tile.
+    /// Windows whose stack has run dry are skipped on undo.
+    private var history: [[UndoKey]] = []
 
     func frontmostWindow() -> WindowRef? {
         // Never our own windows: AX calls on our own pid run in-process on this (non-main) thread and
@@ -71,16 +77,22 @@ actor WindowService {
     ) async -> ApplyResult {
         let element = window.element
         AXUIElementSetMessagingTimeout(element, Self.timeout)
-        guard let before = AX.frame(element) else { return .failed("Can't read the window's frame") }
+        guard let now = AX.frame(element) else { return .failed("Can't read the window's frame") }
 
         let goal = CoordinateSpace.toAX(target, primaryHeight: primaryHeight)
         let key = Self.key(for: window)
-        let generation = (generations[key] ?? 0) + 1
+        let before = glideStart[key] ?? now
+        nextGeneration += 1
+        let generation = nextGeneration
         generations[key] = generation
-        if duration > 0, before != goal, !(await glide(window, from: before, to: goal, duration: duration, key: key, generation: generation)) {
-            // A newer move of this window took over mid-flight; it does the final write and records undo.
-            return .applied(target)
+        if duration > 0, now != goal {
+            glideStart[key] = before
+            guard await glide(window, from: now, to: goal, duration: duration, key: key, generation: generation) else {
+                // A newer move of this window took over mid-flight; it does the final write and records undo.
+                return .applied(target)
+            }
         }
+        glideStart[key] = nil
         if generations[key] == generation { generations[key] = nil }
 
         guard setFrame(goal, on: window, crossingDisplays: crossingDisplays) else {
@@ -101,15 +113,31 @@ actor WindowService {
         return .applied(CoordinateSpace.fromAX(actual, primaryHeight: primaryHeight))
     }
 
-    /// Restores the frame before the most recent move. False when there is nothing to undo.
+    /// Undoes the most recent step: one move, or every window of a tile. False when there is nothing to undo.
     func undoLast() -> Bool {
-        while let key = history.popLast() {
-            guard var stack = stacks[key], let frame = stack.frames.popLast() else { continue }
-            stacks[key] = stack.frames.isEmpty ? nil : stack
-            // Origin display unknown here, so use the cross-display order (safe on one display too).
-            return setFrame(frame, on: stack.ref, crossingDisplays: true)
+        while let step = history.popLast() {
+            var restored = false
+            for key in step {
+                guard var stack = stacks[key], let frame = stack.frames.popLast() else { continue }
+                stacks[key] = stack.frames.isEmpty ? nil : stack
+                // A glide of this window still in flight would overwrite the restored frame on its next
+                // tick; dropping its generation makes it stop (see `glide`).
+                generations[key] = nil
+                glideStart[key] = nil
+                // Origin display unknown here, so use the cross-display order (safe on one display too).
+                if setFrame(frame, on: stack.ref, crossingDisplays: true) { restored = true }
+            }
+            if restored { return true }
         }
         return false
+    }
+
+    /// Joins the last `count` moves into one undo step (a tile of `count` windows undoes in one press).
+    func mergeLastMoves(_ count: Int) {
+        guard count > 1, history.count >= count else { return }
+        let merged = history.suffix(count).flatMap { $0 }
+        history.removeLast(count)
+        history.append(merged)
     }
 
     /// On-screen normal-layer windows of other apps, in AppKit coordinates.
@@ -129,6 +157,43 @@ actor WindowService {
             if let targetFrame, pid == window.pid, bounds == targetFrame { return nil }
             return CoordinateSpace.fromAX(bounds, primaryHeight: primaryHeight)
         }
+    }
+
+    /// Standard windows of regular apps whose centre is on `display` (AppKit frame), with their AppKit
+    /// frames, for tiling. Skips Tessera, apps in `excluding`, minimised and hidden windows (they are not on
+    /// screen), panels and dialogs, and anything smaller than a tiny utility window.
+    func visibleWindows(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>) -> [(window: WindowRef, frame: CGRect)] {
+        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [] }
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        var framesByPID: [pid_t: [CGWindowID: CGRect]] = [:]
+        for info in list {
+            guard (info[kCGWindowLayer as String] as? Int) == 0,
+                  let pid = info[kCGWindowOwnerPID as String] as? pid_t, pid != ownPID,
+                  let id = info[kCGWindowNumber as String] as? CGWindowID,
+                  let dict = info[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: dict as CFDictionary),
+                  bounds.width >= 120, bounds.height >= 80 else { continue }
+            let frame = CoordinateSpace.fromAX(bounds, primaryHeight: primaryHeight)
+            guard display.contains(CGPoint(x: frame.midX, y: frame.midY)) else { continue }
+            framesByPID[pid, default: [:]][id] = frame
+        }
+
+        var result: [(window: WindowRef, frame: CGRect)] = []
+        for (pid, frames) in framesByPID {
+            guard let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular,
+                  !excluding.contains(app.bundleIdentifier ?? "") else { continue }
+            let axApp = AXUIElementCreateApplication(pid)
+            AXUIElementSetMessagingTimeout(axApp, Self.timeout)
+            guard let windows = AX.value(axApp, kAXWindowsAttribute) as? [AXUIElement] else { continue }
+            for element in windows {
+                AXUIElementSetMessagingTimeout(element, Self.timeout)
+                guard let id = SPI.windowID(of: element), let frame = frames[id],
+                      (AX.value(element, kAXSubroleAttribute) as? String) == kAXStandardWindowSubrole else { continue }
+                result.append((WindowRef(element: element, pid: pid, windowID: id, bundleID: app.bundleIdentifier), frame))
+            }
+        }
+        return result
     }
 
     // MARK: - Private
@@ -189,7 +254,7 @@ actor WindowService {
         stack.frames.append(axFrame)
         if stack.frames.count > Self.undoDepth { stack.frames.removeFirst() }
         stacks[key] = stack
-        history.append(key)
+        history.append([key])
         if history.count > 500 { history.removeFirst(history.count - 500) }
     }
 

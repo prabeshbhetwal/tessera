@@ -5,52 +5,15 @@ import TesseraCore
 struct TesseraApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
+    /// The menu bar item is AppKit (`StatusItemController`). This scene only supplies the standard main menu
+    /// (shown while a Tessera window is open), with its Settings… command opening Tessera's own window.
     var body: some Scene {
-        MenuBarExtra(isInserted: showIcon) {
-            MenuContent(delegate: delegate)
-        } label: {
-            if delegate.state.accessibilityGranted {
-                Image(systemName: "square.grid.3x2")
-            } else {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .accessibilityLabel("Tessera needs permission")
+        Settings { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appSettings) {
+                    Button("Settings…") { delegate.coordinator?.presenter.showSettings() }
+                        .keyboardShortcut(",")
+                }
             }
-        }
-    }
-
-    /// One-way on purpose. macOS hides/shows status items itself (crowded or notched menu bars) and SwiftUI
-    /// writes those flips back through `isInserted`. Writing them into settings re-rendered the scene, which
-    /// re-set visibility, which wrote again: an endless loop that froze the app. Only Settings changes this.
-    private var showIcon: Binding<Bool> {
-        Binding(
-            get: { delegate.model.settings.showMenuBarIcon },
-            set: { _ in }
-        )
-    }
-}
-
-private struct MenuContent: View {
-    let delegate: AppDelegate
-
-    // Static item list on purpose: SwiftUI drops conditional (`if`) items from MenuBarExtra menus when
-    // the condition changes after the menu is first built, leaving only Quit. Items toggle `disabled` instead.
-    var body: some View {
-        let granted = delegate.state.accessibilityGranted
-        // Plain Text in a menu renders as a disabled line: a one-line reminder of how to use the app.
-        Text(granted
-            ? "Hold \(ModifierKey.describe(delegate.model.settings.trigger.keyCodes)) to snap"
-            : "Accessibility not granted")
-        Divider()
-        // Always available: routes to setup until Accessibility is granted, then to Settings.
-        Button(granted ? "Settings…" : "Finish setup…") { delegate.coordinator?.presenter.showSettings() }
-            .keyboardShortcut(",")
-        Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
-            .disabled(!granted)
-        Button("Undo last move") { delegate.coordinator?.undoLast() }
-            .disabled(!granted)
-        Divider()
-        Button("Quit Tessera") { NSApplication.shared.terminate(nil) }
-            .keyboardShortcut("q")
     }
 }

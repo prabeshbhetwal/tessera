@@ -71,14 +71,19 @@ public enum TargetResolver {
         }
     }
 
-    /// Keeps the span's position by ratio when a window moves between grids of different column counts:
-    /// `round(start*to/from) … max(start', round((end+1)*to/from) - 1)`, clamped to the new grid.
+    /// Keeps the span's position by ratio when a window moves between grids of different column counts.
     public static func relocate(span: ColumnSpan, from: DisplayContext, to: DisplayContext) -> ColumnSpan {
-        let f = Double(max(from.profile.columns, 1)), t = max(to.profile.columns, 1)
+        ColumnSpan(columns: relocate(span.columns, from: from.profile.columns, to: to.profile.columns), band: span.band)
+    }
+
+    /// `round(start*to/from) … max(start', round((end+1)*to/from) - 1)`, clamped to `0..<to`. Shared by
+    /// the ring's Tab key and "move to display", so both land on the same columns.
+    public static func relocate(_ columns: ClosedRange<Int>, from: Int, to: Int) -> ClosedRange<Int> {
+        let f = Double(max(from, 1)), t = max(to, 1)
         let ratio = Double(t) / f
-        let start = min(max(Int((Double(span.columns.lowerBound) * ratio).rounded()), 0), t - 1)
-        let endRaw = Int((Double(span.columns.upperBound + 1) * ratio).rounded()) - 1
+        let start = min(max(Int((Double(columns.lowerBound) * ratio).rounded()), 0), t - 1)
+        let endRaw = Int((Double(columns.upperBound + 1) * ratio).rounded()) - 1
         let end = min(max(start, endRaw), t - 1)
-        return ColumnSpan(columns: start...end, band: span.band)
+        return start...end
     }
 }

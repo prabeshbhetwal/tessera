@@ -17,6 +17,12 @@ enum HexColor {
         )
     }
 
+    /// Perceived brightness above mid-grey. Malformed input counts as light (it falls back to white).
+    static func isLight(_ hex: String) -> Bool {
+        guard let c = cgColor(hex).components, c.count >= 3 else { return true }
+        return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] > 0.5
+    }
+
     static func hex(_ color: CGColor) -> String {
         guard
             let space = CGColorSpace(name: CGColorSpace.sRGB),

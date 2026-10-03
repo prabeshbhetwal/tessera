@@ -18,16 +18,28 @@ final class Coordinator {
     private var session: Session?
     private var sessionCounter = 0
     private var saveTask: Task<Void, Never>?
+    /// Called after every settings change has been applied (the app delegate updates the menu bar item).
+    var onSettingsChange: ((TesseraSettings) -> Void)?
     private let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "coordinator")
 
     /// A mouse move this far from the last nav key hands selection back to the cursor (M2 spec §3).
     private static let navReleaseDistance: CGFloat = 10
 
+    /// The front window and its frame, looked up while the ring is already on screen.
+    private typealias FrontWindow = (window: WindowRef, frame: CGRect?)
+
     private struct Session {
         let id: Int
         let origin: CGPoint
-        let target: WindowRef
-        let current: CGRect?
+        /// Nil until the lookup finishes (Accessibility round trip to the front app).
+        var target: WindowRef?
+        var current: CGRect?
+        let lookup: Task<FrontWindow?, Never>
+        /// Read once per session; it is an IPC-backed system setting, too slow for every mouse move.
+        let reduceMotion: Bool
+        var selection: Selection = .none
+        /// Something was selected at some point: releasing back in the middle then cancels, it isn't a tap.
+        var leftDeadZone = false
         var displays: [DisplayContext]
         var cursor: CGPoint
         var anchor: SpanAnchor?
@@ -70,11 +82,43 @@ final class Coordinator {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.updateFrontmostExcluded() }
         }
+        previewObserver = NotificationCenter.default.addObserver(
+            forName: .tesseraPreviewOverlay, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.showOverlaySample() }
+        }
     }
 
     private var recorderObserver: NSObjectProtocol?
     private var activationObserver: NSObjectProtocol?
+    private var previewObserver: NSObjectProtocol?
     private var isRecording = false
+    private var sampleTask: Task<Void, Never>?
+
+    /// Shows the real overlay for a few seconds on the display under the mouse, with the right half
+    /// selected, so a theme can be judged on screen without holding the trigger. A real session wins.
+    private func showOverlaySample() {
+        guard session == nil else { return }
+        let all = displays.displays
+        guard let display = all.display(at: NSEvent.mouseLocation) ?? all.first else { return }
+        let origin = CGPoint(x: display.visibleFrame.midX, y: display.visibleFrame.midY)
+        let settings = model.settings
+        overlay.show(origin: origin, displays: all, ring: settings.ring, theme: settings.activeTheme)
+        let selection = Selection.wedge(index: 2, action: .rightHalf)
+        let target = GridGeometry.frame(for: .rightHalf, display: display, current: .zero)
+        let current = GridGeometry.frame(for: .leftHalf, display: display, current: .zero).insetBy(dx: 60, dy: 80)
+        let layers = PreviewModel.layers(
+            PreviewInput(target: target, current: current, neighbours: [], selection: selection,
+                         reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion),
+            settings: settings.preview)
+        overlay.update(selection: selection, layers: layers, thumbnail: nil, displays: all, pointMode: false)
+        sampleTask?.cancel()
+        sampleTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled, let self, self.session == nil else { return }
+            self.overlay.hide()
+        }
+    }
 
     /// Excluded apps get their keys untouched: the tap neither opens the ring nor fires hotkeys there.
     private func updateFrontmostExcluded() {
@@ -92,7 +136,7 @@ final class Coordinator {
     private func applyInputConfig() {
         let s = model.settings
         input?.updateChord(isRecording ? TriggerChord(keyCodes: []) : s.trigger)
-        input?.updateHotkeys(isRecording ? [] : s.hotkeys, ringKeyNavigation: s.ringKeyNavigation)
+        input?.updateHotkeys(isRecording || !s.hotkeysEnabled ? [] : s.hotkeys, ringKeyNavigation: s.ringKeyNavigation)
         updateFrontmostExcluded()
     }
 
@@ -104,7 +148,7 @@ final class Coordinator {
         let (stream, continuation) = AsyncStream.makeStream(of: TriggerOutput.self)
         let service = InputService(chord: model.settings.trigger) { continuation.yield($0) }
         service.updatePrimaryHeight(DisplayService.primaryHeight)
-        service.updateHotkeys(model.settings.hotkeys, ringKeyNavigation: model.settings.ringKeyNavigation)
+        service.updateHotkeys(model.settings.hotkeysEnabled ? model.settings.hotkeys : [], ringKeyNavigation: model.settings.ringKeyNavigation)
         guard service.start() else {
             log.error("event tap could not be created")
             return false
@@ -125,21 +169,24 @@ final class Coordinator {
     }
 
     func undoLast() {
-        Task { _ = await windows.undoLast() }
+        Task { await run(.undo) }
     }
 
-    /// Runs a command through the bridge; a failure is shown in the HUD.
+    /// Runs a command through the bridge. The HUD shows a failure, and any message a success carries
+    /// ("5 columns", "Already on that display"): a hotkey has no other way to tell the user what happened.
     func run(_ command: Command) async {
         let result = await CommandBridge.execute(command)
-        if !result.ok {
-            let message = result.message ?? "Command failed"
-            log.notice("command failed: \(message, privacy: .public)")
-            overlay.showHUD(message)
+        if !result.ok { log.notice("command failed: \(result.message ?? "?", privacy: .public)") }
+        if let message = result.ok ? result.message : (result.message ?? "Command failed") {
+            showHUD(message)
         }
     }
 
+    /// Every HUD message goes through here, so the "Show messages" switch covers them all.
     func showHUD(_ text: String) {
-        overlay.showHUD(text)
+        let s = model.settings
+        guard s.showHUD else { return }
+        overlay.showHUD(text, position: s.hudPosition, seconds: s.hudSeconds)
     }
 
     // MARK: - Trigger outputs
@@ -150,46 +197,73 @@ final class Coordinator {
         case let .move(point):
             guard var s = session else { return }
             s.cursor = point
-            if let from = s.navCursor, hypot(point.x - from.x, point.y - from.y) >= Self.navReleaseDistance {
+            // The mouse takes selection back only when it can select something itself.
+            let ring = model.settings.ring
+            if ring.directions || ring.pointing, let from = s.navCursor,
+               hypot(point.x - from.x, point.y - from.y) >= Self.navReleaseDistance {
                 s.nav = nil
                 s.navCursor = nil
             }
             session = s
             refreshSelection()
         case let .anchor(point):
-            guard var s = session else { return }
+            // The tap still swallows the click while the ring is open, so a disabled gesture clicks nothing.
+            guard model.settings.ring.clickToSpan, model.settings.ring.pointing, var s = session else { return }
             s.anchor = engine.anchor(at: point, displays: s.displays)
             s.cursor = point
             s.nav = nil
             s.navCursor = nil
             session = s
             refreshSelection()
-        case let .step(delta): step(delta)
+        case let .step(delta):
+            // Scroll only; the ring's = and − keys go through `navigate` and stay available.
+            if model.settings.ring.scrollChangesColumns { step(delta) }
         case .apply: await apply()
         case .cancel: cancelSession()
         case let .nav(key): await navigate(key)
-        case let .command(command): await run(command)
+        case let .command(command):
+            // Not awaited: a command can glide a window for up to a second, and this loop is the only
+            // consumer of trigger outputs. Awaiting it would hold up the next ring open or hotkey.
+            Task { await run(command) }
         }
     }
 
+    /// Draws the ring the moment the trigger fires. The front window is looked up in parallel: an
+    /// Accessibility round trip to the front app can take tens of milliseconds, and nothing on screen, nor any
+    /// mouse move, waits for it.
     private func open(at origin: CGPoint) async {
+        // A running sample is left to its own timer: after a successful open it finds a session and does
+        // nothing; after an aborted open it still hides the sample panels.
         cancelSession()
         // Every early return closes the tap's ring too, so nav keys and clicks aren't swallowed invisibly.
         guard Permissions.isAccessibilityTrusted else { input?.abortSession(); return }
         if let bundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
            model.settings.excludedBundleIDs.contains(bundle) { input?.abortSession(); return }
-        guard let target = await windows.frontmostWindow() else {
-            input?.abortSession()
-            overlay.showHUD(CommandExecutor.noWindowMessage)
-            return
-        }
-        let current = await windows.frame(of: target)
         sessionCounter += 1
         let id = sessionCounter
-        session = Session(id: id, origin: origin, target: target, current: current,
-                          displays: displays.displays, cursor: origin)
-        overlay.show(origin: origin, displays: displays.displays, ring: model.settings.ring, theme: model.settings.activeTheme)
-        loadContext(for: id, target: target)
+        let lookup = Task { [windows] () -> FrontWindow? in
+            guard let window = await windows.frontmostWindow() else { return nil }
+            return (window, await windows.frame(of: window))
+        }
+        let all = displays.displays
+        session = Session(id: id, origin: origin, lookup: lookup,
+                          reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+                          displays: all, cursor: origin)
+        overlay.show(origin: origin, displays: all, ring: model.settings.ring, theme: model.settings.activeTheme)
+        Task {
+            let found = await lookup.value
+            guard session?.id == id else { return }
+            guard let found else {
+                cancelSession()
+                input?.abortSession()
+                showHUD(CommandExecutor.noWindowMessage)
+                return
+            }
+            session?.target = found.window
+            session?.current = found.frame
+            refreshSelection()  // the centre layout and the "from" outline need the window's frame
+            loadContext(for: id, target: found.window)
+        }
     }
 
     /// Neighbour frames and the thumbnail load concurrently; late results are dropped if the session changed.
@@ -245,7 +319,10 @@ final class Coordinator {
         }
         let frame = targetFrame(for: selection, in: s)
         s.targetFrame = frame
-        if model.settings.announceSelection,
+        s.selection = selection
+        if selection != .none { s.leftDeadZone = true }
+        // Announcing is an accessibility round trip; only do it when someone can hear it.
+        if model.settings.announceSelection, NSWorkspace.shared.isVoiceOverEnabled,
            let label = frame.flatMap({ PreviewModel.label(for: selection, frame: $0) }), label != s.announced {
             s.announced = label
             NSAccessibility.post(element: NSApplication.shared, notification: .announcementRequested, userInfo: [
@@ -257,7 +334,7 @@ final class Coordinator {
         let layers = frame.map {
             PreviewModel.layers(
                 PreviewInput(target: $0, current: s.current, neighbours: s.neighbours, selection: selection,
-                             reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion),
+                             reduceMotion: s.reduceMotion),
                 settings: model.settings.preview
             )
         }
@@ -302,19 +379,37 @@ final class Coordinator {
         guard let s = session else { return }
         session = nil
         overlay.hide()
-        guard let frame = s.targetFrame else { return }
+        // A tap: pressed and released without ever leaving the dead zone.
+        if s.selection == .none, !s.leftDeadZone, model.settings.ring.tapTilesWindows {
+            s.lookup.cancel()
+            Task { await run(.tileWindows(display: .cursor)) }
+            return
+        }
+        guard s.targetFrame != nil else { s.lookup.cancel(); return }
         // Not awaited: a glide must never hold up the next ring or hotkey.
         Task {
-            let result = await executor.place(s.target, current: s.current, goal: frame)
+            // Released before the lookup finished: wait for it rather than guess the window.
+            var resolved = s
+            if resolved.target == nil, let found = await s.lookup.value {
+                resolved.target = found.window
+                resolved.current = found.frame
+                resolved.targetFrame = targetFrame(for: s.selection, in: resolved)  // centre needs the size
+            }
+            guard let target = resolved.target, let frame = resolved.targetFrame else {
+                showHUD(CommandExecutor.noWindowMessage)
+                return
+            }
+            let result = await executor.place(target, current: resolved.current, goal: frame)
             if case let .failed(reason) = result {
-                log.notice("apply failed for \(s.target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
-                overlay.showHUD("Can't move this window")
+                log.notice("apply failed for \(target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
+                showHUD("Can't move this window")
             }
         }
     }
 
     private func cancelSession() {
-        guard session != nil else { return }
+        guard let s = session else { return }
+        s.lookup.cancel()
         session = nil
         overlay.hide()
     }
@@ -332,6 +427,7 @@ final class Coordinator {
         applyInputConfig()
         displays.refresh()
         presenter.updateDisplays(displays.displays)
+        onSettingsChange?(settings)
         saveTask?.cancel()
         saveTask = Task { [store, log] in
             try? await Task.sleep(for: .milliseconds(300))

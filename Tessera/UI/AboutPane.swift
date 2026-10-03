@@ -12,11 +12,10 @@ struct AboutPane: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: "square.grid.3x2.fill")
-                .font(.system(size: 40, weight: .medium))
-                .foregroundStyle(.white)
-                .frame(width: 88, height: 88)
-                .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.tint))
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 112, height: 112)
                 .accessibilityHidden(true)
 
             VStack(spacing: 4) {

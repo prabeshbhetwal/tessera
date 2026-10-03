@@ -54,18 +54,21 @@ public enum PreviewModel {
             : 0
         return PreviewLayers(
             frame: input.target,
-            label: settings.showLabel ? label(for: input.selection, frame: input.target) : nil,
+            label: settings.showLabel
+                ? label(for: input.selection, frame: input.target, size: settings.labelShowsSize, slot: settings.labelShowsSlot)
+                : nil,
             dimRects: settings.showNeighbours ? dimmed(input.neighbours, by: input.target) : [],
-            fromOutline: settings.showNeighbours ? input.current : nil,
+            fromOutline: settings.showOutline ? input.current : nil,
             showThumbnail: settings.showThumbnail,
             animate: settings.morph && !input.reduceMotion && response > 0,
             springResponse: response
         )
     }
 
-    /// `"756 × 949 · Left half"`, `"1280 × 1047 · cols 2–3 · top"`. Nil for `.none` or a non-finite frame.
-    public static func label(for selection: Selection, frame: CGRect) -> String? {
-        guard frame.width.isFinite, frame.height.isFinite else { return nil }
+    /// `"756 × 949 · Left half"`, `"1280 × 1047 · cols 2–3 · top"`. `size` and `slot` pick the parts; nil for
+    /// `.none`, a non-finite frame, or both parts off.
+    public static func label(for selection: Selection, frame: CGRect, size: Bool = true, slot showSlot: Bool = true) -> String? {
+        guard frame.width.isFinite, frame.height.isFinite, size || showSlot else { return nil }
 
         let slot: String
         switch selection {
@@ -84,7 +87,8 @@ public enum PreviewModel {
             }
             slot = text
         }
-        return "\(points(frame.width)) × \(points(frame.height)) · \(slot)"
+        let dimensions = "\(points(frame.width)) × \(points(frame.height))"
+        return [size ? dimensions : nil, showSlot ? slot : nil].compactMap { $0 }.joined(separator: " · ")
     }
 
     private static func dimmed(_ neighbours: [CGRect], by target: CGRect) -> [CGRect] {

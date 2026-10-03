@@ -19,3 +19,6 @@ tmp/
 Tessera.xcodeproj/
 .claude/worktrees/
 .claude/*.lock
+
+# Superseded files kept on disk, never committed
+_trash/

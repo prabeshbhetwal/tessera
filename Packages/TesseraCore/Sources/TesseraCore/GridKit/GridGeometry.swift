@@ -63,10 +63,29 @@ public enum GridGeometry {
         }
     }
 
+    /// `count` equal slots filling the display, left to right (top to bottom on portrait), with the display's
+    /// gap and padding. Used to tile windows side by side. Empty when `count < 1`.
+    /// Every slot is exactly the same size: `(usable - gap × (count - 1)) / count`, with a full gap between
+    /// neighbours. (Grid columns instead trim half a gap from each inner edge, which leaves middle columns a
+    /// gap narrower than the outer ones; tiling promises equal shares.)
+    public static func tiles(_ count: Int, display: DisplayContext) -> [CGRect] {
+        guard count > 0 else { return [] }
+        let usable = usableFrame(display.visibleFrame, profile: display.profile)
+        let portrait = display.range.isPortrait
+        let extent = portrait ? usable.height : usable.width
+        let gap = min(max(display.profile.gap, 0), count > 1 ? extent / Double(count - 1) : 0)
+        let size = max(0, (extent - gap * Double(count - 1)) / Double(count))
+        return (0..<count).map { i in
+            let offset = Double(i) * (size + gap)
+            return portrait
+                ? CGRect(x: usable.minX, y: usable.maxY - offset - size, width: usable.width, height: size)
+                : CGRect(x: usable.minX + offset, y: usable.minY, width: size, height: usable.height)
+        }
+    }
+
     // MARK: - Private
 
-    /// `floor(offset / (extent / count))` clamped to `0...count-1`. This is the rule SelectionEngine inlines;
-    /// both must stay identical (shared fixture: 3840 wide, 5 columns, x = 1600 -> column 2).
+    /// `floor(offset / (extent / count))` clamped to `0...count-1` (fixture: 3840 wide, 5 columns, x = 1600 -> column 2).
     private static func slot(_ offset: Double, extent: Double, count: Int) -> Int {
         let n = max(count, 1)
         guard !offset.isNaN, extent > 0, extent.isFinite else { return 0 }

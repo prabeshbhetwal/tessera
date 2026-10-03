@@ -22,6 +22,7 @@ public enum CommandParser {
           tessera cycle <name>
           tessera columns (--set N | --delta N) [--display D]
           tessera move <next|previous|N>
+          tessera tile [--display D]               (every visible window, side by side in equal columns)
           tessera undo
           tessera displays [--json]
           tessera window [--json]
@@ -31,7 +32,7 @@ public enum CommandParser {
         Use `..` for ranges that involve a negative column. Negative columns count from the right (-1 is the last).
         """
 
-    private static let verbs = "apply, action, cycle, columns, move, undo, displays, window, settings"
+    private static let verbs = "apply, action, cycle, columns, move, tile, undo, displays, window, settings"
 
     // MARK: Entry points
 
@@ -154,6 +155,11 @@ public enum CommandParser {
             if positionalTarget != nil, optionTarget != nil { throw invalid("move takes the display once, not twice") }
             guard let target = positionalTarget ?? optionTarget else { throw invalid("move needs next, previous or a display number") }
             return .moveToDisplay(try parseStep(target))
+
+        case "tile":
+            let selector = try display()
+            try finish()
+            return .tileWindows(display: selector)
 
         case "undo":
             try finish()
