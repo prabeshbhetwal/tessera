@@ -18,10 +18,8 @@ struct PreviewPane: View {
             Section("Window thumbnail") {
                 Toggle("Show a snapshot of the window", isOn: p.showThumbnail)
                 if !screenCaptureAllowed {
-                    HStack {
-                        Caption("Needs Screen Recording permission. Until then the preview is a plain tinted rectangle.")
-                        Spacer()
-                        Button("Enable Screen Recording") {
+                    Callout(.warning, "Needs Screen Recording permission. Until then the preview is a plain tinted rectangle.") {
+                        Button("Allow…") {
                             Permissions.requestScreenCapture()
                             screenCaptureAllowed = Permissions.isScreenCaptureAllowed
                         }

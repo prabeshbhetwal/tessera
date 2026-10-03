@@ -10,7 +10,13 @@ struct ExcludedAppsPane: View {
         Form {
             Section("Tessera ignores the trigger while these apps are in front") {
                 if model.settings.excludedBundleIDs.isEmpty {
-                    Caption("No excluded apps.")
+                    ContentUnavailableView {
+                        Label("No excluded apps", systemImage: "nosign")
+                    } description: {
+                        Text("Add an app below and Tessera will leave the trigger alone while that app is in front.")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
                 }
                 ForEach(model.settings.excludedBundleIDs, id: \.self) { bundleID in
                     HStack {

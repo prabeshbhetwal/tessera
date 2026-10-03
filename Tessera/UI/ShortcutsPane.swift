@@ -5,6 +5,11 @@ import TesseraCore
 struct ShortcutsPane: View {
     @Bindable var model: SettingsModel
     @State private var systemHotkeys: Set<Hotkey> = []
+    @State private var section: ShortcutSection = .hotkeys
+
+    enum ShortcutSection: String, CaseIterable {
+        case hotkeys = "Hotkeys", cycles = "Cycles", ringKeys = "Ring keyboard"
+    }
 
     private static let placeholder = HotkeyBinding(id: "", hotkey: .none, command: .undo, enabled: false)
 
@@ -12,7 +17,27 @@ struct ShortcutsPane: View {
         let recorded = model.settings.hotkeys.filter { !$0.hotkey.isNone }
         let conflicts = HotkeyTable.conflicts(recorded, chord: model.settings.trigger, systemHotkeys: systemHotkeys)
         let cycleNames = model.settings.cycles.map(\.name)
-        Form {
+        VStack(spacing: 0) {
+            Picker("Section", selection: $section) {
+                ForEach(ShortcutSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            Form {
+                switch section {
+                case .hotkeys: hotkeys(conflicts: conflicts, cycleNames: cycleNames)
+                case .cycles: cycles
+                case .ringKeys: ringKeys
+                }
+            }
+            .formStyle(.grouped)
+        }
+        .onAppear { systemHotkeys = SystemHotkeys.enabled() }
+    }
+
+    @ViewBuilder private func hotkeys(conflicts: [String: String], cycleNames: [String]) -> some View {
             Section("Hotkeys") {
                 ForEach(model.settings.hotkeys) { item in
                     HotkeyRow(
@@ -29,9 +54,15 @@ struct ShortcutsPane: View {
                 }
                 Caption("Select a shortcut and press Space or Return to record, Esc to cancel, Delete to clear. Warnings don't stop a hotkey from working.")
             }
+            ResetSection { model.settings.hotkeys = HotkeyBinding.defaults }
+    }
 
+    @ViewBuilder private var cycles: some View {
             CyclesEditor(cycles: $model.settings.cycles)
+            ResetSection { model.settings.cycles = Cycle.defaults }
+    }
 
+    @ViewBuilder private var ringKeys: some View {
             Section("Ring keyboard") {
                 Toggle("Navigate the open ring with the keyboard", isOn: $model.settings.ringKeyNavigation)
                 Toggle("Announce the selection with VoiceOver", isOn: $model.settings.announceSelection)
@@ -42,16 +73,10 @@ struct ShortcutsPane: View {
                 }
                 .disabled(!model.settings.ringKeyNavigation)
             }
-
             ResetSection {
-                model.settings.hotkeys = HotkeyBinding.defaults
-                model.settings.cycles = Cycle.defaults
                 model.settings.ringKeyNavigation = true
                 model.settings.announceSelection = true
             }
-        }
-        .formStyle(.grouped)
-        .onAppear { systemHotkeys = SystemHotkeys.enabled() }
     }
 
     static let ringKeys: [(key: String, effect: String)] = [

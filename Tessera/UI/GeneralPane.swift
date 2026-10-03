@@ -33,9 +33,9 @@ struct GeneralPane: View {
                     get: { model.settings.launchAtLogin },
                     set: { setLaunchAtLogin($0) }
                 ))
-                if let loginError { Caption(loginError) }
+                if let loginError { Callout(.warning, loginError) }
                 if loginNeedsApproval {
-                    Caption("Approve Tessera in System Settings › General › Login Items.")
+                    Callout(.warning, "Approve Tessera in System Settings › General › Login Items.")
                 }
                 Toggle("Show menu bar icon", isOn: $model.settings.showMenuBarIcon)
                 if !model.settings.showMenuBarIcon {
@@ -63,7 +63,7 @@ struct GeneralPane: View {
                         }
                 }
                 Caption("Import replaces every setting. An invalid file is rejected and nothing changes.")
-                if let ioMessage { Caption(ioMessage) }
+                if let ioMessage { Callout(ioMessage.hasPrefix("Settings") ? .success : .warning, ioMessage) }
             }
 
             Section("Command line") {
@@ -71,7 +71,11 @@ struct GeneralPane: View {
                     Button(cliInstalled ? "Reinstall command-line tool" : "Install command-line tool", action: installCLI)
                     Spacer()
                 }
-                Caption(cliMessage ?? "Links the tessera command to \(CLIInstaller.linkURL.path(percentEncoded: false)) so scripts and terminals can run every Tessera command.")
+                if let cliMessage {
+                    Callout(cliMessage.hasPrefix("Installed") ? .success : .warning, cliMessage)
+                } else {
+                    Caption("Links the tessera command to \(CLIInstaller.linkURL.path(percentEncoded: false)) so scripts and terminals can run every Tessera command.")
+                }
             }
 
             ResetSection {

@@ -46,7 +46,7 @@ struct AppearancePane: View {
             .disabled(customIndex == nil)
             if customIndex == nil {
                 Section {
-                    Caption("Built-in themes can't be edited. Save the current look as a custom theme to change its colours.")
+                    Callout(.info, "Built-in themes can't be edited. Save the current look as a custom theme to change its colours.")
                 }
             }
 

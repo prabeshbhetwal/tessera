@@ -45,6 +45,8 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         }
     }
 
+    var group: SettingsGroup { SettingsGroup.allCases.first { $0.panes.contains(self) } ?? .about }
+
     /// One sentence under the pane title: what the pane controls.
     var blurb: String {
         switch self {
@@ -167,6 +169,12 @@ struct PaneHeader: View {
         HStack(alignment: .top, spacing: 14) {
             PaneIcon(pane: pane, size: 40)
             VStack(alignment: .leading, spacing: 3) {
+                if let eyebrow = pane.group.title {
+                    Text(eyebrow.uppercased())
+                        .font(.caption.weight(.semibold))
+                        .tracking(0.6)
+                        .foregroundStyle(.secondary)
+                }
                 Text(pane.title).font(.title2.weight(.semibold))
                 Text(pane.blurb)
                     .foregroundStyle(.secondary)

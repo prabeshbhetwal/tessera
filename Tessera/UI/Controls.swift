@@ -40,6 +40,59 @@ struct Caption: View {
     }
 }
 
+/// Inline notice with an icon: side effects, warnings and results that a plain caption would bury.
+struct Callout<Action: View>: View {
+    enum Kind { case info, warning, success }
+
+    let kind: Kind
+    let text: String
+    let action: Action
+
+    init(_ kind: Kind, _ text: String, @ViewBuilder action: () -> Action) {
+        self.kind = kind
+        self.text = text
+        self.action = action()
+    }
+
+    private var symbol: String {
+        switch kind {
+        case .info: "info.circle.fill"
+        case .warning: "exclamationmark.triangle.fill"
+        case .success: "checkmark.circle.fill"
+        }
+    }
+
+    private var color: Color {
+        switch kind {
+        case .info: .secondary
+        case .warning: .orange
+        case .success: .green
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: symbol)
+                .foregroundStyle(color)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            action
+        }
+        .padding(10)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+}
+
+extension Callout where Action == EmptyView {
+    init(_ kind: Kind, _ text: String) {
+        self.init(kind, text) { EmptyView() }
+    }
+}
+
 /// Final section of every pane.
 struct ResetSection: View {
     let action: () -> Void
