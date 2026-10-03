@@ -148,7 +148,7 @@ The coordinator has already committed **Track 0′**: the contract types, settin
     4. Decode.
   - Update tests that used schema 2 as "newer" to use 3.
 
-- [ ] For each unit: write the tests (including Review Focus 3, 4 and 5), watch them fail, implement, watch them pass, then commit with a `feat(keyboard): …` message.
+- [x] For each unit: write the tests (including Review Focus 3, 4 and 5), watch them fail, implement, watch them pass, then commit with a `feat(keyboard): …` message.
 
 ---
 
@@ -177,7 +177,7 @@ The coordinator has already committed **Track 0′**: the contract types, settin
   - Pass `Modifiers(deviceKeyCodes:)` on keyDown.
 - **URL handling:** in `AppDelegate.application(_:open:)`, parse with `CommandParser.parse(url:)` and run with `CommandBridge.execute`. Show a HUD on errors.
 - Until G and H merge, stub their signatures in `Tessera/_Stubs/TrackGHStubs.swift`, with the header comment `// TEMPORARY STUB — coordinator deletes at merge`.
-- [ ] Build passes → commit `feat(app): command executor and keyboard ring`.
+- [x] Build passes → commit `feat(app): command executor and keyboard ring`.
 
 ---
 

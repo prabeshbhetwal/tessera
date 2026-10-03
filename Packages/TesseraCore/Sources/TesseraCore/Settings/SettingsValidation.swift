@@ -7,7 +7,7 @@ public enum SettingsError: Error, Equatable, Sendable {
 /// Conditions are written in the positive form so NaN fails them.
 public enum SettingsValidation {
     /// Highest schema this build can read. A higher version is rejected, never half-read.
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public static func validate(_ s: TesseraSettings) throws {
         func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {

@@ -107,7 +107,7 @@ public struct Theme: Codable, Equatable, Sendable {
 
 /// Single versioned settings model (spec §6.4).
 public struct TesseraSettings: Codable, Equatable, Sendable {
-    public var schemaVersion = 1
+    public var schemaVersion = 2
     public var trigger: TriggerChord = .default
     public var sizing: SizingConstants = .default
     public var defaultGap: Double = 8

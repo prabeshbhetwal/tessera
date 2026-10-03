@@ -103,7 +103,7 @@ import Testing
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
         var newer = TesseraSettings.defaults
-        newer.schemaVersion = 2
+        newer.schemaVersion = 3
         let bytes = try JSONEncoder().encode(newer)
         try bytes.write(to: file)
 
@@ -210,7 +210,7 @@ import Testing
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(in: dir)
         var newer = TesseraSettings.defaults
-        newer.schemaVersion = 2
+        newer.schemaVersion = 3
         let file = dir.appendingPathComponent("newer.json")
         try JSONEncoder().encode(newer).write(to: file)
 
@@ -264,7 +264,7 @@ import Testing
         }),
         ("empty chord", { (s: inout TesseraSettings) in s.trigger = TriggerChord(keyCodes: []) }),
         ("schema 0", { (s: inout TesseraSettings) in s.schemaVersion = 0 }),
-        ("schema 2", { (s: inout TesseraSettings) in s.schemaVersion = 2 }),
+        ("schema 3", { (s: inout TesseraSettings) in s.schemaVersion = 3 }),
         ]
         for (name, mutate) in cases {
             var s = TesseraSettings.defaults
