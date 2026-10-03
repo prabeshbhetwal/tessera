@@ -122,6 +122,11 @@ struct SettingsView: View {
                 if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
                 paneView
             }
+            // idealHeight 0: the split view sizes itself from the detail's *ideal* height, which for a grouped
+            // Form is its full content (up to ~1100 pt). That made the split taller than the window and AppKit
+            // centred it, hiding the sidebar top and pane header under the title bar. Now it fills the window
+            // and the Form scrolls.
+            .frame(minHeight: 0, idealHeight: 0, maxHeight: .infinity, alignment: .top)
         }
         .background {
             ForEach(SettingsPane.allCases, id: \.self) { pane in
