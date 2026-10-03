@@ -271,7 +271,7 @@ The rule is spec §3.3, with `round_half_even` implemented as `.toNearestOrEven`
     - On the same display: columns run from `min…max` of the two columns, and the band is shared if both bands are equal, otherwise `.full`.
     - On a different display: ignore the anchor.
 
-- [ ] **Step 1:** Write the tests:
+- [x] **Step 1:** Write the tests:
   - `testDeadZone`: d = 9.99 gives `.none`.
   - `testFlickBoundaries`: d = 10 and d = 89.99 give a wedge; d = 90 gives a span.
   - `testWedgeAngles`: 0° → index 0 (maximize), 22.49° → 0, 22.5° → 1, 90° → 2 (rightHalf), 180° → 4 (center), 270° → 6, 337.5° → 0.
@@ -280,10 +280,10 @@ The rule is spec §3.3, with `round_half_even` implemented as `.toNearestOrEven`
   - `testAnchorSpan`: anchor at column 1 `.top`, cursor at column 3 `.top`, gives `1...3, .top`. With the cursor at column 3 `.full`, the band becomes `.full`.
   - `testCursorOutsideDisplays`: gives `.none`.
   - `testAnchorOnOtherDisplayIgnored`.
-- [ ] **Step 2:** Run `--filter SelectionEngineTests`. Expected: FAIL.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run it again. Expected: PASS.
-- [ ] **Step 5:** Commit with `feat(selection): flick + point selection engine`.
+- [x] **Step 2:** Run `--filter SelectionEngineTests`. Expected: FAIL.
+- [x] **Step 3:** Implement.
+- [x] **Step 4:** Run it again. Expected: PASS.
+- [x] **Step 5:** Commit with `feat(selection): flick + point selection engine`.
 
 ### Task B2: TriggerMachine
 
@@ -325,7 +325,7 @@ The rule is spec §3.3, with `round_half_even` implemented as `.toNearestOrEven`
 
 The machine is a value type. It is **confined to the event-tap thread**, which owns it so it can decide synchronously whether to suppress. This refines spec §5.3 and removes the cross-thread state that Loop got wrong.
 
-- [ ] **Step 1:** Write the tests:
+- [x] **Step 1:** Write the tests:
   - `testOpensOnlyWhenFullChord`: pressing in all 6 possible orders opens exactly once.
   - `testPartialReleaseApplies`.
   - `testNoReopenUntilAllReleased`: release Command (apply), then press Command again while Control and Option are still held: no open. Release all, then press all three: open.
@@ -334,10 +334,10 @@ The machine is a value type. It is **confined to the event-tap thread**, which o
   - `testClickAnchorsSuppressed`.
   - `testScrollSteps`.
   - `testExtraModifierStillOpens`: chord plus Shift still opens.
-- [ ] **Step 2:** Run `--filter TriggerMachineTests`. Expected: FAIL.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run it again. Expected: PASS.
-- [ ] **Step 5:** Commit with `feat(trigger): chord trigger state machine`.
+- [x] **Step 2:** Run `--filter TriggerMachineTests`. Expected: FAIL.
+- [x] **Step 3:** Implement.
+- [x] **Step 4:** Run it again. Expected: PASS.
+- [x] **Step 5:** Commit with `feat(trigger): chord trigger state machine`.
 
 ---
 
