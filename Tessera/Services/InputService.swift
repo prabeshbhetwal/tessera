@@ -201,9 +201,7 @@ private final class TapSession: @unchecked Sendable {
             return .flagsChanged(pressedModifiers: pressedModifiers(event.flags), location: location)
         case .keyDown:
             let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
-            // M2-MERGE: Track H adds modifiers to this case. Replace with
-            // .keyDown(keyCode: code, modifiers: hotkeyModifiers(event.flags, keyCode: code), location: location)
-            return .keyDown(keyCode: code, location: location)
+            return .keyDown(keyCode: code, modifiers: hotkeyModifiers(event.flags, keyCode: code), location: location)
         case .mouseMoved, .leftMouseDragged:
             return .mouseMoved(location)
         case .leftMouseDown:
