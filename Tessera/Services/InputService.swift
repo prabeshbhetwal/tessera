@@ -19,6 +19,10 @@ final class InputService: @unchecked Sendable {
         /// Bumped on every config change so the tap thread can detect it without comparing arrays.
         var generation = 0
         var primaryHeight: CGFloat = 0
+        /// Frontmost app is on the excluded list: the machine opens no ring and fires no hotkeys.
+        var frontmostExcluded = false
+        /// Main asked to drop an open ring it can't show (no window, no permission).
+        var abortRequested = false
         var session: TapSession?
         var restarts: [TimeInterval] = []
     }
@@ -37,7 +41,7 @@ final class InputService: @unchecked Sendable {
     func start() -> Bool {
         if shared.withLock({ $0.session != nil }) { return true }
 
-        let types: [CGEventType] = [.flagsChanged, .keyDown, .leftMouseDown, .leftMouseUp, .scrollWheel, .mouseMoved, .leftMouseDragged]
+        let types: [CGEventType] = [.flagsChanged, .keyDown, .keyUp, .leftMouseDown, .leftMouseUp, .scrollWheel, .mouseMoved, .leftMouseDragged]
         let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
         let (config, generation) = shared.withLock { ($0.config, $0.generation) }
         let session = TapSession(service: self, config: config, generation: generation)
@@ -95,8 +99,21 @@ final class InputService: @unchecked Sendable {
         shared.withLock { $0.primaryHeight = height }
     }
 
-    fileprivate func snapshot() -> (generation: Int, primaryHeight: CGFloat) {
-        shared.withLock { ($0.generation, $0.primaryHeight) }
+    /// Call from main when the frontmost app changes or the excluded list changes.
+    func setFrontmostExcluded(_ excluded: Bool) {
+        shared.withLock { $0.frontmostExcluded = excluded }
+    }
+
+    /// Closes an open ring without outputs (main already handled the session ending).
+    func abortSession() {
+        shared.withLock { $0.abortRequested = true }
+    }
+
+    fileprivate func snapshot() -> (generation: Int, primaryHeight: CGFloat, excluded: Bool, abort: Bool) {
+        shared.withLock { state in
+            defer { state.abortRequested = false }
+            return (state.generation, state.primaryHeight, state.frontmostExcluded, state.abortRequested)
+        }
     }
 
     fileprivate func currentConfig() -> (config: MachineConfig, generation: Int) {
@@ -183,6 +200,8 @@ private final class TapSession: @unchecked Sendable {
             return false
         }
         let snapshot = service.snapshot()
+        if snapshot.abort { _ = machine.reset() }
+        machine.frontmostExcluded = snapshot.excluded
         if snapshot.generation != generation, !machine.isOpen {
             let current = service.currentConfig()
             generation = current.generation
@@ -201,7 +220,11 @@ private final class TapSession: @unchecked Sendable {
             return .flagsChanged(pressedModifiers: pressedModifiers(event.flags), location: location)
         case .keyDown:
             let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
-            return .keyDown(keyCode: code, modifiers: hotkeyModifiers(event.flags, keyCode: code), location: location)
+            let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+            return .keyDown(keyCode: code, modifiers: hotkeyModifiers(event.flags, keyCode: code), location: location,
+                            isRepeat: isRepeat)
+        case .keyUp:
+            return .keyUp(keyCode: UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode)))
         case .mouseMoved, .leftMouseDragged:
             return .mouseMoved(location)
         case .leftMouseDown:
@@ -240,12 +263,9 @@ private final class TapSession: @unchecked Sendable {
     }
 
     /// Arrow and navigation-cluster keys carry a synthetic Fn flag; dropping it lets ⌃⌥← match exactly.
-    private static let syntheticFnKeys: Set<UInt16> = [114, 115, 116, 117, 119, 121, 123, 124, 125, 126]
-
+    /// Same normalization as the shortcut recorder, so recorded hotkeys (incl. F-keys) match.
     static func hotkeyModifiers(_ flags: CGEventFlags, keyCode: UInt16) -> Modifiers {
-        var modifiers = Modifiers(deviceKeyCodes: pressedModifiers(flags))
-        if syntheticFnKeys.contains(keyCode) { modifiers.remove(.function) }
-        return modifiers
+        Modifiers(deviceKeyCodes: pressedModifiers(flags)).normalized(forKeyCode: keyCode)
     }
 }
 

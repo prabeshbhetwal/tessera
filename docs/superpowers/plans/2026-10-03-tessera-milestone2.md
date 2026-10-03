@@ -260,6 +260,6 @@ Until G, H and J merge, stub their signatures in `Tessera/_Stubs/TrackGHJStubs.s
 - [x] Run `swift test`. Build the app and `swift build --product tessera`. Smoke tests:
   - launch the app
   - `tessera displays --json` against the running app; it may fail without a window session. Exit code 0 or 1 is fine; 3 is not.
-- [ ] Reviewer pass on the keyboard and automation paths. Fix what it confirms.
-- [ ] Update the README with the keyboard and automation sections.
+- [x] Reviewer pass on the keyboard and automation paths. Fix what it confirms.
+- [x] Update the README with the keyboard and automation sections.
 - [ ] Hand off the manual checks from M2 spec §8.

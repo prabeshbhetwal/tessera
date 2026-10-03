@@ -40,8 +40,10 @@ final class SocketServer {
     }
 
     func stop() {
-        source?.cancel()
-        source = nil
+        // Only the instance that is listening owns the socket file; a second launch quitting must not remove it.
+        guard let source else { return }
+        source.cancel()
+        self.source = nil
         if let url { unlink(url.path) }
     }
 

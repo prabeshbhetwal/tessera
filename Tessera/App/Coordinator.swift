@@ -63,10 +63,22 @@ final class Coordinator {
             let active = note.userInfo?["active"] as? Bool ?? false
             MainActor.assumeIsolated { self?.setRecording(active) }
         }
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateFrontmostExcluded() }
+        }
     }
 
     private var recorderObserver: NSObjectProtocol?
+    private var activationObserver: NSObjectProtocol?
     private var isRecording = false
+
+    /// Excluded apps get their keys untouched: the tap neither opens the ring nor fires hotkeys there.
+    private func updateFrontmostExcluded() {
+        let bundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        input?.setFrontmostExcluded(bundle.map(model.settings.excludedBundleIDs.contains) ?? false)
+    }
 
     private func setRecording(_ active: Bool) {
         isRecording = active
@@ -79,6 +91,7 @@ final class Coordinator {
         let s = model.settings
         input?.updateChord(isRecording ? TriggerChord(keyCodes: []) : s.trigger)
         input?.updateHotkeys(isRecording ? [] : s.hotkeys, ringKeyNavigation: s.ringKeyNavigation)
+        updateFrontmostExcluded()
     }
 
     /// Starts the event tap. Returns false when Accessibility is missing or the tap can't be created.
@@ -95,6 +108,7 @@ final class Coordinator {
             return false
         }
         input = service
+        updateFrontmostExcluded()
         // One consumer keeps outputs strictly ordered even across awaits.
         Task { [weak self] in
             for await output in stream { await self?.handle(output) }
@@ -158,10 +172,12 @@ final class Coordinator {
 
     private func open(at origin: CGPoint) async {
         cancelSession()
-        guard Permissions.isAccessibilityTrusted else { return }
+        // Every early return closes the tap's ring too, so nav keys and clicks aren't swallowed invisibly.
+        guard Permissions.isAccessibilityTrusted else { input?.abortSession(); return }
         if let bundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-           model.settings.excludedBundleIDs.contains(bundle) { return }
+           model.settings.excludedBundleIDs.contains(bundle) { input?.abortSession(); return }
         guard let target = await windows.frontmostWindow() else {
+            input?.abortSession()
             overlay.showHUD("No window to move")
             return
         }

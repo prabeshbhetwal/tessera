@@ -133,6 +133,9 @@ struct ChordRecorder: View {
             }
         }
         .onDisappear { stop() }
+        // Recording pauses Tessera's trigger and hotkeys system-wide; never leave it on when focus goes elsewhere.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in stop() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in stop() }
     }
 
     private func start() {
@@ -173,7 +176,7 @@ struct SettingsDocument: FileDocument {
 
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else { throw CocoaError(.fileReadCorruptFile) }
-        settings = try JSONDecoder().decode(TesseraSettings.self, from: data)
+        settings = try JSONDecoder().decode(TesseraSettings.self, from: SettingsMigration.migrate(data).data)
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
@@ -185,7 +188,9 @@ struct SettingsDocument: FileDocument {
     static func importSettings(from url: URL) throws -> TesseraSettings {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        let settings = try JSONDecoder().decode(TesseraSettings.self, from: Data(contentsOf: url))
+        // M1 exports are schema v1: migrate before decoding, exactly like SettingsStore does.
+        let migrated = try SettingsMigration.migrate(Data(contentsOf: url)).data
+        let settings = try JSONDecoder().decode(TesseraSettings.self, from: migrated)
         guard settings.schemaVersion <= TesseraSettings.defaults.schemaVersion else {
             throw SettingsError.invalid("the file is from a newer version of Tessera")
         }

@@ -204,4 +204,55 @@ private func opened() -> TriggerMachine {
         #expect(m.handle(flags([59, 56])).outputs == [.open(origin: here)])
         #expect(m.handle(flags([56])).outputs == [.apply])
     }
+
+    // MARK: Review fixes (M2)
+
+    @Test func testAutorepeatNeverRefiresHotkey() {
+        let binding = HotkeyBinding(id: "undo", hotkey: Hotkey(keyCode: 6, modifiers: [.control, .option]), command: .undo)
+        var m = TriggerMachine(chord: TriggerChord(keyCodes: chord), hotkeys: [binding])
+        let first = m.handle(.keyDown(keyCode: 6, modifiers: [.control, .option], location: here))
+        let repeated = m.handle(.keyDown(keyCode: 6, modifiers: [.control, .option], location: here, isRepeat: true))
+        #expect(first.outputs == [.command(.undo)] && first.suppress)
+        #expect(repeated.outputs.isEmpty && repeated.suppress)
+        #expect(m.handle(.keyUp(keyCode: 6)).suppress)       // paired key-up swallowed
+        #expect(!m.handle(.keyUp(keyCode: 6)).suppress)      // only once
+    }
+
+    @Test func testArrowRepeatsKeepNavigating() {
+        var m = TriggerMachine(chord: TriggerChord(keyCodes: chord))
+        _ = m.handle(flags(chord))
+        let r = m.handle(.keyDown(keyCode: 124, modifiers: [.control, .option, .command], location: here, isRepeat: true))
+        #expect(r.outputs == [.nav(.right)] && r.suppress)
+    }
+
+    @Test func testReturnRepeatAfterApplyIsSwallowed() {
+        var m = TriggerMachine(chord: TriggerChord(keyCodes: chord))
+        _ = m.handle(flags(chord))
+        #expect(m.handle(.keyDown(keyCode: 36, modifiers: [], location: here)).outputs == [.nav(.apply)])
+        let rep = m.handle(.keyDown(keyCode: 36, modifiers: [], location: here, isRepeat: true))
+        #expect(rep.outputs.isEmpty && rep.suppress)
+    }
+
+    @Test func testExcludedFrontmostAppDisablesRingAndHotkeys() {
+        let binding = HotkeyBinding(id: "undo", hotkey: Hotkey(keyCode: 6, modifiers: [.control, .option]), command: .undo)
+        var m = TriggerMachine(chord: TriggerChord(keyCodes: chord), hotkeys: [binding])
+        m.frontmostExcluded = true
+        #expect(m.handle(flags(chord)).outputs.isEmpty)
+        #expect(!m.isOpen)
+        let key = m.handle(.keyDown(keyCode: 6, modifiers: [.control, .option], location: here))
+        #expect(key.outputs.isEmpty && !key.suppress)
+    }
+
+    @Test func testShiftInChordDoesNotMeanExtend() {
+        var m = TriggerMachine(chord: TriggerChord(keyCodes: [59, 58, 56]))  // ⌃⌥⇧
+        _ = m.handle(flags([59, 58, 56]))
+        let r = m.handle(.keyDown(keyCode: 123, modifiers: [.control, .option, .shift], location: here))
+        #expect(r.outputs == [.nav(.left)])
+    }
+
+    @Test func testModifierNormalizationStripsSyntheticFn() {
+        #expect(Modifiers([.control, .function]).normalized(forKeyCode: 96) == [.control])   // F5
+        #expect(Modifiers([.control, .function]).normalized(forKeyCode: 123) == [.control])  // ←
+        #expect(Modifiers([.control, .function]).normalized(forKeyCode: 0) == [.control, .function])  // A
+    }
 }

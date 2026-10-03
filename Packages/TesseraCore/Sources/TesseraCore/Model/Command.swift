@@ -132,6 +132,17 @@ public struct Modifiers: OptionSet, Codable, Hashable, Sendable {
         if deviceKeyCodes.contains(63) { m.insert(.function) }
         self = m
     }
+
+    /// Keys macOS reports with the Fn flag even when Fn isn't held: arrows, the nav cluster and F1–F20.
+    public static let implicitFunctionKeyCodes: Set<UInt16> = [
+        123, 124, 125, 126, 114, 115, 116, 117, 119, 121,
+        122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111, 105, 107, 113, 106, 64, 79, 80, 90,
+    ]
+
+    /// Drops the synthetic Fn flag so the recorder and the event tap agree on what a hotkey is.
+    public func normalized(forKeyCode keyCode: UInt16) -> Modifiers {
+        Self.implicitFunctionKeyCodes.contains(keyCode) ? subtracting(.function) : self
+    }
 }
 
 public struct Hotkey: Codable, Hashable, Sendable {

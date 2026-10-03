@@ -6,7 +6,9 @@ import CoreGraphics
 public enum InputEvent: Sendable, Equatable {
     case flagsChanged(pressedModifiers: Set<UInt16>, location: CGPoint)
     /// `modifiers` are side-agnostic, derived from the device modifier keycodes held at the time.
-    case keyDown(keyCode: UInt16, modifiers: Modifiers, location: CGPoint)
+    case keyDown(keyCode: UInt16, modifiers: Modifiers, location: CGPoint, isRepeat: Bool = false)
+    /// Lets the machine swallow the key-up of every key-down it swallowed.
+    case keyUp(keyCode: UInt16)
     case mouseMoved(CGPoint)
     case leftMouseDown(CGPoint)
     case leftMouseUp(CGPoint)
@@ -55,6 +57,10 @@ public struct TriggerMachine: Sendable {
     public private(set) var isOpen = false
     private var scrollAccumulator: Double = 0
     private var swallowNextMouseUp = false
+    /// Key codes whose key-down was swallowed and whose key-up hasn't arrived yet.
+    private var swallowedKeys: Set<UInt16> = []
+    /// Set by the owner (event tap) while the frontmost app is excluded: no ring, no hotkeys.
+    public var frontmostExcluded = false
 
     /// `ringKeyNavigation == false` makes an open ring treat keys as in M1 (Esc cancels and is swallowed,
     /// any other key cancels and passes through). Hotkeys still run while the ring is closed.
@@ -68,8 +74,13 @@ public struct TriggerMachine: Sendable {
         switch e {
         case .flagsChanged(let pressed, let location):
             return flagsChanged(pressed, location)
-        case .keyDown(let keyCode, let modifiers, _):
-            return keyDown(keyCode, modifiers)
+        case .keyDown(let keyCode, let modifiers, _, let isRepeat):
+            let result = keyDown(keyCode, modifiers, isRepeat: isRepeat)
+            if result.suppress { swallowedKeys.insert(keyCode) }
+            return result
+        case .keyUp(let keyCode):
+            guard swallowedKeys.remove(keyCode) != nil else { return .ignored }
+            return TriggerResult(outputs: [], suppress: true)
         case .mouseMoved(let p):
             return isOpen ? TriggerResult(outputs: [.move(p)], suppress: false) : .ignored
         case .leftMouseDown(let p):
@@ -101,9 +112,15 @@ public struct TriggerMachine: Sendable {
         return wasOpen ? [.cancel] : []
     }
 
-    private mutating func keyDown(_ keyCode: UInt16, _ modifiers: Modifiers) -> TriggerResult {
+    private mutating func keyDown(_ keyCode: UInt16, _ modifiers: Modifiers, isRepeat: Bool) -> TriggerResult {
+        // Autorepeat never re-fires a command, apply or cancel; it only keeps swallowing what was swallowed.
+        // Movement keys (arrows, digits, Tab, =/-) may repeat while the ring is open.
+        if isRepeat, !(isOpen && Self.repeatableNavKeyCodes.contains(keyCode)) {
+            return swallowedKeys.contains(keyCode) ? TriggerResult(outputs: [], suppress: true) : .ignored
+        }
         guard isOpen else {
-            guard let command = hotkeys.match(keyCode: keyCode, modifiers: modifiers) else { return .ignored }
+            guard !frontmostExcluded,
+                  let command = hotkeys.match(keyCode: keyCode, modifiers: modifiers) else { return .ignored }
             return TriggerResult(outputs: [.command(command)], suppress: true)
         }
         if keyCode == Self.escapeKeyCode {
@@ -111,7 +128,9 @@ public struct TriggerMachine: Sendable {
             return TriggerResult(outputs: [.cancel], suppress: true)
         }
         if ringKeyNavigation {
-            if let nav = Self.navKey(keyCode, shift: modifiers.contains(.shift)) {
+            // A chord that includes Shift always reports Shift, so it can't also mean "extend".
+            let shift = modifiers.contains(.shift) && chord.isDisjoint(with: [56, 60])
+            if let nav = Self.navKey(keyCode, shift: shift) {
                 if nav == .apply { isOpen = false }
                 return TriggerResult(outputs: [.nav(nav)], suppress: true)
             }
@@ -141,6 +160,7 @@ public struct TriggerMachine: Sendable {
 
     /// Key codes of the 1...9 keys on the number row, in digit order.
     private static let digitKeyCodes: [UInt16] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
+    private static let repeatableNavKeyCodes: Set<UInt16> = Set(digitKeyCodes).union([123, 124, 125, 126, 24, 27, 48])
 
     private mutating func flagsChanged(_ pressed: Set<UInt16>, _ location: CGPoint) -> TriggerResult {
         var outputs: [TriggerOutput] = []
@@ -151,7 +171,7 @@ public struct TriggerMachine: Sendable {
                 isOpen = false
                 outputs.append(.apply)
             }
-        } else if armed, !chord.isEmpty, held.count == chord.count {
+        } else if armed, !frontmostExcluded, !chord.isEmpty, held.count == chord.count {
             isOpen = true
             armed = false
             scrollAccumulator = 0

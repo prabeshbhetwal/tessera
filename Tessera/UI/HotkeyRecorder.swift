@@ -121,6 +121,9 @@ struct HotkeyRecorder: View {
             }
         }
         .onDisappear { stop() }
+        // Recording pauses Tessera's trigger and hotkeys system-wide; never leave it on when focus goes elsewhere.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in stop() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in stop() }
     }
 
     private var text: String {
@@ -182,10 +185,6 @@ struct HotkeyRecorder: View {
 
     /// Side-agnostic modifiers as the input service sees them: fn only when physically held.
     static func modifiers(_ flags: NSEvent.ModifierFlags, keyCode: UInt16) -> Modifiers {
-        var m = Modifiers(deviceKeyCodes: ModifierKey.pressed(in: flags))
-        if KeyNames.implicitFunction.contains(keyCode) || KeyNames.functionKeys.contains(keyCode) {
-            m.remove(.function)
-        }
-        return m
+        Modifiers(deviceKeyCodes: ModifierKey.pressed(in: flags)).normalized(forKeyCode: keyCode)
     }
 }
