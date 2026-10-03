@@ -89,10 +89,12 @@ struct KeyCommand: View {
         self.action = action
     }
 
+    /// Borderless with an empty label: a bordered button squeezed to 0×0 has negative bezel width,
+    /// which AppKit re-lays out on every display cycle (endless layout, high CPU).
     var body: some View {
-        Button("", action: action)
+        Button(action: action) { EmptyView() }
+            .buttonStyle(.plain)
             .keyboardShortcut(shortcut)
-            .opacity(0)
             .frame(width: 0, height: 0)
             .focusable(false)
             .accessibilityHidden(true)
