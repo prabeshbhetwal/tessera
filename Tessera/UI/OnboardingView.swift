@@ -22,7 +22,7 @@ struct OnboardingView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(spacing: 0) {
             Group {
                 switch step {
                 case 0: welcome
@@ -31,40 +31,15 @@ struct OnboardingView: View {
                 default: tryIt
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 40)
+            .padding(.top, 36)
+            .padding(.bottom, 24)
 
-            HStack {
-                HStack(spacing: 6) {
-                    ForEach(0..<Self.stepCount, id: \.self) { i in
-                        Circle()
-                            .fill(i == step ? Color.accentColor : Color.secondary.opacity(0.3))
-                            .frame(width: 7, height: 7)
-                    }
-                }
-                .accessibilityElement()
-                .accessibilityLabel("Step \(step + 1) of \(Self.stepCount)")
-                Spacer()
-                if step == Self.accessibilityStep && !axTrusted {
-                    Button("Quit Tessera") { NSApplication.shared.terminate(nil) }
-                }
-                if step > 0 { Button("Back") { step -= 1 } }
-                if step < Self.stepCount - 1 {
-                    Button(nextTitle) { step += 1 }
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(isBlocked)
-                } else {
-                    Button("Done", action: onFinish)
-                        .keyboardShortcut(.defaultAction)
-                }
-                // Esc skips the current step; on the last step it closes, like Done.
-                KeyCommand(.cancelAction) {
-                    guard !isBlocked else { return }
-                    if step < Self.stepCount - 1 { step += 1 } else { onFinish() }
-                }
-            }
+            Divider()
+            footer
         }
-        .padding(28)
-        .frame(width: 540, height: 420)
+        .frame(width: 600, height: 500)
         .onAppear {
             axObserver = Permissions.observeAccessibility { trusted in
                 axTrusted = trusted
@@ -93,70 +68,102 @@ struct OnboardingView: View {
         }
     }
 
+    private var footer: some View {
+        HStack(spacing: 12) {
+            StepIndicator(count: Self.stepCount, current: step)
+            Spacer()
+            if step == Self.accessibilityStep && !axTrusted {
+                Button("Quit Tessera") { NSApplication.shared.terminate(nil) }
+            }
+            if step > 0 { Button("Back") { step -= 1 } }
+            if step < Self.stepCount - 1 {
+                Button(nextTitle) { step += 1 }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(isBlocked)
+            } else {
+                Button("Done", action: onFinish)
+                    .keyboardShortcut(.defaultAction)
+            }
+            // Esc skips the current step; on the last step it closes, like Done.
+            KeyCommand(.cancelAction) {
+                guard !isBlocked else { return }
+                if step < Self.stepCount - 1 { step += 1 } else { onFinish() }
+            }
+        }
+        .controlSize(.large)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+    }
+
     // MARK: Steps
 
     private var welcome: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Welcome to Tessera").font(.largeTitle.bold())
-            Text("Hold \(ModifierKey.describe(chord.keyCodes)), then flick a short way to snap the front window to a half, quarter or full screen. Move further to point at a column of your display's grid.")
+        VStack(spacing: 24) {
             FlickDemo()
-                .frame(maxWidth: .infinity)
-                .frame(height: 170)
+                .frame(height: 160)
+            VStack(spacing: 8) {
+                Text("Snap windows with a flick").font(.largeTitle.weight(.bold))
+                Text("Hold the trigger, then flick toward an edge for a half, a corner for a quarter, or up to fill the screen. Move further to point at a column of your display's grid.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 440)
+            }
+            KeycapRow(keys: ModifierKey.names(chord.keyCodes), prominent: true)
         }
     }
 
     private var accessibility: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Allow Accessibility").font(.title.bold())
-            Text("Tessera moves and resizes windows through macOS Accessibility. Without it, the trigger does nothing.")
-            HStack {
-                Button("Grant Accessibility") {
-                    Permissions.promptAccessibility()
-                    startFixTimer()
-                }
-                .disabled(axTrusted)
-                Label(axTrusted ? "Granted" : "Not granted yet", systemImage: axTrusted ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(axTrusted ? .green : .secondary)
+        StepPage(
+            symbol: "accessibility", tint: .blue, title: "Allow Accessibility",
+            text: "Tessera moves and resizes other apps' windows through macOS Accessibility. The trigger does nothing until it's allowed."
+        ) {
+            PermissionRow(title: "Accessibility", granted: axTrusted, actionTitle: "Grant…") {
+                Permissions.promptAccessibility()
+                startFixTimer()
             }
             if showFix && !axTrusted {
-                Caption("Still not granted? An older Tessera build may hold a stale entry. Reset it, then grant again.")
-                Button("Fix permission", action: resetPermission)
-                if let fixError { Caption(fixError) }
+                VStack(spacing: 8) {
+                    Caption("Still not granted? An older Tessera build may hold a stale entry. Reset it, then grant again.")
+                        .multilineTextAlignment(.center)
+                    Button("Fix permission", action: resetPermission)
+                        .controlSize(.regular)
+                    if let fixError { Caption(fixError) }
+                }
+                .frame(maxWidth: 440)
             }
         }
     }
 
     private var screenRecording: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Window thumbnails (optional)").font(.title.bold())
-            Text("With Screen Recording allowed, the snap preview shows a live picture of the window you're moving. Tessera takes one still snapshot per gesture and never records or saves anything.")
-            Text("Skip it and the preview uses a tinted rectangle. You can turn it on later in Settings › Preview.")
-                .foregroundStyle(.secondary)
-            HStack {
-                Button("Enable") {
-                    Permissions.requestScreenCapture()
-                    screenAllowed = Permissions.isScreenCaptureAllowed
-                }
-                .disabled(screenAllowed)
-                Label(screenAllowed ? "Allowed" : "Not allowed", systemImage: screenAllowed ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(screenAllowed ? .green : .secondary)
+        StepPage(
+            symbol: "rectangle.dashed.badge.record", tint: .teal, title: "Live window thumbnails",
+            text: "Optional. With Screen Recording allowed, the snap preview shows a picture of the window you're moving. Tessera takes one still snapshot per gesture and never records or saves anything."
+        ) {
+            PermissionRow(title: "Screen Recording", granted: screenAllowed, actionTitle: "Allow…") {
+                Permissions.requestScreenCapture()
+                screenAllowed = Permissions.isScreenCaptureAllowed
             }
-            Caption("macOS may ask you to reopen Tessera before the change takes effect.")
+            Caption("Skip it and the preview uses a tinted rectangle. You can turn it on later in Settings › Preview. macOS may ask you to reopen Tessera first.")
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 440)
         }
     }
 
     private var tryIt: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Try it").font(.title.bold())
-            Text("Click any other app's window (Tessera can't move its own), then hold \(ModifierKey.describe(chord.keyCodes)) and:")
-            VStack(alignment: .leading, spacing: 6) {
-                Label("Flick left or right for a half.", systemImage: "arrow.left.and.right")
-                Label("Flick up to maximize, diagonally for a quarter.", systemImage: "arrow.up.right")
-                Label("Move further to point at a column; click to span several.", systemImage: "rectangle.split.3x1")
-                Label("Scroll while holding to change the column count.", systemImage: "scroll")
-                Label("Release to snap, press Esc to cancel.", systemImage: "return")
-                Label("Or, while holding, use the arrow keys and press Return.", systemImage: "keyboard")
+        StepPage(
+            symbol: "hand.point.up.left.fill", tint: .indigo, title: "Try it",
+            text: "Click any other app's window (Tessera can't move its own), hold \(ModifierKey.describe(chord.keyCodes)) and:"
+        ) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 12) {
+                GestureHint("arrow.left.and.right", "Flick left or right for a half.")
+                GestureHint("arrow.up.right", "Flick up to maximize, diagonally for a quarter.")
+                GestureHint("rectangle.split.3x1", "Move further to point at a column; click to span several.")
+                GestureHint("scroll", "Scroll while holding to change the column count.")
+                GestureHint("return", "Release to snap, press Esc to cancel.")
+                GestureHint("keyboard", "Or use the arrow keys and press Return.")
             }
+            .frame(maxWidth: 480)
             if !axTrusted {
                 Caption("Accessibility isn't granted yet, so the gesture won't move this window. Go back a step to grant it.")
             }
@@ -189,6 +196,112 @@ struct OnboardingView: View {
         } catch {
             fixError = "Couldn't reset the permission: \(error.localizedDescription)"
         }
+    }
+}
+
+// MARK: - Building blocks
+
+/// Centred step layout: icon tile, title, body, then the step's controls.
+private struct StepPage<Extra: View>: View {
+    let symbol: String
+    let tint: Color
+    let title: String
+    let text: String
+    @ViewBuilder let extra: Extra
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: symbol)
+                .font(.system(size: 30, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 64, height: 64)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(tint))
+                .accessibilityHidden(true)
+            VStack(spacing: 8) {
+                Text(title).font(.title.weight(.bold))
+                Text(text)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 440)
+            }
+            extra
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// One permission: symbol, name, granted or not, and the button that asks for it.
+private struct PermissionRow: View {
+    let title: String
+    let granted: Bool
+    let actionTitle: String
+    let action: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: granted ? "checkmark.circle.fill" : "circle.dashed")
+                .font(.title2)
+                .foregroundStyle(granted ? Color.green : Color.secondary)
+                .contentTransition(.symbolEffect(.replace))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).fontWeight(.medium)
+                Text(granted ? "Granted" : "Not granted yet")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(actionTitle, action: action)
+                .disabled(granted)
+        }
+        .padding(14)
+        .frame(width: 440)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+/// Symbol in a tinted circle next to one gesture description.
+private struct GestureHint: View {
+    let symbol: String
+    let text: String
+
+    init(_ symbol: String, _ text: String) {
+        self.symbol = symbol
+        self.text = text
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(.tint.opacity(0.12)))
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// Progress bar: one short capsule per step.
+private struct StepIndicator: View {
+    let count: Int
+    let current: Int
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(0..<count, id: \.self) { i in
+                Capsule()
+                    .fill(i == current ? Color.accentColor : i < current ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.25))
+                    .frame(width: i == current ? 22 : 8, height: 5)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Step \(current + 1) of \(count)")
     }
 }
 

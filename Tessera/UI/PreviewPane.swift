@@ -113,6 +113,8 @@ private struct PreviewSample: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .accessibilityElement()
         .accessibilityLabel("Preview sample")
     }

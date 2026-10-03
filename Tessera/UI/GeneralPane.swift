@@ -17,6 +17,14 @@ struct GeneralPane: View {
     var body: some View {
         Form {
             Section("Trigger") {
+                VStack(spacing: 10) {
+                    KeycapRow(keys: ModifierKey.names(model.settings.trigger.keyCodes), prominent: true)
+                    Text("Hold these keys together to open the ring. Release any of them to snap.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
                 ChordRecorder(chord: $model.settings.trigger)
             }
 

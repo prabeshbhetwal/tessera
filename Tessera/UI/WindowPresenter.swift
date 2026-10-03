@@ -36,7 +36,8 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         if let pane { navigation.pane = pane }
         let window = settingsWindow ?? makeWindow(
             title: "Tessera Settings",
-            controller: NSHostingController(rootView: SettingsView(model: model, navigation: navigation, displays: displays))
+            controller: NSHostingController(rootView: SettingsView(model: model, navigation: navigation, displays: displays)),
+            resizable: true
         )
         settingsWindow = window
         (window.contentViewController as? NSHostingController<SettingsView>)?.rootView =
@@ -65,10 +66,11 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         }
     }
 
-    private func makeWindow(title: String, controller: NSViewController) -> NSWindow {
+    private func makeWindow(title: String, controller: NSViewController, resizable: Bool = false) -> NSWindow {
         let window = NSWindow(contentViewController: controller)
         window.title = title
-        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.styleMask = resizable ? [.titled, .closable, .miniaturizable, .resizable] : [.titled, .closable, .miniaturizable]
+        window.toolbarStyle = .unified
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()

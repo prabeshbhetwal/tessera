@@ -85,10 +85,18 @@ private struct DisplayRow: View {
 
     var body: some View {
         Section(name) {
-            MiniGrid(display: DisplayContext(
-                id: display.id, visibleFrame: display.visibleFrame, range: range, profile: profile
-            ))
-            .frame(height: 90)
+            VStack(spacing: 6) {
+                MiniGrid(display: DisplayContext(
+                    id: display.id, visibleFrame: display.visibleFrame, range: range, profile: profile
+                ))
+                .frame(height: 96)
+                Text("\(Int(display.visibleFrame.width)) × \(Int(display.visibleFrame.height)) usable · \(profile.columns) \(range.isPortrait ? "rows" : "columns")\(override == nil ? " (automatic)" : "")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
 
             Stepper(value: binding(\.columns), in: range.minCols...range.maxCols) {
                 LabeledContent(range.isPortrait ? "Rows" : "Columns", value: "\(profile.columns)")
@@ -145,8 +153,14 @@ struct MiniGrid: View {
             }
             context.fill(Path(roundedRect: map(visible), cornerRadius: 4), with: .color(.secondary.opacity(0.15)))
             for c in 0..<max(1, display.profile.columns) {
-                let cell = GridGeometry.frame(for: ColumnSpan(columns: c...c, band: .full), display: display)
-                context.fill(Path(roundedRect: map(cell), cornerRadius: 2), with: .color(.accentColor.opacity(0.4)))
+                let cell = map(GridGeometry.frame(for: ColumnSpan(columns: c...c, band: .full), display: display))
+                context.fill(Path(roundedRect: cell, cornerRadius: 2), with: .color(.accentColor.opacity(0.4)))
+                if cell.width > 18, cell.height > 14 {
+                    context.draw(
+                        Text("\(c + 1)").font(.caption2.weight(.medium).monospacedDigit()).foregroundStyle(.primary.opacity(0.7)),
+                        at: CGPoint(x: cell.midX, y: cell.midY)
+                    )
+                }
             }
         }
         .accessibilityElement()

@@ -68,9 +68,56 @@ enum ModifierKey {
         Set(all.filter { flags.rawValue & $0.mask != 0 }.map(\.code))
     }
 
+    /// Names of the held keys in the table's order (left before right, ⌃ ⌥ ⌘ ⇧ fn).
+    static func names(_ codes: Set<UInt16>) -> [String] {
+        all.filter { codes.contains($0.code) }.map(\.name)
+    }
+
     static func describe(_ codes: Set<UInt16>) -> String {
-        let names = all.filter { codes.contains($0.code) }.map(\.name)
+        let names = names(codes)
         return names.isEmpty ? "None" : names.joined(separator: " + ")
+    }
+}
+
+/// Modifier or key names drawn as keycaps, joined by "+".
+struct KeycapRow: View {
+    let keys: [String]
+    var prominent = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if keys.isEmpty {
+                Text("No trigger set").foregroundStyle(.secondary)
+            }
+            ForEach(Array(keys.enumerated()), id: \.offset) { i, key in
+                if i > 0 { Text("+").foregroundStyle(.tertiary) }
+                Keycap(key, prominent: prominent)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(keys.isEmpty ? "No trigger set" : keys.joined(separator: " plus "))
+    }
+}
+
+/// One key drawn as a keycap.
+struct Keycap: View {
+    let text: String
+    var prominent = false
+
+    init(_ text: String, prominent: Bool = false) {
+        self.text = text
+        self.prominent = prominent
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(prominent ? .title3 : .callout, design: .rounded).weight(.medium))
+            .monospacedDigit()
+            .padding(.horizontal, prominent ? 14 : 10)
+            .padding(.vertical, prominent ? 8 : 5)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color(nsColor: .controlBackgroundColor)))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+            .shadow(color: .black.opacity(0.1), radius: 0, y: 1)
     }
 }
 

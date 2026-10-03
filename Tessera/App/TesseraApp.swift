@@ -34,13 +34,18 @@ private struct MenuContent: View {
     let delegate: AppDelegate
 
     var body: some View {
+        // Plain Text in a menu renders as a disabled line: a one-line reminder of how to use the app.
         if delegate.state.accessibilityGranted {
+            Text("Hold \(ModifierKey.describe(delegate.model.settings.trigger.keyCodes)) to snap")
+            Divider()
+            Button("Undo last move") { delegate.coordinator?.undoLast() }
+            Divider()
             Button("Settings…") { delegate.coordinator?.presenter.showSettings() }
                 .keyboardShortcut(",")
             Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
-            Button("Undo last move") { delegate.coordinator?.undoLast() }
         } else {
             // Nothing works without Accessibility, so setup is the only thing on offer.
+            Text("Accessibility permission needed")
             Button("Finish setup…") {
                 delegate.coordinator?.presenter.showOnboarding(startStep: OnboardingView.accessibilityStep)
             }

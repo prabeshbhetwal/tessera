@@ -77,6 +77,7 @@ private struct ZoneDiagram: View {
             context.draw(Text("Point").font(.caption), at: CGPoint(x: center.x + flick + 4, y: center.y - flick + 8), anchor: .leading)
             context.draw(Text("Flick").font(.caption2), at: CGPoint(x: center.x, y: center.y - (flick + dead) / 2))
         }
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .accessibilityElement()
         .accessibilityLabel("Zone diagram: dead zone \(Int(ring.deadZone)) points, flick up to \(Int(ring.flickDistance)) points, point mode beyond.")
     }
