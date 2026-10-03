@@ -7,6 +7,7 @@ import TesseraCore
 @MainActor
 final class WindowPresenter: NSObject, NSWindowDelegate {
     private let model: SettingsModel
+    let navigation = SettingsNavigation()
     private var displays: [DisplayContext]
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
@@ -21,13 +22,15 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
     func updateDisplays(_ displays: [DisplayContext]) {
         self.displays = displays
         (settingsWindow?.contentViewController as? NSHostingController<SettingsView>)?.rootView =
-            SettingsView(model: model, displays: displays)
+            SettingsView(model: model, navigation: navigation, displays: displays)
     }
 
-    func showSettings() {
+    /// Opens Settings, optionally on a specific pane (the menu's "Shortcuts…" item passes `.shortcuts`).
+    func showSettings(pane: SettingsPane? = nil) {
+        if let pane { navigation.pane = pane }
         let window = settingsWindow ?? makeWindow(
             title: "Tessera Settings",
-            controller: NSHostingController(rootView: SettingsView(model: model, displays: displays))
+            controller: NSHostingController(rootView: SettingsView(model: model, navigation: navigation, displays: displays))
         )
         settingsWindow = window
         updateDisplays(displays)

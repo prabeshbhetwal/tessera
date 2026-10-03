@@ -74,6 +74,31 @@ enum ModifierKey {
     }
 }
 
+/// Invisible button that only exists to carry a keyboard shortcut (pane switching, onboarding Esc).
+struct KeyCommand: View {
+    let shortcut: KeyboardShortcut
+    let action: () -> Void
+
+    init(_ key: KeyEquivalent, modifiers: EventModifiers = .command, action: @escaping () -> Void) {
+        shortcut = KeyboardShortcut(key, modifiers: modifiers)
+        self.action = action
+    }
+
+    init(_ shortcut: KeyboardShortcut, action: @escaping () -> Void) {
+        self.shortcut = shortcut
+        self.action = action
+    }
+
+    var body: some View {
+        Button("", action: action)
+            .keyboardShortcut(shortcut)
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .focusable(false)
+            .accessibilityHidden(true)
+    }
+}
+
 extension TesseraSettings {
     /// Built-in themes first, then the user's.
     var allThemes: [Theme] { Theme.builtIn + customThemes }

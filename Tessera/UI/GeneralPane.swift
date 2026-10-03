@@ -9,6 +9,8 @@ struct GeneralPane: View {
     @State private var exporting = false
     @State private var importing = false
     @State private var ioMessage: String?
+    @State private var cliInstalled = CLIInstaller.isInstalled
+    @State private var cliMessage: String?
 
     var body: some View {
         Form {
@@ -54,6 +56,14 @@ struct GeneralPane: View {
                 if let ioMessage { Caption(ioMessage) }
             }
 
+            Section("Command line") {
+                HStack {
+                    Button(cliInstalled ? "Reinstall command-line tool" : "Install command-line tool", action: installCLI)
+                    Spacer()
+                }
+                Caption(cliMessage ?? "Links the tessera command to \(CLIInstaller.linkURL.path(percentEncoded: false)) so scripts and terminals can run every Tessera command.")
+            }
+
             ResetSection {
                 model.settings.trigger = .default
                 model.settings.showMenuBarIcon = true
@@ -70,6 +80,17 @@ struct GeneralPane: View {
             loginError = nil
         } catch {
             loginError = "Couldn't change the login item: \(error.localizedDescription)"
+        }
+    }
+
+    private func installCLI() {
+        switch CLIInstaller.install() {
+        case .success(let url):
+            cliInstalled = true
+            let folder = url.deletingLastPathComponent().path(percentEncoded: false)
+            cliMessage = "Installed at \(url.path(percentEncoded: false)). \(folder) must be on your PATH; if your shell can't find tessera, add this line to ~/.zshrc: export PATH=\"\(folder):$PATH\""
+        case .failure(let error):
+            cliMessage = "Couldn't install the command-line tool: \(error.localizedDescription)"
         }
     }
 
@@ -95,16 +116,20 @@ struct ChordRecorder: View {
     var body: some View {
         Group {
             LabeledContent("Chord") {
-                HStack {
-                    Text(recording ? (peak.isEmpty ? "Hold keys…" : ModifierKey.describe(peak)) : ModifierKey.describe(chord.keyCodes))
-                        .monospaced()
-                    Button(recording ? "Cancel" : "Record") { recording ? stop() : start() }
-                }
+                RecorderField(
+                    title: "Trigger chord",
+                    text: recording ? (peak.isEmpty ? "Hold keys…" : ModifierKey.describe(peak)) : ModifierKey.describe(chord.keyCodes),
+                    recording: recording,
+                    start: start,
+                    clear: { chord = .default }
+                )
             }
             if recording {
                 Caption("Hold the modifier keys you want, then release them. Esc cancels.")
             } else if chord.keyCodes.count == 1 {
                 Caption("A single-key chord opens the ring every time you press that key.")
+            } else {
+                Caption("Select the chord and press Space or Return to record. Delete restores the default.")
             }
         }
         .onDisappear { stop() }
@@ -113,6 +138,7 @@ struct ChordRecorder: View {
     private func start() {
         peak = []
         recording = true
+        NotificationCenter.default.post(name: .tesseraRecorderActive, object: nil, userInfo: ["active": true])
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
             if event.type == .keyDown {
                 if event.keyCode == 53 { stop() }
@@ -130,6 +156,9 @@ struct ChordRecorder: View {
 
     private func stop() {
         if let monitor { NSEvent.removeMonitor(monitor) }
+        if recording {
+            NotificationCenter.default.post(name: .tesseraRecorderActive, object: nil, userInfo: ["active": false])
+        }
         monitor = nil
         recording = false
     }
