@@ -40,8 +40,6 @@ struct GeneralPane: View {
                 Footer("Light or dark for Tessera's windows. Match System follows macOS. The on-screen ring has its own colours in Overlay.")
             }
 
-            SnapSpeedSection(model: model)
-
             Section {
                 Toggle("Launch at login", isOn: Binding(
                     get: { model.settings.launchAtLogin },
@@ -230,34 +228,6 @@ private enum CLIOutcome: Equatable {
     case failed(String)
 }
 
-/// Preset speeds plus a seconds slider; both edit the one stored duration.
-private struct SnapSpeedSection: View {
-    @Bindable var model: SettingsModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        let seconds = model.settings.snapSeconds
-        Section {
-            Picker("Speed", selection: Binding(
-                get: { SnapSpeed(seconds: seconds) },
-                set: { if let speed = $0 { model.settings.snapSeconds = speed.seconds } }
-            )) {
-                ForEach(SnapSpeed.allCases, id: \.self) { Text($0.displayName).tag(Optional($0)) }
-            }
-            .pickerStyle(.segmented)
-            SliderRow(title: "Duration", value: $model.settings.snapSeconds, range: 0...SnapSpeed.maxSeconds,
-                      step: 0.01, format: { $0 == 0 ? "Instant" : String(format: "%.2f s", $0) })
-        } header: {
-            Text("Snap speed")
-        } footer: {
-            Footer(reduceMotion && seconds > 0
-                ? "Reduce Motion is on in System Settings, so windows jump instead of gliding."
-                : SnapSpeed(seconds: seconds) == nil
-                    ? "Custom speed. Pick a preset or drag to any duration."
-                    : "How long a window takes to glide into place, for the ring and hotkeys alike.")
-        }
-    }
-}
 
 /// Records a modifier chord: hold the keys, then release them all.
 struct ChordRecorder: View {

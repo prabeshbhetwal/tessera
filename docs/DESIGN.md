@@ -4,7 +4,7 @@ Tessera is a native SwiftUI macOS app. It has no palette of its own: colours, ty
 
 ## Visual Theme
 
-Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the left, grouped forms on the right, one header per pane that says what the pane controls. Panes, in ⌘1–8 order: General, Excluded Apps (Setup); Shortcuts, Cycles (Control); Displays, Ring, Overlay (Snapping); About. Spelling is en-AU throughout (Maximise, Centre, colour); command identifiers stay en-US.
+Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the left, grouped forms on the right, one header per pane that says what the pane controls. Panes, in ⌘1–9 order: General, Excluded Apps (Setup); Shortcuts, Cycles (Control); Displays, Ring, Overlay, Motion (Snapping); About. Spelling is en-AU throughout (Maximise, Centre, colour); command identifiers stay en-US.
 
 The signature is the overlay: a vibrant material ring and a lifted preview frame, the one place Tessera looks like itself rather than like a form.
 
@@ -12,7 +12,7 @@ The signature is the overlay: a vibrant material ring and a lifted preview frame
 
 - Surfaces, text and separators: system semantic colours only (`windowBackground`, `.primary`, `.secondary`, `.separator`, `.quinary`).
 - Accent: the user's system accent (`Color.accentColor`). Used for selection, focus rings, the live wedge in diagrams and the primary button. Never decoration.
-- Pane icon tiles: one solid system colour per pane (gray, orange, blue, indigo, teal, pink, red), white symbol. This is the only place colour is used for identity.
+- Pane icon tiles: one solid system colour per pane (gray, red, orange, green, blue, indigo, teal, mint), white symbol. This is the only place colour is used for identity.
 - State: `.green` for granted permissions, `.orange` for warnings. Always paired with a symbol and text.
 
 ## Typography

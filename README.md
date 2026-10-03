@@ -47,7 +47,7 @@ Everything works without a mouse.
 | ⌃⌥Z | Undo |
 | ⌃⌥⌘, | Settings |
 
-**Settings window.** ⌘1–8 switches panes (General, Excluded Apps, Shortcuts, Cycles, Displays, Ring, Overlay, About), and every control can be reached with Tab. Settings → Overlay has a **Show on Screen** button that shows the real ring and preview for three seconds, so a theme can be judged without holding the trigger.
+**Settings window.** ⌘1–9 switches panes (General, Excluded Apps, Shortcuts, Cycles, Displays, Ring, Overlay, Motion, About), and every control can be reached with Tab. Settings → Overlay has a **Show on Screen** button that shows the real ring and preview for three seconds, so a theme can be judged without holding the trigger.
 
 ## Automation
 

@@ -4,7 +4,7 @@ import TesseraCore
 
 /// Settings panes in sidebar order; ⌘1–8 selects them.
 enum SettingsPane: Int, CaseIterable, Hashable {
-    case general, excludedApps, shortcuts, cycles, displays, ring, overlay, about
+    case general, excludedApps, shortcuts, cycles, displays, ring, overlay, motion, about
 
     var title: String {
         switch self {
@@ -15,6 +15,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .displays: "Displays"
         case .ring: "Ring"
         case .overlay: "Overlay"
+        case .motion: "Motion"
         case .about: "About"
         }
     }
@@ -28,6 +29,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .displays: "display"
         case .ring: "smallcircle.filled.circle"
         case .overlay: "circle.lefthalf.filled"
+        case .motion: "hare.fill"
         case .about: "info"
         }
     }
@@ -41,6 +43,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .displays: .blue
         case .ring: .indigo
         case .overlay: .teal
+        case .motion: .mint
         case .about: .gray
         }
     }
@@ -48,13 +51,14 @@ enum SettingsPane: Int, CaseIterable, Hashable {
     /// One sentence under the pane title: what the pane controls.
     var blurb: String {
         switch self {
-        case .general: "The trigger chord, snap speed, launch behaviour, settings files and the command-line tool."
+        case .general: "The trigger chord, launch behaviour, settings files and the command-line tool."
         case .excludedApps: "Apps in front of which the trigger and hotkeys stay off."
         case .shortcuts: "Global hotkeys and keyboard control of the open ring."
         case .cycles: "Named sequences a hotkey steps through on repeated presses."
         case .displays: "Column count, gap and padding for each connected display."
         case .ring: "What each direction does, where pointing begins, and how big the ring is."
         case .overlay: "How the ring and the snap preview look on screen."
+        case .motion: "How fast windows glide into place and the preview animates."
         case .about: ""
         }
     }
@@ -77,7 +81,7 @@ enum SettingsGroup: CaseIterable {
         switch self {
         case .setup: [.general, .excludedApps]
         case .control: [.shortcuts, .cycles]
-        case .snapping: [.displays, .ring, .overlay]
+        case .snapping: [.displays, .ring, .overlay, .motion]
         case .about: [.about]
         }
     }
@@ -149,6 +153,7 @@ struct SettingsView: View {
         case .displays: DisplaysPane(model: model, displays: displays)
         case .ring: RingPane(model: model)
         case .overlay: OverlayPane(model: model)
+        case .motion: MotionPane(model: model)
         case .about: AboutPane()
         }
     }

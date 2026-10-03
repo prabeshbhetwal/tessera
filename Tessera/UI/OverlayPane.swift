@@ -7,7 +7,6 @@ struct OverlayPane: View {
     @Bindable var model: SettingsModel
     @State private var newThemeName = ""
     @State private var screenCaptureAllowed = Permissions.isScreenCaptureAllowed
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Name of the theme that takes edits made to a built-in theme.
     private static let editedName = SettingsModel.editedThemeName
@@ -133,18 +132,6 @@ struct OverlayPane: View {
                 Toggle("Match the window's corner radius", isOn: preview(\.useWindowCornerRadius))
                 SliderRow(title: "Corner radius", value: preview(\.cornerRadius), range: 0...30)
                     .disabled(s.useWindowCornerRadius)
-            }
-
-            Section {
-                Toggle("Animate between selections", isOn: preview(\.morph))
-                SliderRow(title: "Spring response", value: preview(\.springResponse), range: 0...0.4, step: 0.01, format: SliderRow.seconds)
-                    .disabled(!s.morph)
-            } header: {
-                Text("Motion")
-            } footer: {
-                Footer(reduceMotion
-                    ? "Reduce Motion is on in System Settings, so the overlay jumps instead of animating."
-                    : "How the preview moves from one selection to the next. 0 turns the animation off.")
             }
 
             ResetSection(keeps: "Keeps your custom themes.") {
