@@ -46,8 +46,9 @@ final class CommandExecutor: CommandExecuting {
         let list = displays.displays
         let from = current.flatMap { list.display(at: CGPoint(x: $0.midX, y: $0.midY))?.id }
         let to = list.first { $0.visibleFrame.intersects(goal) }?.id
+        let duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : model.settings.snapSeconds
         return await windows.apply(goal, to: window, primaryHeight: DisplayService.primaryHeight,
-                                   crossingDisplays: from != to)
+                                   crossingDisplays: from != to, duration: duration)
     }
 
     /// Changes `display`'s column count, clamped to its range, and saves it as an override.

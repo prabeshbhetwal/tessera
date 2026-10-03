@@ -40,6 +40,8 @@ final class Coordinator {
         var navCursor: CGPoint?
         /// Last label posted to VoiceOver, so unchanged selections aren't re-announced.
         var announced: String?
+        /// The cursor selection was a grid span last time (boundary hysteresis).
+        var pointing = false
     }
 
     init(model: SettingsModel, store: SettingsStore) {
@@ -233,8 +235,14 @@ final class Coordinator {
 
     private func refreshSelection() {
         guard var s = session else { return }
-        let selection = s.nav.map { KeyNavigator.selection($0, displays: s.displays) }
-            ?? engine.select(origin: s.origin, cursor: s.cursor, displays: s.displays, anchor: s.anchor)
+        let selection: Selection
+        if let nav = s.nav {
+            selection = KeyNavigator.selection(nav, displays: s.displays)
+        } else {
+            selection = engine.select(origin: s.origin, cursor: s.cursor, displays: s.displays,
+                                      anchor: s.anchor, pointing: s.pointing)
+            if case .span = selection { s.pointing = true } else { s.pointing = false }
+        }
         let frame = targetFrame(for: selection, in: s)
         s.targetFrame = frame
         if model.settings.announceSelection,
@@ -295,10 +303,13 @@ final class Coordinator {
         session = nil
         overlay.hide()
         guard let frame = s.targetFrame else { return }
-        let result = await executor.place(s.target, current: s.current, goal: frame)
-        if case let .failed(reason) = result {
-            log.notice("apply failed for \(s.target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
-            overlay.showHUD("Can't move this window")
+        // Not awaited: a glide must never hold up the next ring or hotkey.
+        Task {
+            let result = await executor.place(s.target, current: s.current, goal: frame)
+            if case let .failed(reason) = result {
+                log.notice("apply failed for \(s.target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
+                overlay.showHUD("Can't move this window")
+            }
         }
     }
 

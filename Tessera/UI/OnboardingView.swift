@@ -102,8 +102,8 @@ struct OnboardingView: View {
             FlickDemo()
                 .frame(height: 160)
             VStack(spacing: 8) {
-                Text("Snap windows with a flick").font(.largeTitle.weight(.bold))
-                Text("Hold the trigger, then flick toward an edge for a half, a corner for a quarter, or up to fill the screen. Move further to point at a column of your display's grid.")
+                Text("Snap windows with the ring").font(.largeTitle.weight(.bold))
+                Text("Hold the trigger, then move toward an edge for a half, a corner for a quarter, or up to fill the screen. Keep going past the dashed circle to point at a column of your display's grid instead.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -156,9 +156,9 @@ struct OnboardingView: View {
             text: "Click any other app's window (Tessera can't move its own), hold \(ModifierKey.describe(chord.keyCodes)) and:"
         ) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 12) {
-                GestureHint("arrow.left.and.right", "Flick left or right for a half.")
-                GestureHint("arrow.up.right", "Flick up to maximize, diagonally for a quarter.")
-                GestureHint("rectangle.split.3x1", "Move further to point at a column; click to span several.")
+                GestureHint("arrow.left.and.right", "Move left or right for a half.")
+                GestureHint("arrow.up.right", "Move up to maximize, diagonally for a quarter.")
+                GestureHint("rectangle.split.3x1", "Cross the dashed circle to point at a column; click to span several.")
                 GestureHint("scroll", "Scroll while holding to change the column count.")
                 GestureHint("return", "Release to snap, press Esc to cancel.")
                 GestureHint("keyboard", "Or use the arrow keys and press Return.")
@@ -338,7 +338,7 @@ private struct FlickDemo: View {
             }
         }
         .accessibilityElement()
-        .accessibilityLabel("Animation: the cursor flicks outward and the ring highlights the wedge it points at.")
+        .accessibilityLabel("Animation: the cursor moves outward and the ring highlights the wedge it heads for.")
     }
 }
 

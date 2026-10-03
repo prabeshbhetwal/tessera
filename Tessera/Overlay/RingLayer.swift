@@ -2,25 +2,33 @@ import QuartzCore
 import TesseraCore
 
 /// Eight-wedge radial menu. One shape layer holds all wedges; a second holds the active wedge in the accent colour.
+/// Each wedge carries a tiny screen glyph of its layout, and a dashed circle marks where pointing at the grid starts.
 @MainActor
 final class RingLayer {
     let root = CALayer()
     private let wedges = CAShapeLayer()
     private let highlight = CAShapeLayer()
+    private let glyphOutlines = CAShapeLayer()
+    private let glyphFills = CAShapeLayer()
+    private let boundary = CAShapeLayer()
     private var center = CGPoint.zero
     private var inner: CGFloat = 0
     private var outer: CGFloat = 0
     private var activeIndex: Int?
 
     init() {
-        root.addSublayer(wedges)
-        root.addSublayer(highlight)
+        for layer in [boundary, wedges, highlight, glyphOutlines, glyphFills] { root.addSublayer(layer) }
         wedges.lineWidth = 1
+        glyphOutlines.lineWidth = 1
+        glyphOutlines.fillColor = nil
+        boundary.fillColor = nil
+        boundary.lineWidth = 1.5
+        boundary.lineDashPattern = [4, 5]
     }
 
     /// `center` is in this layer's local coordinates (AppKit orientation, y up).
     func configure(bounds: CGRect, center: CGPoint, ring: RingSettings, theme: Theme, scale: CGFloat) {
-        for layer in [root, wedges, highlight] {
+        for layer in [root, wedges, highlight, glyphOutlines, glyphFills, boundary] {
             layer.frame = bounds
             layer.contentsScale = scale
         }
@@ -37,6 +45,17 @@ final class RingLayer {
         wedges.fillColor = HexColor.cgColor(theme.ring.fillHex, alpha: theme.ring.opacity)
         wedges.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: min(1, theme.ring.opacity + 0.1))
         highlight.fillColor = HexColor.cgColor(theme.accentHex, alpha: 0.9)
+
+        let glyphColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.9)
+        glyphOutlines.strokeColor = glyphColor
+        glyphFills.fillColor = glyphColor
+        let glyphs = Self.glyphPaths(ring: ring, center: center, aspect: bounds.height > 0 ? bounds.width / bounds.height : 1.6)
+        glyphOutlines.path = glyphs?.outlines
+        glyphFills.path = glyphs?.fills
+
+        let flick = CGFloat(ring.flickDistance)
+        boundary.path = CGPath(ellipseIn: CGRect(x: center.x - flick, y: center.y - flick, width: flick * 2, height: flick * 2), transform: nil)
+        boundary.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.45)
         activeIndex = nil
         highlight.path = nil
         root.opacity = 1
@@ -51,6 +70,42 @@ final class RingLayer {
     /// The ring stays visible but recedes while the grid is the focus.
     func setPointMode(_ on: Bool) {
         root.opacity = on ? 0.35 : 1
+    }
+
+    /// Screen-shaped glyph per wedge (outline + filled layout), centred on the ring. Nil when the ring is too thin.
+    private static func glyphPaths(ring: RingSettings, center: CGPoint, aspect: CGFloat) -> (outlines: CGPath, fills: CGPath)? {
+        let height = CGFloat(ring.thickness) * 0.42
+        guard height >= 5 else { return nil }
+        let width = min(height * min(max(aspect, 1.2), 2.2), CGFloat(ring.radius) * 0.6)
+        let outlines = CGMutablePath()
+        let fills = CGMutablePath()
+        for (i, action) in ring.wedges.prefix(8).enumerated() {
+            let angle = CGFloat.pi / 2 - CGFloat(i) * .pi / 4
+            let mid = CGPoint(x: center.x + cos(angle) * CGFloat(ring.radius), y: center.y + sin(angle) * CGFloat(ring.radius))
+            let screen = CGRect(x: mid.x - width / 2, y: mid.y - height / 2, width: width, height: height)
+            outlines.addRect(screen.insetBy(dx: 0.5, dy: 0.5))
+            let u = unitRect(action)
+            let inner = screen.insetBy(dx: 2, dy: 2)
+            fills.addRect(CGRect(x: inner.minX + u.minX * inner.width, y: inner.minY + u.minY * inner.height,
+                                 width: u.width * inner.width, height: u.height * inner.height))
+        }
+        return (outlines, fills)
+    }
+
+    /// The action's share of the screen in a unit square, y up.
+    nonisolated static func unitRect(_ action: WindowAction) -> CGRect {
+        switch action {
+        case .maximize: CGRect(x: 0, y: 0, width: 1, height: 1)
+        case .center: CGRect(x: 0.25, y: 0.2, width: 0.5, height: 0.6)
+        case .leftHalf: CGRect(x: 0, y: 0, width: 0.5, height: 1)
+        case .rightHalf: CGRect(x: 0.5, y: 0, width: 0.5, height: 1)
+        case .topHalf: CGRect(x: 0, y: 0.5, width: 1, height: 0.5)
+        case .bottomHalf: CGRect(x: 0, y: 0, width: 1, height: 0.5)
+        case .topLeftQuarter: CGRect(x: 0, y: 0.5, width: 0.5, height: 0.5)
+        case .topRightQuarter: CGRect(x: 0.5, y: 0.5, width: 0.5, height: 0.5)
+        case .bottomLeftQuarter: CGRect(x: 0, y: 0, width: 0.5, height: 0.5)
+        case .bottomRightQuarter: CGRect(x: 0.5, y: 0, width: 0.5, height: 0.5)
+        }
     }
 
     /// Wedge `index` is centred `index * 45°` clockwise from straight up, in y-up coordinates.

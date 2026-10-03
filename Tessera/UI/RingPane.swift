@@ -10,12 +10,22 @@ struct RingPane: View {
         let ring = $model.settings.ring
         let r = model.settings.ring
         Form {
-            Section("Zones") {
+            Section("Two ways to snap") {
                 ZoneDiagram(ring: r)
                     .frame(height: 220)
-                SliderRow(title: "Dead zone", value: ring.deadZone, range: 0...max(1, r.flickDistance - 1))
-                SliderRow(title: "Flick distance", value: ring.flickDistance, range: (r.deadZone + 1)...max(r.deadZone + 2, 400))
-                Caption("Inside the dead zone nothing is selected. Between the two, the direction picks a wedge. Beyond the flick distance you point at the grid.")
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("**Direction** — move a little toward an edge or corner. The wedge you head for lights up and shows its layout.", systemImage: "arrow.up.right.circle")
+                    Label("**Point** — keep going past the dashed circle and the ring fades. Point at a column of the grid; click to span several.", systemImage: "rectangle.split.3x1")
+                    Label("Come back inside the dashed circle to return to directions. Release the trigger to snap.", systemImage: "arrow.uturn.backward.circle")
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            }
+
+            Section("Zones") {
+                SliderRow(title: "Nothing picked within", value: ring.deadZone, range: 0...max(1, r.flickDistance - 1))
+                SliderRow(title: "Pointing starts at", value: ring.flickDistance, range: (r.deadZone + 1)...max(r.deadZone + 2, 400))
+                Caption("The dashed circle on screen sits at \"Pointing starts at\". Make it bigger if you slip into pointing by accident.")
             }
 
             Section("Wedges") {
@@ -47,7 +57,7 @@ struct RingPane: View {
     }
 }
 
-/// Dead zone, flick ring and wedge boundaries, scaled to fit.
+/// Dead zone, direction zone (with the dashed pointing boundary) and wedge boundaries, scaled to fit.
 private struct ZoneDiagram: View {
     let ring: RingSettings
 
@@ -62,7 +72,7 @@ private struct ZoneDiagram: View {
                 Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2))
             }
             context.fill(circle(flick), with: .color(.accentColor.opacity(0.12)))
-            context.stroke(circle(flick), with: .color(.accentColor), lineWidth: 1.5)
+            context.stroke(circle(flick), with: .color(.accentColor), style: StrokeStyle(lineWidth: 1.5, dash: [4, 5]))
             context.fill(circle(dead), with: .color(.secondary.opacity(0.35)))
 
             var spokes = Path()
@@ -74,12 +84,12 @@ private struct ZoneDiagram: View {
             }
             context.stroke(spokes, with: .color(.secondary), lineWidth: 1)
 
-            context.draw(Text("Point").font(.caption), at: CGPoint(x: center.x + flick + 4, y: center.y - flick + 8), anchor: .leading)
-            context.draw(Text("Flick").font(.caption2), at: CGPoint(x: center.x, y: center.y - (flick + dead) / 2))
+            context.draw(Text("Point beyond").font(.caption), at: CGPoint(x: center.x + flick + 4, y: center.y - flick + 8), anchor: .leading)
+            context.draw(Text("Direction").font(.caption2), at: CGPoint(x: center.x, y: center.y - (flick + dead) / 2))
         }
         .background(.quinary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .accessibilityElement()
-        .accessibilityLabel("Zone diagram: dead zone \(Int(ring.deadZone)) points, flick up to \(Int(ring.flickDistance)) points, point mode beyond.")
+        .accessibilityLabel("Zone diagram: nothing picked within \(Int(ring.deadZone)) points, directions up to \(Int(ring.flickDistance)) points, pointing beyond.")
     }
 }
 

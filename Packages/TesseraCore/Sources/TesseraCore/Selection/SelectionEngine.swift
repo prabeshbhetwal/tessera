@@ -18,18 +18,22 @@ public struct SpanAnchor: Equatable, Sendable {
 /// Pure flick/point selection (spec §4.2-4.4). Coordinates are AppKit global (y up).
 public struct SelectionEngine: Sendable {
     public let ring: RingSettings
+    /// Once pointing, the cursor must come this far back inside the flick distance to pick a direction
+    /// again, so hovering on the boundary doesn't flicker between the ring and the grid.
+    public static let pointHysteresis: Double = 8
 
     public init(ring: RingSettings) { self.ring = ring }
 
+    /// `pointing` is whether the previous selection was a grid span (see `pointHysteresis`).
     public func select(
-        origin: CGPoint, cursor: CGPoint, displays: [DisplayContext], anchor: SpanAnchor?
+        origin: CGPoint, cursor: CGPoint, displays: [DisplayContext], anchor: SpanAnchor?, pointing: Bool = false
     ) -> Selection {
         let dx = Double(cursor.x - origin.x)
         let dy = Double(cursor.y - origin.y)
         let distance = hypot(dx, dy)
 
         if distance < ring.deadZone { return .none }
-        if distance < ring.flickDistance { return wedge(dx: dx, dy: dy) }
+        if distance < ring.flickDistance - (pointing ? Self.pointHysteresis : 0) { return wedge(dx: dx, dy: dy) }
 
         guard let display = displays.display(at: cursor) else {
             return .none

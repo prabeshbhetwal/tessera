@@ -31,8 +31,11 @@ actor WindowService {
     private static let timeout: Float = 0.3
     private static let undoDepth = 20
     private static let enhancedUI = "AXEnhancedUserInterface"
+    private static let frameInterval: Duration = .milliseconds(16)
 
     private var stacks: [UndoKey: UndoStack] = [:]
+    /// Bumped per window by every move, so a glide still running gives way to the newer move.
+    private var generations: [UndoKey: Int] = [:]
     /// Chronological move history; entries whose stack has run dry are skipped on undo.
     private var history: [UndoKey] = []
 
@@ -62,12 +65,24 @@ actor WindowService {
         return AX.frame(window.element).map { CoordinateSpace.fromAX($0, primaryHeight: primaryHeight) }
     }
 
-    func apply(_ target: CGRect, to window: WindowRef, primaryHeight: CGFloat, crossingDisplays: Bool) -> ApplyResult {
+    /// `duration` > 0 glides the window there first (time-based, so a slow app just gets fewer frames).
+    func apply(
+        _ target: CGRect, to window: WindowRef, primaryHeight: CGFloat, crossingDisplays: Bool, duration: Double = 0
+    ) async -> ApplyResult {
         let element = window.element
         AXUIElementSetMessagingTimeout(element, Self.timeout)
         guard let before = AX.frame(element) else { return .failed("Can't read the window's frame") }
 
         let goal = CoordinateSpace.toAX(target, primaryHeight: primaryHeight)
+        let key = Self.key(for: window)
+        let generation = (generations[key] ?? 0) + 1
+        generations[key] = generation
+        if duration > 0, before != goal, !(await glide(window, from: before, to: goal, duration: duration, key: key, generation: generation)) {
+            // A newer move of this window took over mid-flight; it does the final write and records undo.
+            return .applied(target)
+        }
+        if generations[key] == generation { generations[key] = nil }
+
         guard setFrame(goal, on: window, crossingDisplays: crossingDisplays) else {
             return .failed("The app didn't accept the new frame")
         }
@@ -135,8 +150,40 @@ actor WindowService {
         return results.contains(true)
     }
 
+    /// Eases (cubic ease-out) from `start` toward `goal` in AX coordinates, without the final exact write.
+    /// False when a newer move of the same window took over. The actor is free between frames.
+    private func glide(
+        _ window: WindowRef, from start: CGRect, to goal: CGRect, duration: Double, key: UndoKey, generation: Int
+    ) async -> Bool {
+        let app = AXUIElementCreateApplication(window.pid)
+        AXUIElementSetMessagingTimeout(app, Self.timeout)
+        let enhanced = AX.bool(app, Self.enhancedUI) == true
+        if enhanced { AX.setBool(app, Self.enhancedUI, false) }
+        defer { if enhanced { AX.setBool(app, Self.enhancedUI, true) } }
+
+        let clock = ContinuousClock()
+        let begin = clock.now
+        let total = Duration.seconds(duration)
+        while true {
+            let t = min((clock.now - begin) / total, 1)
+            if t >= 1 { return true }
+            let e = 1 - pow(1 - t, 3)
+            let frame = CGRect(
+                x: start.minX + (goal.minX - start.minX) * e, y: start.minY + (goal.minY - start.minY) * e,
+                width: start.width + (goal.width - start.width) * e, height: start.height + (goal.height - start.height) * e)
+            _ = AX.setPosition(window.element, frame.origin)
+            _ = AX.setSize(window.element, frame.size)
+            try? await Task.sleep(for: Self.frameInterval)
+            guard generations[key] == generation else { return false }
+        }
+    }
+
+    private static func key(for window: WindowRef) -> UndoKey {
+        window.windowID.map { .window($0) } ?? .element(Int(bitPattern: CFHash(window.element)))
+    }
+
     private func push(_ axFrame: CGRect, for window: WindowRef) {
-        let key: UndoKey = window.windowID.map { .window($0) } ?? .element(Int(bitPattern: CFHash(window.element)))
+        let key = Self.key(for: window)
         var stack = stacks[key] ?? UndoStack(ref: window, frames: [])
         stack.ref = window
         stack.frames.append(axFrame)

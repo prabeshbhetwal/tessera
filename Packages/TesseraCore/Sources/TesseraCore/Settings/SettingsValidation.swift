@@ -42,6 +42,13 @@ public enum SettingsValidation {
             "Top and bottom bands must add up to less than 100%."
         )
 
+        if let d = s.snapDuration {
+            try require(
+                d >= 0 && d <= SnapSpeed.maxSeconds,
+                "Snap duration must be between 0 and \(SnapSpeed.maxSeconds) seconds."
+            )
+        }
+
         for key in s.displayOverrides.keys.sorted() {
             let columns = s.displayOverrides[key]?.columns ?? 0
             try require(columns >= 1, "Display \(key) needs at least 1 column (found \(columns)).")
