@@ -52,6 +52,10 @@ struct OnboardingView: View {
                     Button("Done", action: onFinish)
                         .keyboardShortcut(.defaultAction)
                 }
+                // Esc skips the current step; on the last step it closes, like Done.
+                KeyCommand(.cancelAction) {
+                    if step < Self.stepCount - 1 { step += 1 } else { onFinish() }
+                }
             }
         }
         .padding(28)
@@ -139,6 +143,7 @@ struct OnboardingView: View {
                 Label("Move further to point at a column; click to span several.", systemImage: "rectangle.split.3x1")
                 Label("Scroll while holding to change the column count.", systemImage: "scroll")
                 Label("Release to snap, press Esc to cancel.", systemImage: "return")
+                Label("Or, while holding, use the arrow keys and press Return.", systemImage: "keyboard")
             }
             if !axTrusted {
                 Caption("Accessibility isn't granted yet, so the gesture won't move this window. Go back a step to grant it.")
