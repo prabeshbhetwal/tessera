@@ -6,9 +6,11 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "TesseraCore", targets: ["TesseraCore"]),
+        .executable(name: "tessera", targets: ["TesseraCLI"]),
     ],
     targets: [
         .target(name: "TesseraCore"),
+        .executableTarget(name: "TesseraCLI", dependencies: ["TesseraCore"]),
         .testTarget(name: "TesseraCoreTests", dependencies: ["TesseraCore"]),
     ]
 )
