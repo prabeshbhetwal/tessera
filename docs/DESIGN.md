@@ -4,13 +4,15 @@ Tessera is a native SwiftUI macOS app. It has no palette of its own: colours, ty
 
 ## Visual Theme
 
-Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the left, grouped forms on the right, one header per pane that says what the pane controls.
+Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the left, grouped forms on the right, one header per pane that says what the pane controls. Panes, in ⌘1–9 order: General, Excluded Apps (Setup); Shortcuts, Cycles (Control); Displays, Ring, Overlay, Motion (Snapping); About. Spelling is en-AU throughout (Maximise, Centre, colour); command identifiers stay en-US.
+
+The signature is the overlay: a vibrant material ring and a lifted preview frame, the one place Tessera looks like itself rather than like a form.
 
 ## Color
 
 - Surfaces, text and separators: system semantic colours only (`windowBackground`, `.primary`, `.secondary`, `.separator`, `.quinary`).
 - Accent: the user's system accent (`Color.accentColor`). Used for selection, focus rings, the live wedge in diagrams and the primary button. Never decoration.
-- Pane icon tiles: one solid system colour per pane (gray, orange, blue, indigo, teal, pink, red), white symbol. This is the only place colour is used for identity.
+- Pane icon tiles: one solid system colour per pane (gray, red, orange, green, blue, indigo, teal, mint), white symbol. This is the only place colour is used for identity.
 - State: `.green` for granted permissions, `.orange` for warnings. Always paired with a symbol and text.
 
 ## Typography
@@ -34,15 +36,32 @@ System font (SF Pro) throughout. One family.
 - `RecorderField`: shared focusable field for chord and hotkey recording. Space or Return records, Delete clears, Esc cancels.
 - `SliderRow`: labelled slider with its value right-aligned in monospaced digits.
 - `Caption`: secondary explanatory text under a control.
-- `ResetSection`: trailing "Reset section" button, last section of each pane.
+- `ResetSection`: trailing "Restore Defaults" button, last section of each pane, with an optional line saying what is kept. It is the only reset verb in the app.
+- `RingDiagram`: the ring drawn with the overlay's own geometry (`RingLayer` paths). In the Ring pane it is the wedge picker: click or ← → to focus a wedge, one Picker below edits it. The Overlay pane's sample reuses it with the right-half wedge lit.
+- Overlay (on screen): the ring is a vibrant `NSVisualEffectView` (`.hudWindow`, behind-window blending) cut to the wedges, with a theme tint, hairline edges, white glyphs and the accent wedge on top. Grid lines and the "from" outline carry a dark halo so they read on light wallpapers. The HUD is the same material in a capsule.
 - Diagrams (`MiniGrid`, `ZoneDiagram`, `PreviewSample`, `FlickDemo`): `Canvas` drawings on a `.quinary` rounded panel, accent for the live element.
 
 ## Layout
 
-- Settings: `NavigationSplitView`, sidebar 200 pt, detail min 560 pt. Window min 760 × 540, resizable.
+- Settings: `NavigationSplitView` with a fixed 200 pt sidebar that can't collapse. The window is a fixed 820 × 720 pt (smaller only on a screen that can't fit it): never resized, zoomed or full screen. It remembers its position.
+- Explanations go in section footers (`Footer`), under the rounded group, never as rows inside it. Inline captions are only for live validation (a name already taken, a hotkey conflict).
+- Sliders never show tick marks; `SliderRow` rounds to its step in the binding.
+- Appearance (General): Match System, Light or Dark for Tessera's own windows, chosen from window thumbnails.
 - Forms: `.formStyle(.grouped)`; one `Section` per idea, sections in order of how often they are changed.
 - Onboarding: fixed 600 × 500. Centred hero (demo or icon tile), title, 440 pt body column, step controls, footer with step dots and buttons.
 - Spacing scale: 4, 8, 12, 16, 20, 24, 36.
+
+## Customisation rule
+
+Every behaviour the user can see has its own switch, and switches never change each other.
+- Ring pane, Gestures: directions, pointing, click to span, scroll to change columns. A caption says what the current combination does.
+- Ring pane, Appearance: show the ring, wedge icons (Layout pictures, Arrows, None), dashed boundary, frosted background, grid lines while picking a column. Hiding the ring keeps every gesture working.
+- Ring pane, Colours: ring, tint, lines and icons, highlighted wedge, grid. A setting lives where the user looks for it: ring colours are in the Ring pane, and also in Overlay with the rest of the theme.
+- Overlay pane: theme, every colour (ring, lines and icons, highlight, snap preview, grid, label, label text, outline, dimming); label parts (size, slot); dimming and the "from" outline as two switches.
+- General: Appearance; Menu bar (show, icon, and which items: status line, Snap Front Window, Columns, Shortcuts…, Undo; Settings… and Quit always); Messages (on/off, position, duration).
+- Shortcuts: a master hotkeys switch above the per-hotkey switches.
+- Theme colours are edited through `SettingsModel.editTheme` / `themeColor`: a built-in theme is copied to "Custom" first and never changed itself.
+A new setting only needs a default value in `TesseraSettings` (or a nested struct, or `Theme`): `SettingsMigration` fills missing keys in older files, including inside each custom theme.
 
 ## Motion
 

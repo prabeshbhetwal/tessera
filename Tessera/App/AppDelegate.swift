@@ -1,19 +1,12 @@
 import AppKit
-import Observation
 import os
 import TesseraCore
-
-/// App-wide state the menu bar reads.
-@MainActor @Observable
-final class AppState {
-    var accessibilityGranted = Permissions.isAccessibilityTrusted
-}
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = SettingsModel()
-    let state = AppState()
     private(set) var coordinator: Coordinator?
+    private var statusItem: StatusItemController?
     private var permissionObserver: NSObjectProtocol?
     /// URLs that arrive before the coordinator exists (app launched by a `tessera://` link).
     private var pendingURLs: [URL] = []
@@ -28,6 +21,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // After the single-instance guard: start() replaces any existing socket file.
         socketServer.start()
+        statusItem = StatusItemController(
+            model: model,
+            presenter: { [weak self] in self?.coordinator?.presenter },
+            run: { [weak self] command in
+                guard let coordinator = self?.coordinator else { return }
+                Task { await coordinator.run(command) }
+            }
+        )
         guard let fileURL = Self.settingsURL() else {
             log.fault("no Application Support directory")
             return
@@ -36,7 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             let loaded = await store.load()
             model.settings = loaded.settings
+            applyAppSettings(loaded.settings)
             let coordinator = Coordinator(model: model, store: store)
+            coordinator.onSettingsChange = { [weak self] in self?.applyAppSettings($0) }
             self.coordinator = coordinator
             CommandBridge.executor = coordinator.executor
             let queued = pendingURLs
@@ -46,11 +49,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             permissionObserver = Permissions.observeAccessibility { [weak self] granted in
                 self?.permissionChanged(granted)
             }
+            // Setup interrupted by a relaunch (System Settings' "Quit & Reopen" after a permission grant)
+            // picks up at the step it was on.
+            let resumeStep = OnboardingView.savedStep
             if Permissions.isAccessibilityTrusted, coordinator.start() {
-                state.accessibilityGranted = true
+                statusItem?.accessibilityGranted = true
+                if let resumeStep { coordinator.presenter.showOnboarding(startStep: resumeStep) }
             } else {
-                state.accessibilityGranted = false
-                coordinator.presenter.showOnboarding()
+                statusItem?.accessibilityGranted = false
+                coordinator.presenter.showOnboarding(startStep: min(resumeStep ?? 0, OnboardingView.accessibilityStep))
             }
         }
     }
@@ -97,8 +104,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// App-level settings that live outside the coordinator: the menu bar item and the windows' appearance.
+    private func applyAppSettings(_ settings: TesseraSettings) {
+        statusItem?.apply(settings)
+        let appearance: NSAppearance? = switch settings.appearance {
+        case .system: nil
+        case .light: NSAppearance(named: .aqua)
+        case .dark: NSAppearance(named: .darkAqua)
+        }
+        if NSApp.appearance != appearance { NSApp.appearance = appearance }
+    }
+
     private func permissionChanged(_ granted: Bool) {
-        state.accessibilityGranted = granted
+        statusItem?.accessibilityGranted = granted
         if granted {
             coordinator?.start()
         } else {

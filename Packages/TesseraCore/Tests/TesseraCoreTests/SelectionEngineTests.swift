@@ -46,11 +46,40 @@ private func cursor(at degrees: Double, distance: Double = 50) -> CGPoint {
         let c = CGPoint(x: origin.x + 9.99, y: origin.y)
         #expect(engine.select(origin: origin, cursor: c, displays: [chg()], anchor: nil) == .none)
         #expect(engine.select(origin: origin, cursor: origin, displays: [chg()], anchor: nil) == .none)
+        // The ring's whole empty middle (radius − thickness / 2 = 39 pt by default) selects nothing.
+        let edge = CGPoint(x: origin.x + 38.99, y: origin.y)
+        #expect(engine.select(origin: origin, cursor: edge, displays: [chg()], anchor: nil) == .none)
+    }
+
+    /// The reported bug: with the dead zone at 0, pressing and releasing without moving picked wedge 0
+    /// (atan2(0, 0) points up) and maximised the window. Standing still or jittering never picks anything.
+    @Test func testZeroDeadZoneStillIgnoresNoMoveAndJitter() {
+        var ring = RingSettings()
+        ring.deadZone = 0
+        let e = SelectionEngine(ring: ring)
+        #expect(e.select(origin: origin, cursor: origin, displays: [chg()], anchor: nil) == .none)
+        #expect(e.select(origin: origin, cursor: CGPoint(x: origin.x + 2, y: origin.y + 2), displays: [chg()], anchor: nil) == .none)
+        let pastCancel = CGPoint(x: origin.x + ring.cancelRadius + 1, y: origin.y)
+        #expect(e.select(origin: origin, cursor: pastCancel, displays: [chg()], anchor: nil)
+            == .wedge(index: 2, action: .rightHalf), "a deliberate move past the cancel area still works")
+    }
+
+    @Test func testTilesSplitTheDisplayEqually() {
+        let d = chg()
+        let three = GridGeometry.tiles(3, display: d)
+        #expect(three.count == 3)
+        let widths = three.map(\.width)
+        #expect(widths.max()! - widths.min()! < 0.5, "equal shares")
+        #expect(three[0].minX < three[1].minX && three[1].minX < three[2].minX, "left to right")
+        let usable = GridGeometry.usableFrame(d.visibleFrame, profile: d.profile)
+        #expect(abs(three[0].minX - usable.minX) < 0.5 && abs(three[2].maxX - usable.maxX) < 0.5, "fills the display")
+        #expect(GridGeometry.tiles(0, display: d).isEmpty)
+        #expect(GridGeometry.tiles(1, display: d) == [GridGeometry.frame(for: .maximize, display: d, current: .zero)])
     }
 
     @Test func testFlickBoundaries() {
         let d = [chg()]
-        let at10 = CGPoint(x: origin.x + 10, y: origin.y)
+        let at10 = CGPoint(x: origin.x + RingSettings().cancelRadius, y: origin.y)
         let at8999 = CGPoint(x: origin.x + 89.99, y: origin.y)
         let at90 = CGPoint(x: origin.x + 90, y: origin.y)
         #expect(engine.select(origin: origin, cursor: at10, displays: d, anchor: nil)
@@ -195,6 +224,28 @@ private func cursor(at degrees: Double, distance: Double = 50) -> CGPoint {
         #expect(bottom == .span(display: sideID, span: ColumnSpan(columns: 2...2, band: .full)))
     }
 
+    /// The cell under the cursor is the cell GridGeometry draws, whatever the padding: an oversized
+    /// padding is clamped the same way on both sides, so the highlighted column is the hit column.
+    @Test func testCellMatchesGridGeometryForAnyPadding() {
+        for padding in [0.0, 8, 300, 600, 2000] {
+            let base = chg()
+            let d = DisplayContext(
+                id: chgID, visibleFrame: base.visibleFrame, range: base.range,
+                profile: DisplayProfile(columns: 5, gap: 8, padding: padding))
+            for x in stride(from: 1.0, to: 3840, by: 97) {
+                let p = CGPoint(x: x, y: 500)
+                guard case .span(_, let span) = engine.select(origin: .zero, cursor: p, displays: [d], anchor: nil) else {
+                    Issue.record("expected a span at x=\(x) padding=\(padding)")
+                    continue
+                }
+                let drawn = GridGeometry.frame(for: span, display: d)
+                let usable = GridGeometry.usableFrame(d.visibleFrame, profile: d.profile)
+                let clampedX = min(max(x, usable.minX), usable.maxX - 0.001)
+                #expect(drawn.minX - 4 <= clampedX && clampedX <= drawn.maxX + 4, "x=\(x) padding=\(padding) span=\(span)")
+            }
+        }
+    }
+
     // Review fix: the menu bar / Dock strips belong to the display (no dead zone).
     @Test func testMenuBarAndDockStripsSelectDisplay() {
         let base = chg()
@@ -207,5 +258,37 @@ private func cursor(at degrees: Double, distance: Double = 50) -> CGPoint {
         #expect(dock == .span(display: chgID, span: ColumnSpan(columns: 0...0, band: .bottom)))
         #expect(engine.anchor(at: CGPoint(x: 1600, y: 1070), displays: [d]) != nil)
         #expect(engine.select(origin: .zero, cursor: CGPoint(x: 1600, y: 1300), displays: [d], anchor: nil) == .none)
+    }
+
+    // MARK: Gesture switches
+
+    @Test func directionsOffPointsPastTheCancelArea() {
+        var ring = RingSettings()
+        ring.directions = false
+        let e = SelectionEngine(ring: ring)
+        let near = CGPoint(x: origin.x + ring.cancelRadius + 5, y: origin.y)  // would be a wedge with directions on
+        guard case .span = e.select(origin: origin, cursor: near, displays: [chg()], anchor: nil) else {
+            Issue.record("expected a grid span")
+            return
+        }
+        #expect(e.select(origin: origin, cursor: CGPoint(x: origin.x + 5, y: origin.y), displays: [chg()], anchor: nil) == .none)
+    }
+
+    @Test func pointingOffKeepsWedgesAtAnyDistance() {
+        var ring = RingSettings()
+        ring.pointing = false
+        let e = SelectionEngine(ring: ring)
+        let far = CGPoint(x: origin.x + 900, y: origin.y)
+        #expect(e.select(origin: origin, cursor: far, displays: [chg()], anchor: nil) == .wedge(index: 2, action: .rightHalf))
+    }
+
+    @Test func bothGesturesOffSelectNothing() {
+        var ring = RingSettings()
+        ring.directions = false
+        ring.pointing = false
+        let e = SelectionEngine(ring: ring)
+        for distance in [30.0, 200, 900] {
+            #expect(e.select(origin: origin, cursor: CGPoint(x: origin.x + distance, y: origin.y), displays: [chg()], anchor: nil) == .none)
+        }
     }
 }

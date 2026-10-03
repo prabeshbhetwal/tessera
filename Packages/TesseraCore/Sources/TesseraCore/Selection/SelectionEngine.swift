@@ -21,6 +21,9 @@ public struct SelectionEngine: Sendable {
     /// Once pointing, the cursor must come this far back inside the flick distance to pick a direction
     /// again, so hovering on the boundary doesn't flicker between the ring and the grid.
     public static let pointHysteresis: Double = 8
+    /// Hand and trackpad jitter while pressing the chord. A move shorter than this never picks anything,
+    /// even with the dead zone set to 0, so pressing and releasing in place does nothing.
+    public static let jitterTolerance: Double = 4
 
     public init(ring: RingSettings) { self.ring = ring }
 
@@ -32,10 +35,11 @@ public struct SelectionEngine: Sendable {
         let dy = Double(cursor.y - origin.y)
         let distance = hypot(dx, dy)
 
-        if distance < ring.deadZone { return .none }
-        if distance < ring.flickDistance - (pointing ? Self.pointHysteresis : 0) { return wedge(dx: dx, dy: dy) }
-
-        guard let display = displays.display(at: cursor) else {
+        if distance < ring.cancelRadius { return .none }
+        // Directions off: every move past the cancel area points. Pointing off: the wedges reach any distance.
+        let inDirectionZone = distance < ring.flickDistance - (pointing ? Self.pointHysteresis : 0)
+        if ring.directions, inDirectionZone || !ring.pointing { return wedge(dx: dx, dy: dy) }
+        guard ring.pointing, let display = displays.display(at: cursor) else {
             return .none
         }
         let here = cell(at: cursor, in: display)
@@ -71,29 +75,17 @@ public struct SelectionEngine: Sendable {
         return .wedge(index: index, action: ring.wedges[index])
     }
 
-    /// Column (or row from the top, on portrait displays) and band under `p`.
-    /// Mirrors GridGeometry's rule on purpose (inlined; both are tested against the CHG90 fixture).
+    /// Column (or row from the top, on portrait displays) and band under `p`. Same geometry as the
+    /// frames GridGeometry draws, so the cell under the cursor is always the cell that lights up.
     private func cell(at p: CGPoint, in display: DisplayContext) -> (column: Int, band: Band) {
-        let pad = display.profile.padding
-        let usable = display.visibleFrame.insetBy(dx: pad, dy: pad)
-        let count = max(1, display.profile.columns)
+        let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
+        let index = GridGeometry.index(at: p, in: usable, count: display.profile.columns, portrait: display.range.isPortrait)
+        if display.range.isPortrait { return (index, .full) }
 
-        if display.range.isPortrait {
-            let index = slot(offset: usable.maxY - p.y, extent: usable.height, count: count)
-            return (index, .full)
-        }
-
-        let index = slot(offset: p.x - usable.minX, extent: usable.width, count: count)
         let frame = display.visibleFrame
         let fraction = frame.height > 0 ? Double((p.y - frame.minY) / frame.height) : 0.5
         let band: Band =
             fraction >= 1 - ring.topBand ? .top : (fraction < ring.bottomBand ? .bottom : .full)
         return (index, band)
-    }
-
-    private func slot(offset: CGFloat, extent: CGFloat, count: Int) -> Int {
-        guard extent > 0 else { return 0 }
-        let raw = Int((offset / (extent / CGFloat(count))).rounded(.down))
-        return min(max(raw, 0), count - 1)
     }
 }

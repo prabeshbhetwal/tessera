@@ -22,8 +22,8 @@ public enum WindowAction: String, Codable, CaseIterable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .maximize: "Maximize"
-        case .center: "Center"
+        case .maximize: "Maximise"
+        case .center: "Centre"
         case .leftHalf: "Left half"
         case .rightHalf: "Right half"
         case .topHalf: "Top half"

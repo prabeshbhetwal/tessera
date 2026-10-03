@@ -87,6 +87,8 @@ final class CommandExecutor: CommandExecuting {
             return CommandResult(ok: true, message: "\(columns) columns")
         case let .moveToDisplay(step):
             return try await moveToDisplay(step)
+        case let .tileWindows(selector):
+            return try await tile(selector)
         case .undo:
             guard await windows.undoLast() else { throw Failure(message: "Nothing to undo") }
             return .success
@@ -130,12 +132,44 @@ final class CommandExecutor: CommandExecuting {
     }
 
     /// Keeps the window's grid span (scaled to the new column count), or its proportional frame when off-grid.
+    /// Every visible window on the display, side by side in equal shares: 3 windows get a third each. Windows
+    /// keep their left-to-right order (top-to-bottom on a portrait display). Each move can be undone.
+    private func tile(_ selector: DisplaySelector) async throws(Failure) -> CommandResult {
+        guard Permissions.isAccessibilityTrusted else {
+            throw Failure(message: "Tessera needs Accessibility permission to move windows")
+        }
+        // `.current` is the front window's display; with no front window (desktop or Tessera in front) the
+        // display under the cursor.
+        let front = await windows.frontmostWindow()
+        let frontFrame: CGRect? = if let front { await windows.frame(of: front) } else { nil }
+        let display = try resolve(selector == .current && frontFrame == nil ? .cursor : selector, windowFrame: frontFrame)
+        let found = await windows.visibleWindows(on: display.frame, primaryHeight: DisplayService.primaryHeight,
+                                                 excluding: Set(model.settings.excludedBundleIDs))
+        guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display") }
+        let portrait = display.range.isPortrait
+        let ordered = found.sorted { portrait ? $0.frame.midY > $1.frame.midY : $0.frame.minX < $1.frame.minX }
+        let slots = GridGeometry.tiles(ordered.count, display: display)
+        // All at once, so with a snap speed set the windows glide together instead of one after another.
+        let moved = await withTaskGroup(of: Bool.self) { group in
+            for (entry, slot) in zip(ordered, slots) {
+                group.addTask {
+                    if case .applied = await self.place(entry.window, current: entry.frame, goal: slot) { return true }
+                    return false
+                }
+            }
+            var count = 0
+            for await ok in group where ok { count += 1 }
+            return count
+        }
+        await windows.mergeLastMoves(moved)  // one ⌃⌥Z puts every tiled window back
+        let n = ordered.count
+        return CommandResult(ok: moved > 0, message: moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows")
+    }
+
     private func moveToDisplay(_ step: DisplayStep) async throws(Failure) -> CommandResult {
         let (window, frame) = try await frontmost()
-        let list = displays.displays
-        guard let from = list.display(at: CGPoint(x: frame.midX, y: frame.midY))
-            ?? DisplayResolver.resolve(.current, displays: list, windowFrame: frame, cursor: NSEvent.mouseLocation),
-            let to = DisplayResolver.step(step, from: from, displays: list) else {
+        let from = try resolve(.current, windowFrame: frame)
+        guard let to = DisplayResolver.step(step, from: from, displays: displays.displays) else {
             throw Failure(message: "No such display")
         }
         guard to.id != from.id else { return CommandResult(ok: true, message: "Already on that display") }

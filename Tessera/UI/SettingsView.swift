@@ -4,17 +4,18 @@ import TesseraCore
 
 /// Settings panes in sidebar order; ⌘1–8 selects them.
 enum SettingsPane: Int, CaseIterable, Hashable {
-    case general, shortcuts, displays, ring, preview, appearance, excludedApps, about
+    case general, excludedApps, shortcuts, cycles, displays, ring, overlay, motion, about
 
     var title: String {
         switch self {
         case .general: "General"
+        case .excludedApps: "Excluded Apps"
         case .shortcuts: "Shortcuts"
+        case .cycles: "Cycles"
         case .displays: "Displays"
         case .ring: "Ring"
-        case .preview: "Preview"
-        case .appearance: "Appearance"
-        case .excludedApps: "Excluded Apps"
+        case .overlay: "Overlay"
+        case .motion: "Motion"
         case .about: "About"
         }
     }
@@ -22,12 +23,13 @@ enum SettingsPane: Int, CaseIterable, Hashable {
     var symbol: String {
         switch self {
         case .general: "gearshape.fill"
+        case .excludedApps: "hand.raised.fill"
         case .shortcuts: "command"
+        case .cycles: "arrow.triangle.2.circlepath"
         case .displays: "display"
         case .ring: "smallcircle.filled.circle"
-        case .preview: "rectangle.lefthalf.filled"
-        case .appearance: "paintpalette.fill"
-        case .excludedApps: "hand.raised.fill"
+        case .overlay: "circle.lefthalf.filled"
+        case .motion: "hare.fill"
         case .about: "info"
         }
     }
@@ -35,28 +37,28 @@ enum SettingsPane: Int, CaseIterable, Hashable {
     var tint: Color {
         switch self {
         case .general: .gray
+        case .excludedApps: .red
         case .shortcuts: .orange
+        case .cycles: .green
         case .displays: .blue
         case .ring: .indigo
-        case .preview: .teal
-        case .appearance: .pink
-        case .excludedApps: .red
+        case .overlay: .teal
+        case .motion: .mint
         case .about: .gray
         }
     }
 
-    var group: SettingsGroup { SettingsGroup.allCases.first { $0.panes.contains(self) } ?? .about }
-
     /// One sentence under the pane title: what the pane controls.
     var blurb: String {
         switch self {
-        case .general: "The trigger chord, snap speed, launch behaviour, settings files and the command-line tool."
-        case .shortcuts: "Global hotkeys, named cycles and keyboard control of the open ring."
+        case .general: "The trigger chord, launch behaviour, settings files and the command-line tool."
+        case .excludedApps: "Apps in front of which the trigger and hotkeys stay off."
+        case .shortcuts: "Global hotkeys and keyboard control of the open ring."
+        case .cycles: "Named sequences a hotkey steps through on repeated presses."
         case .displays: "Column count, gap and padding for each connected display."
-        case .ring: "Where directions end and pointing begins, and what each direction does."
-        case .preview: "What the snap preview shows while you hold the trigger."
-        case .appearance: "Themes and colours for the ring and preview."
-        case .excludedApps: "Apps in front of which the trigger stays off."
+        case .ring: "What each direction does, where pointing begins, and how big the ring is."
+        case .overlay: "How the ring and the snap preview look on screen."
+        case .motion: "How fast windows glide into place and the preview animates."
         case .about: ""
         }
     }
@@ -64,22 +66,22 @@ enum SettingsPane: Int, CaseIterable, Hashable {
 
 /// Sidebar groups, in ⌘-number order.
 enum SettingsGroup: CaseIterable {
-    case setup, snapping, customise, about
+    case setup, control, snapping, about
 
     var title: String? {
         switch self {
         case .setup: "Setup"
+        case .control: "Control"
         case .snapping: "Snapping"
-        case .customise: "Customise"
         case .about: nil
         }
     }
 
     var panes: [SettingsPane] {
         switch self {
-        case .setup: [.general, .shortcuts]
-        case .snapping: [.displays, .ring, .preview]
-        case .customise: [.appearance, .excludedApps]
+        case .setup: [.general, .excludedApps]
+        case .control: [.shortcuts, .cycles]
+        case .snapping: [.displays, .ring, .overlay, .motion]
         case .about: [.about]
         }
     }
@@ -93,15 +95,16 @@ final class SettingsNavigation {
 
 /// Settings window root: sidebar of panes, grouped form on the right (spec §6.1, M2 §6).
 struct SettingsView: View {
-    /// Fixed window width (content points); only the height is user-adjustable.
+    /// Fixed window size in content points (smaller only on a screen that can't fit it).
     static let width: CGFloat = 820
+    static let height: CGFloat = 720
 
     @Bindable var model: SettingsModel
     @Bindable var navigation: SettingsNavigation
     var displays: [DisplayContext]
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: .constant(.all)) {
             List(selection: $navigation.pane) {
                 ForEach(SettingsGroup.allCases, id: \.self) { group in
                     Section {
@@ -119,7 +122,9 @@ struct SettingsView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 190, ideal: 200, max: 240)
+            // A fixed sidebar that can't be collapsed or dragged, like System Settings.
+            .navigationSplitViewColumnWidth(200)
+            .toolbar(removing: .sidebarToggle)
         } detail: {
             VStack(spacing: 0) {
                 if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
@@ -136,19 +141,19 @@ struct SettingsView: View {
                 KeyCommand(KeyEquivalent(Character("\(pane.rawValue + 1)"))) { navigation.pane = pane }
             }
         }
-        .frame(width: Self.width)
-        .frame(minHeight: 540, idealHeight: 640)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder private var paneView: some View {
         switch navigation.pane {
         case .general: GeneralPane(model: model)
+        case .excludedApps: ExcludedAppsPane(model: model)
         case .shortcuts: ShortcutsPane(model: model)
+        case .cycles: CyclesPane(model: model)
         case .displays: DisplaysPane(model: model, displays: displays)
         case .ring: RingPane(model: model)
-        case .preview: PreviewPane(model: model)
-        case .appearance: AppearancePane(model: model)
-        case .excludedApps: ExcludedAppsPane(model: model)
+        case .overlay: OverlayPane(model: model)
+        case .motion: MotionPane(model: model)
         case .about: AboutPane()
         }
     }
@@ -181,15 +186,9 @@ struct PaneHeader: View {
     let pane: SettingsPane
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .center, spacing: 14) {
             PaneIcon(pane: pane, size: 40)
-            VStack(alignment: .leading, spacing: 3) {
-                if let eyebrow = pane.group.title {
-                    Text(eyebrow.uppercased())
-                        .font(.caption.weight(.semibold))
-                        .tracking(0.6)
-                        .foregroundStyle(.secondary)
-                }
+            VStack(alignment: .leading, spacing: 2) {
                 Text(pane.title).font(.title2.weight(.semibold))
                 Text(pane.blurb)
                     .foregroundStyle(.secondary)

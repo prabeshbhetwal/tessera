@@ -30,7 +30,7 @@ Everything works without a mouse.
 | ↑ / ↓ | Bottom, full or top band |
 | 1–9 | Jump to that column |
 | = / − | Change the column count |
-| Tab | Next display |
+| Tab / ⇧Tab | Next / previous display |
 | Return | Apply |
 | Esc | Cancel |
 
@@ -47,7 +47,7 @@ Everything works without a mouse.
 | ⌃⌥Z | Undo |
 | ⌃⌥⌘, | Settings |
 
-**Settings window.** ⌘1–8 switches panes, and every control can be reached with Tab.
+**Settings window.** ⌘1–9 switches panes (General, Excluded Apps, Shortcuts, Cycles, Displays, Ring, Overlay, Motion, About), and every control can be reached with Tab. Settings → Overlay has a **Show on Screen** button that shows the real ring and preview for three seconds, so a theme can be judged without holding the trigger.
 
 ## Automation
 
@@ -63,7 +63,7 @@ tessera displays --json
 tessera settings export ~/tessera.json
 ```
 
-**Install the CLI.** In Settings → General, choose **Install CLI**. It links the tool into `~/.local/bin/tessera`.
+**Install the CLI.** In Settings → General, choose **Install Command-Line Tool**. It links the tool into `~/.local/bin/tessera`.
 
 **URL scheme.** For example, `open "tessera://apply?cols=2-4&band=top"`. URLs cannot read or write files.
 

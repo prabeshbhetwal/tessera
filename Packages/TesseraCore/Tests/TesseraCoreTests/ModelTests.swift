@@ -22,8 +22,10 @@ import Testing
         #expect(s.ring.wedges[4] == .center)
         #expect(s.ring.topBand == 0.30)
         #expect(s.ring.bottomBand == 0.30)
-        #expect(s.preview.springResponse == 0.18)
-        #expect(s.preview.showThumbnail && s.preview.showLabel && s.preview.showNeighbours && s.preview.morph)
+        #expect(s.preview.springResponse == 0.1)
+        #expect(s.preview.style == .tint && s.preview.showLabel && s.preview.showNeighbours && !s.preview.morph)
+        #expect(!s.preview.showCurrentOutline && !s.ring.showBoundary)
+        #expect(s.ring.showColumnNumbers && s.ring.showPointingHint)
     }
 
     @Test func storageKey() {
@@ -42,6 +44,6 @@ import Testing
 
     @Test func builtInThemes() {
         #expect(Theme.builtIn.map(\.name) == ["Default", "Minimal", "Glass"])
-        #expect(Theme.minimal.preview.showThumbnail == false)
+        #expect(Theme.minimal.preview.style == .tint)
     }
 }

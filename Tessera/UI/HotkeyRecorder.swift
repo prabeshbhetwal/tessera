@@ -6,6 +6,8 @@ extension Notification.Name {
     /// Posted with `userInfo["active": Bool]` when a recorder starts or stops capturing keys,
     /// so global hotkeys and the trigger can be paused while the user types a new shortcut.
     static let tesseraRecorderActive = Notification.Name("TesseraRecorderActive")
+    /// Posted by the Overlay pane's "Show on screen" button; the coordinator shows the real overlay briefly.
+    static let tesseraPreviewOverlay = Notification.Name("TesseraPreviewOverlay")
 }
 
 extension Hotkey {
@@ -71,18 +73,22 @@ struct RecorderField: View {
     let clear: () -> Void
     @FocusState private var focused: Bool
 
+    /// A real button: every click starts recording. (It was text marked as an editable focus target, so a
+    /// click often went to focusing and selecting the text instead of the tap that starts recording.)
     var body: some View {
-        Text(text)
-            .monospaced()
-            .lineLimit(1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .frame(minWidth: 110)
-            .background(RoundedRectangle(cornerRadius: 5).fill(recording ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.12)))
-            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(focused || recording ? Color.accentColor : .clear, lineWidth: 1.5))
-            .contentShape(Rectangle())
-            .onTapGesture { if !recording { start() } }
-            .focusable(interactions: .edit)
+        Button { if !recording { start() } } label: {
+            Text(text)
+                .monospaced()
+                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .frame(minWidth: 110)
+                .background(RoundedRectangle(cornerRadius: 5).fill(recording ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.12)))
+                .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(focused || recording ? Color.accentColor : .clear, lineWidth: 1.5))
+                .contentShape(Rectangle())
+        }
+            .buttonStyle(.plain)
+            .focusable(interactions: .activate)
             .focusEffectDisabled()
             .focused($focused)
             .onKeyPress(keys: [.space, .return]) { _ in

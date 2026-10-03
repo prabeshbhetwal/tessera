@@ -12,6 +12,9 @@ public enum InputEvent: Sendable, Equatable {
     case mouseMoved(CGPoint)
     case leftMouseDown(CGPoint)
     case leftMouseUp(CGPoint)
+    /// Cancels an open ring.
+    case rightMouseDown
+    case rightMouseUp
     /// Point delta. InputService maps one mouse-wheel notch to `TriggerMachine.scrollStepPoints`
     /// and drops trackpad momentum to 0.
     case scroll(deltaY: Double)
@@ -46,7 +49,6 @@ public struct TriggerResult: Equatable, Sendable {
 /// Chord-held state machine. A value type confined to the event-tap thread, which owns it so
 /// it can decide synchronously whether to suppress an event (spec §5.3).
 public struct TriggerMachine: Sendable {
-    private static let escapeKeyCode: UInt16 = 53
     /// Accumulated scroll distance that changes the column count by one.
     public static let scrollStepPoints: Double = 60
 
@@ -57,6 +59,7 @@ public struct TriggerMachine: Sendable {
     public private(set) var isOpen = false
     private var scrollAccumulator: Double = 0
     private var swallowNextMouseUp = false
+    private var swallowNextRightMouseUp = false
     /// Key codes whose key-down was swallowed and whose key-up hasn't arrived yet.
     private var swallowedKeys: Set<UInt16> = []
     /// Set by the owner (event tap) while the frontmost app is excluded: no ring, no hotkeys.
@@ -92,6 +95,15 @@ public struct TriggerMachine: Sendable {
             guard swallowNextMouseUp || isOpen else { return .ignored }
             swallowNextMouseUp = false
             return TriggerResult(outputs: [], suppress: true)
+        case .rightMouseDown:
+            guard isOpen else { return .ignored }
+            isOpen = false
+            swallowNextRightMouseUp = true
+            return TriggerResult(outputs: [.cancel], suppress: true)
+        case .rightMouseUp:
+            guard swallowNextRightMouseUp else { return .ignored }
+            swallowNextRightMouseUp = false
+            return TriggerResult(outputs: [], suppress: true)
         case .scroll(let deltaY):
             guard isOpen else { return .ignored }
             // Swallow every scroll while open (incl. zero/momentum) so the window below never scrolls.
@@ -104,11 +116,16 @@ public struct TriggerMachine: Sendable {
     }
 
     /// Called when the system disabled the tap: key-ups may have been lost, so close without applying.
+    /// Pending swallows are dropped too, or a stale entry would eat the next key-up of that key.
     public mutating func reset() -> [TriggerOutput] {
         let wasOpen = isOpen
         isOpen = false
         armed = true
         scrollAccumulator = 0
+        swallowedKeys = []
+        swallowNextMouseUp = false
+        // The matching right-up may have been lost; never swallow an unrelated one later.
+        swallowNextRightMouseUp = false
         return wasOpen ? [.cancel] : []
     }
 
@@ -123,7 +140,7 @@ public struct TriggerMachine: Sendable {
                   let command = hotkeys.match(keyCode: keyCode, modifiers: modifiers) else { return .ignored }
             return TriggerResult(outputs: [.command(command)], suppress: true)
         }
-        if keyCode == Self.escapeKeyCode {
+        if keyCode == KeyCodes.escape {
             isOpen = false
             return TriggerResult(outputs: [.cancel], suppress: true)
         }
@@ -154,13 +171,11 @@ public struct TriggerMachine: Sendable {
         case 27: .columnsMinus
         case 48: shift ? .previousDisplay : .nextDisplay
         case 36, 76: .apply
-        default: digitKeyCodes.firstIndex(of: keyCode).map { .column($0 + 1) }
+        default: KeyCodes.digits.firstIndex(of: keyCode).map { .column($0 + 1) }
         }
     }
 
-    /// Key codes of the 1...9 keys on the number row, in digit order.
-    private static let digitKeyCodes: [UInt16] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
-    private static let repeatableNavKeyCodes: Set<UInt16> = Set(digitKeyCodes).union([123, 124, 125, 126, 24, 27, 48])
+    private static let repeatableNavKeyCodes: Set<UInt16> = Set(KeyCodes.digits).union([123, 124, 125, 126, 24, 27, 48])
 
     private mutating func flagsChanged(_ pressed: Set<UInt16>, _ location: CGPoint) -> TriggerResult {
         var outputs: [TriggerOutput] = []

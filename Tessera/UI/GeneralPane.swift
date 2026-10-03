@@ -8,29 +8,39 @@ struct GeneralPane: View {
     @State private var loginError: String?
     @State private var exporting = false
     @State private var importing = false
-    @State private var ioMessage: String?
+    @State private var ioMessage: Outcome?
     @State private var cliInstalled = CLIInstaller.isInstalled
-    @State private var cliMessage: String?
+    @State private var cliMessage: CLIOutcome?
     /// Read once per appearance; `SMAppService.status` is IPC and must never run in `body`.
     @State private var loginNeedsApproval = false
+    @State private var recordingChord = false
 
     var body: some View {
         Form {
-            Section("Trigger") {
-                VStack(spacing: 10) {
-                    KeycapRow(keys: ModifierKey.names(model.settings.trigger.keyCodes), prominent: true)
-                    Text("Hold these keys together to open the ring. Release any of them to snap.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                ChordRecorder(chord: $model.settings.trigger)
+            Section {
+                KeycapRow(keys: ModifierKey.names(model.settings.trigger.keyCodes), prominent: true)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                ChordRecorder(chord: $model.settings.trigger, recording: $recordingChord)
+            } header: {
+                Text("Trigger")
+            } footer: {
+                Footer(recordingChord
+                    ? "Hold the modifier keys you want, then release them. Esc cancels."
+                    : model.settings.trigger.keyCodes.count == 1
+                        ? "A single-key chord opens the ring every time you press that key."
+                        : "Hold these keys to open the ring; release to snap. Click the chord to record a new one, or select it and press Delete for the default.")
             }
 
-            SnapSpeedSection(model: model)
+            Section {
+                AppearancePicker(selection: $model.settings.appearance)
+            } header: {
+                Text("Appearance")
+            } footer: {
+                Footer("Light or dark for Tessera's windows. Match System follows macOS. The on-screen ring has its own colours in Overlay.")
+            }
 
-            Section("App") {
+            Section {
                 Toggle("Launch at login", isOn: Binding(
                     get: { model.settings.launchAtLogin },
                     set: { setLaunchAtLogin($0) }
@@ -39,13 +49,59 @@ struct GeneralPane: View {
                 if loginNeedsApproval {
                     Callout(.warning, "Approve Tessera in System Settings › General › Login Items.")
                 }
-                Toggle("Show menu bar icon", isOn: $model.settings.showMenuBarIcon)
-                if !model.settings.showMenuBarIcon {
-                    Caption("With the icon hidden, open Tessera again from Finder or Spotlight to reach Settings.")
-                }
+            } header: {
+                Text("App")
             }
 
-            Section("Import and export") {
+            Section {
+                Toggle("Show the menu bar icon", isOn: $model.settings.showMenuBarIcon)
+                Group {
+                    LabeledContent("Icon") {
+                        Picker("Icon", selection: $model.settings.menuBarIcon) {
+                            ForEach(MenuBarIcon.allCases, id: \.self) { icon in
+                                Image(systemName: icon.rawValue)
+                                    .accessibilityLabel(icon.displayName)
+                                    .help(icon.displayName)
+                                    .tag(icon)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                    Toggle("Status line (how to snap)", isOn: $model.settings.menuBarItems.statusLine)
+                    Toggle("Snap Front Window submenu", isOn: $model.settings.menuBarItems.snapSubmenu)
+                    Toggle("Columns submenu", isOn: $model.settings.menuBarItems.columnsSubmenu)
+                    Toggle("Shortcuts…", isOn: $model.settings.menuBarItems.shortcuts)
+                    Toggle("Undo Last Move", isOn: $model.settings.menuBarItems.undo)
+                }
+                .disabled(!model.settings.showMenuBarIcon)
+            } header: {
+                Text("Menu bar")
+            } footer: {
+                Footer(model.settings.showMenuBarIcon
+                    ? "Choose what the menu shows. Settings… and Quit are always there."
+                    : "With the icon hidden, open Tessera from Finder or Spotlight to reach Settings.")
+            }
+
+            Section {
+                Toggle("Show messages", isOn: $model.settings.showHUD)
+                Group {
+                    Picker("Position", selection: $model.settings.hudPosition) {
+                        ForEach(HUDPosition.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    SliderRow(title: "Stays for", value: $model.settings.hudSeconds, range: 0.5...5, step: 0.1,
+                              format: { String(format: "%.1f s", $0) })
+                }
+                .disabled(!model.settings.showHUD)
+            } header: {
+                Text("Messages")
+            } footer: {
+                Footer("Short results such as \u{201C}5 columns\u{201D} or \u{201C}Nothing to undo\u{201D}, shown on the screen under the mouse.")
+            }
+
+            Section {
                 HStack {
                     Button("Export settings…") { exporting = true }
                         .fileExporter(
@@ -55,8 +111,8 @@ struct GeneralPane: View {
                             defaultFilename: "Tessera Settings"
                         ) { result in
                             switch result {
-                            case .success: ioMessage = "Settings exported."
-                            case .failure(let error): ioMessage = "Export failed: \(error.localizedDescription)"
+                            case .success: ioMessage = .success("Settings exported.")
+                            case .failure(let error): ioMessage = .failure("Export failed: \(error.localizedDescription)")
                             }
                         }
                     Button("Import settings…") { importing = true }
@@ -64,30 +120,61 @@ struct GeneralPane: View {
                             importSettings(result)
                         }
                 }
-                Caption("Import replaces every setting. An invalid file is rejected and nothing changes.")
-                if let ioMessage { Callout(ioMessage.hasPrefix("Settings") ? .success : .warning, ioMessage) }
+                if let ioMessage { Callout(ioMessage.kind, ioMessage.text) }
+            } header: {
+                Text("Import and export")
+            } footer: {
+                Footer("Import replaces every setting. An invalid file is rejected and nothing changes.")
             }
 
-            Section("Command line") {
+            Section {
                 HStack {
-                    Button(cliInstalled ? "Reinstall command-line tool" : "Install command-line tool", action: installCLI)
+                    Button(cliInstalled ? "Reinstall Command-Line Tool" : "Install Command-Line Tool", action: installCLI)
                     Spacer()
                 }
-                if let cliMessage {
-                    Callout(cliMessage.hasPrefix("Installed") ? .success : .warning, cliMessage)
-                } else {
-                    Caption("Links the tessera command to \(CLIInstaller.linkURL.path(percentEncoded: false)) so scripts and terminals can run every Tessera command.")
+                switch cliMessage {
+                case .installed(let folder):
+                    Callout(.success, "Installed. If your shell can't find tessera, add \(folder) to your PATH:") {
+                        Button("Copy") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("export PATH=\"\(folder):$PATH\"", forType: .string)
+                        }
+                        .controlSize(.small)
+                    }
+                    Text("export PATH=\"\(folder):$PATH\"")
+                        .font(.callout.monospaced())
+                        .textSelection(.enabled)
+                case .failed(let reason):
+                    Callout(.warning, reason)
+                case nil:
+                    EmptyView()
                 }
+            } header: {
+                Text("Command line")
+            } footer: {
+                Footer("Links the tessera command into \(CLIInstaller.linkURL.deletingLastPathComponent().path(percentEncoded: false)) so scripts and terminals can run every Tessera command.")
             }
 
             ResetSection {
                 model.settings.trigger = .default
                 model.settings.showMenuBarIcon = true
+                model.settings.showHUD = true
+                model.settings.hudPosition = .bottom
+                model.settings.hudSeconds = TesseraSettings.defaults.hudSeconds
+                model.settings.menuBarIcon = .grid
+                model.settings.menuBarItems = MenuBarItems()
+                model.settings.appearance = .system
+                model.settings.snapSeconds = SnapSpeed.instant.seconds
                 if model.settings.launchAtLogin { setLaunchAtLogin(false) }
             }
         }
         .formStyle(.grouped)
-        .onAppear { loginNeedsApproval = SMAppService.mainApp.status == .requiresApproval }
+        .onAppear {
+            // The system owns the truth: the user may have removed Tessera from Login Items.
+            let status = SMAppService.mainApp.status
+            loginNeedsApproval = status == .requiresApproval
+            if status == .enabled || status == .notRegistered { model.settings.launchAtLogin = status == .enabled }
+        }
     }
 
     private func setLaunchAtLogin(_ on: Bool) {
@@ -105,57 +192,48 @@ struct GeneralPane: View {
         switch CLIInstaller.install() {
         case .success(let url):
             cliInstalled = true
-            let folder = url.deletingLastPathComponent().path(percentEncoded: false)
-            cliMessage = "Installed at \(url.path(percentEncoded: false)). \(folder) must be on your PATH; if your shell can't find tessera, add this line to ~/.zshrc: export PATH=\"\(folder):$PATH\""
+            cliMessage = .installed(folder: url.deletingLastPathComponent().path(percentEncoded: false))
         case .failure(let error):
-            cliMessage = "Couldn't install the command-line tool: \(error.localizedDescription)"
+            cliMessage = .failed("Couldn't install the command-line tool: \(error.localizedDescription)")
         }
     }
 
     private func importSettings(_ result: Result<URL, any Error>) {
         do {
             model.settings = try SettingsDocument.importSettings(from: result.get())
-            ioMessage = "Settings imported."
+            ioMessage = .success("Settings imported.")
         } catch SettingsError.invalid(let problem) {
-            ioMessage = "Import rejected: \(problem)"
+            ioMessage = .failure("Import rejected: \(problem)")
         } catch {
-            ioMessage = "Import rejected: this isn't a Tessera settings file."
+            ioMessage = .failure("Import rejected: this isn't a Tessera settings file.")
         }
     }
 }
 
-/// Preset speeds plus a seconds slider; both edit the one stored duration.
-private struct SnapSpeedSection: View {
-    @Bindable var model: SettingsModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+/// Outcome shown under a button, so the callout's kind never depends on sniffing the text.
+enum Outcome: Equatable {
+    case success(String)
+    case failure(String)
 
-    var body: some View {
-        let seconds = model.settings.snapSeconds
-        Section("Snap speed") {
-            Picker("Speed", selection: Binding(
-                get: { SnapSpeed(seconds: seconds) },
-                set: { if let speed = $0 { model.settings.snapSeconds = speed.seconds } }
-            )) {
-                ForEach(SnapSpeed.allCases, id: \.self) { Text($0.displayName).tag(Optional($0)) }
-            }
-            .pickerStyle(.segmented)
-            SliderRow(title: "Duration", value: $model.settings.snapSeconds, range: 0...SnapSpeed.maxSeconds,
-                      step: 0.01, format: { $0 == 0 ? "Instant" : String(format: "%.2f s", $0) })
-            if reduceMotion, seconds > 0 {
-                Caption("Reduce Motion is on in System Settings, so windows jump instead of gliding.")
-            } else {
-                Caption(SnapSpeed(seconds: seconds) == nil
-                    ? "Custom speed. Pick a preset above or drag to any duration."
-                    : "How long a window takes to glide into place, for the ring and shortcuts alike. Instant jumps straight there.")
-            }
+    var kind: Callout<EmptyView>.Kind { if case .success = self { .success } else { .warning } }
+    var text: String {
+        switch self {
+        case .success(let t), .failure(let t): t
         }
     }
 }
+
+private enum CLIOutcome: Equatable {
+    case installed(folder: String)
+    case failed(String)
+}
+
 
 /// Records a modifier chord: hold the keys, then release them all.
 struct ChordRecorder: View {
     @Binding var chord: TriggerChord
-    @State private var recording = false
+    /// Owned by the pane so its footer can explain what to do while recording.
+    @Binding var recording: Bool
     @State private var peak: Set<UInt16> = []
     @State private var monitor: Any?
 
@@ -169,13 +247,6 @@ struct ChordRecorder: View {
                     start: start,
                     clear: { chord = .default }
                 )
-            }
-            if recording {
-                Caption("Hold the modifier keys you want, then release them. Esc cancels.")
-            } else if chord.keyCodes.count == 1 {
-                Caption("A single-key chord opens the ring every time you press that key.")
-            } else {
-                Caption("Select the chord and press Space or Return to record. Delete restores the default.")
             }
         }
         .onDisappear { stop() }
@@ -222,7 +293,7 @@ struct SettingsDocument: FileDocument {
 
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else { throw CocoaError(.fileReadCorruptFile) }
-        settings = try JSONDecoder().decode(TesseraSettings.self, from: SettingsMigration.migrate(data).data)
+        settings = try SettingsStore.decode(data).settings
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
@@ -231,17 +302,11 @@ struct SettingsDocument: FileDocument {
         return FileWrapper(regularFileWithContents: try encoder.encode(settings))
     }
 
+    /// Same migrate → decode → validate path as the store, so the UI and the CLI accept the same files.
     static func importSettings(from url: URL) throws -> TesseraSettings {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        // M1 exports are schema v1: migrate before decoding, exactly like SettingsStore does.
-        let migrated = try SettingsMigration.migrate(Data(contentsOf: url)).data
-        let settings = try JSONDecoder().decode(TesseraSettings.self, from: migrated)
-        guard settings.schemaVersion <= TesseraSettings.defaults.schemaVersion else {
-            throw SettingsError.invalid("the file is from a newer version of Tessera")
-        }
-        try SettingsValidation.validate(settings)
-        return settings
+        return try SettingsStore.decode(Data(contentsOf: url)).settings
     }
 }
 

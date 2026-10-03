@@ -113,6 +113,89 @@ private func makeDirectory() throws -> URL {
         #expect(r.migratedFrom == nil && r.data == noVersion)
     }
 
+    /// A supported file missing keys (hand-edited, or written before a setting existed) gets those
+    /// keys from the defaults, nested ones included, and keeps everything else. No version bump, so
+    /// `migratedFrom` stays nil and no backup is made.
+    @Test func missingKeysAreFilledFromDefaultsRecursively() throws {
+        let s = userSettings()
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as? [String: Any])
+        object["preview"] = nil
+        object["snapDuration"] = nil
+        var ring = try #require(object["ring"] as? [String: Any])
+        ring["flickDistance"] = nil
+        object["ring"] = ring
+
+        let r = try SettingsMigration.migrate(try JSONSerialization.data(withJSONObject: object))
+        #expect(r.migratedFrom == nil)
+        let migrated = try JSONDecoder().decode(TesseraSettings.self, from: r.data)
+        var expected = s
+        expected.preview = .default
+        expected.snapDuration = 0
+        expected.ring.flickDistance = RingSettings.default.flickDistance
+        #expect(migrated == expected)
+        #expect(migrated.ring.deadZone == 14, "sibling keys inside a filled object are kept")
+        #expect(migrated.displayOverrides.count == 2, "user-keyed maps are never touched")
+    }
+
+    /// A custom theme saved before a theme field existed gets that field from the Default theme and keeps
+    /// its own name and colours. Without this the whole file would fail to decode and be set aside.
+    @Test func customThemesGainMissingKeys() throws {
+        var s = TesseraSettings.defaults
+        var mine = Theme.glass
+        mine.name = "Mine"
+        mine.ring.fillHex = "#123456"
+        mine.accentHex = "#FF3B30"
+        s.customThemes = [mine]
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as? [String: Any])
+        var themes = try #require(object["customThemes"] as? [[String: Any]])
+        themes[0]["previewHex"] = nil
+        var ring = try #require(themes[0]["ring"] as? [String: Any])
+        ring["gridHex"] = nil
+        themes[0]["ring"] = ring
+        var preview = try #require(themes[0]["preview"] as? [String: Any])
+        preview["labelShowsSize"] = nil
+        themes[0]["preview"] = preview
+        object["customThemes"] = themes
+
+        let decoded = try SettingsStore.decode(JSONSerialization.data(withJSONObject: object)).settings
+        let theme = try #require(decoded.customThemes.first)
+        #expect(theme.name == "Mine" && theme.ring.fillHex == "#123456")
+        #expect(theme.previewHex == "#FF3B30", "an old theme's preview keeps its accent colour")
+        #expect(theme.ring.gridHex == Theme.default.ring.gridHex)
+        #expect(theme.preview.labelShowsSize == true)
+    }
+
+    /// A file from before the menu bar, message and icon options loads with their defaults and keeps the rest.
+    @Test func newCustomisationOptionsGetDefaults() throws {
+        var s = userSettings()
+        s.menuBarItems.undo = false
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as? [String: Any])
+        for key in ["menuBarIcon", "hudPosition", "hudSeconds", "appearance"] { object[key] = nil }
+        var items = try #require(object["menuBarItems"] as? [String: Any])
+        items["snapSubmenu"] = nil
+        object["menuBarItems"] = items
+        var ring = try #require(object["ring"] as? [String: Any])
+        ring["iconStyle"] = nil
+        object["ring"] = ring
+
+        let decoded = try SettingsStore.decode(JSONSerialization.data(withJSONObject: object)).settings
+        #expect(decoded.menuBarIcon == .grid && decoded.hudPosition == .bottom && decoded.appearance == .system)
+        #expect(decoded.hudSeconds == TesseraSettings.defaults.hudSeconds)
+        #expect(decoded.ring.iconStyle == .layouts)
+        #expect(decoded.menuBarItems.snapSubmenu == true, "a missing item gets its default")
+        #expect(decoded.menuBarItems.undo == false, "an item the user turned off stays off")
+        #expect(decoded.defaultGap == 12)
+    }
+
+    @Test func filledFileStillValidates() throws {
+        let sparse = Data(#"{"schemaVersion":2,"defaultGap":3}"#.utf8)
+        let decoded = try SettingsStore.decode(sparse)
+        #expect(decoded.migratedFrom == nil)
+        var expected = TesseraSettings.defaults
+        expected.defaultGap = 3
+        #expect(decoded.settings == expected)
+    }
+
     @Test func notJSONThrows() {
         #expect(throws: (any Error).self) { try SettingsMigration.migrate(Data("{ not json".utf8)) }
         #expect(throws: (any Error).self) { try SettingsMigration.migrate(Data("[1,2]".utf8)) }
@@ -192,11 +275,29 @@ private func makeDirectory() throws -> URL {
         #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path) == ["settings.json"])
     }
 
-    @Test func unusableV1IsSetAsideNotBackedUpNorOverwritten() async throws {
+    /// A v1 file with nothing but its version has nothing to lose: it loads as defaults, is backed up
+    /// like any v1 file, and is rewritten as v2. Nothing is quarantined.
+    @Test func sparseV1LoadsWithDefaultsAndIsMigrated() async throws {
         let dir = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
-        let bytes = Data(#"{"schemaVersion":1}"#.utf8)
+        let bytes = Data(#"{"schemaVersion":1,"defaultGap":5}"#.utf8)
+        try bytes.write(to: file)
+
+        let result = await makeStore(dir).load()
+        var expected = TesseraSettings.defaults
+        expected.defaultGap = 5
+        #expect(result.settings == expected)
+        #expect(result.recoveredFrom == nil)
+        #expect(try Data(contentsOf: dir.appendingPathComponent("settings.v1-backup.json")) == bytes)
+        #expect(try JSONDecoder().decode(TesseraSettings.self, from: Data(contentsOf: file)) == expected)
+    }
+
+    @Test func invalidValuesInAV1FileAreStillSetAside() async throws {
+        let dir = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("settings.json")
+        let bytes = Data(#"{"schemaVersion":1,"trigger":{"keyCodes":[]}}"#.utf8)
         try bytes.write(to: file)
 
         let result = await makeStore(dir).load()

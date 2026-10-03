@@ -67,11 +67,31 @@ private func reduce(_ s: NavState, _ k: NavKey, _ ds: [DisplayContext] = display
     }
 
     @Test func extendGrowsSpanAndClamps() {
-        #expect(reduce(state(0, 2...2), .extendRight) == state(0, 2...3))
-        #expect(reduce(state(0, 2...2), .extendLeft) == state(0, 1...2))
-        #expect(reduce(state(0, 1...3), .extendRight) == state(0, 1...4))
-        #expect(reduce(state(0, 0...4), .extendRight) == state(0, 0...4))
-        #expect(reduce(state(0, 0...4), .extendLeft) == state(0, 0...4))
+        #expect(reduce(state(0, 2...2), .extendRight).columns == 2...3)
+        #expect(reduce(state(0, 2...2), .extendLeft).columns == 1...2)
+        #expect(reduce(state(0, 1...3), .extendRight).columns == 1...4)
+        #expect(reduce(state(0, 0...4), .extendRight).columns == 0...4)
+        // Anchored at the right edge, extendLeft grows; clamps at column 0.
+        #expect(reduce(NavState(displayIndex: 0, columns: 0...4, band: .full, anchor: 4), .extendLeft).columns == 0...4)
+    }
+
+    @Test func extendOppositeWayRetractsToAnchor() {
+        // Grow right from column 2, then Shift+Left retracts back to 2, then grows left.
+        var s = state(0, 2...2)
+        s = reduce(s, .extendRight); s = reduce(s, .extendRight)
+        #expect(s.columns == 2...4)
+        s = reduce(s, .extendLeft)
+        #expect(s.columns == 2...3)
+        s = reduce(s, .extendLeft)
+        #expect(s.columns == 2...2)
+        s = reduce(s, .extendLeft)
+        #expect(s.columns == 1...2)
+        // Mirror: grow left, Shift+Right retracts.
+        s = reduce(s, .extendRight)
+        #expect(s.columns == 2...2)
+        // A plain move resets the anchor to the new column.
+        s = reduce(reduce(s, .extendRight), .right)
+        #expect(s == state(0, 4...4))
     }
 
     // MARK: band
@@ -141,6 +161,21 @@ private func reduce(_ s: NavState, _ k: NavKey, _ ds: [DisplayContext] = display
         let only = [wide]
         #expect(reduce(state(0, 1...2, .top), .nextDisplay, only) == state(0, 1...2, .top))
         #expect(reduce(state(0, 1...2, .top), .previousDisplay, only) == state(0, 1...2, .top))
+    }
+
+    /// Mirrored displays share an origin: the ring's Tab order must match `DisplayResolver.ordered`
+    /// (and so the CLI's display numbers), which breaks the tie by storage key.
+    @Test func displaysWithTheSameOriginOrderLikeTheResolver() {
+        let a = display(9, x: 0, columns: 2), b = display(2, x: 0, columns: 3)
+        let expected = DisplayResolver.ordered([a, b]).map(\.id)
+        let first = KeyNavigator.selection(state(0, 0...0), displays: [a, b])
+        let second = KeyNavigator.selection(reduce(state(0, 0...0), .nextDisplay, [a, b]), displays: [a, b])
+        guard case .span(let firstID, _) = first, case .span(let secondID, _) = second else {
+            Issue.record("expected spans")
+            return
+        }
+        #expect([firstID, secondID] == expected)
+        #expect(KeyNavigator.selection(state(0, 0...0), displays: [b, a]) == first, "input order is irrelevant")
     }
 
     @Test func emptyDisplaysLeaveStateUntouched() {

@@ -115,11 +115,29 @@ import Testing
         #expect(!FileManager.default.fileExists(atPath: file.path))
     }
 
-    @Test func testMissingKeyTreatedAsCorrupt() async throws {
+    @Test func testMissingKeysLoadWithDefaultsAndKeepTheRest() async throws {
         let dir = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
-        try Data(#"{"schemaVersion":1}"#.utf8).write(to: file)
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(customised())) as? [String: Any])
+        object["preview"] = nil
+        object["hotkeys"] = nil
+        try JSONSerialization.data(withJSONObject: object).write(to: file)
+
+        let result = await makeStore(in: dir).load()
+        var expected = customised()
+        expected.preview = .default
+        expected.hotkeys = HotkeyBinding.defaults
+        #expect(result.settings == expected)
+        #expect(result.recoveredFrom == nil)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path) == ["settings.json"], "no backup, no quarantine")
+    }
+
+    @Test func testWrongTypeForAKeyIsCorrupt() async throws {
+        let dir = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("settings.json")
+        try Data(#"{"schemaVersion":2,"defaultGap":"wide"}"#.utf8).write(to: file)
 
         let result = await makeStore(in: dir).load()
         #expect(result.settings == .defaults)
@@ -265,6 +283,27 @@ import Testing
         ("empty chord", { (s: inout TesseraSettings) in s.trigger = TriggerChord(keyCodes: []) }),
         ("schema 0", { (s: inout TesseraSettings) in s.schemaVersion = 0 }),
         ("schema 3", { (s: inout TesseraSettings) in s.schemaVersion = 3 }),
+        ("negative gap", { (s: inout TesseraSettings) in s.defaultGap = -1 }),
+        ("NaN padding", { (s: inout TesseraSettings) in s.defaultPadding = .nan }),
+        ("infinite gap", { (s: inout TesseraSettings) in s.defaultGap = .infinity }),
+        ("negative band", { (s: inout TesseraSettings) in s.ring.topBand = -0.2 }),
+        ("zero radius", { (s: inout TesseraSettings) in s.ring.radius = 0 }),
+        ("negative thickness", { (s: inout TesseraSettings) in s.ring.thickness = -3 }),
+        ("infinite flick", { (s: inout TesseraSettings) in s.ring.flickDistance = .infinity }),
+        ("opacity 1.5", { (s: inout TesseraSettings) in s.preview.opacity = 1.5 }),
+        ("dim NaN", { (s: inout TesseraSettings) in s.preview.dimStrength = .nan }),
+        ("negative border", { (s: inout TesseraSettings) in s.preview.borderWidth = -1 }),
+        ("negative corner", { (s: inout TesseraSettings) in s.preview.cornerRadius = -1 }),
+        ("override negative gap", { (s: inout TesseraSettings) in
+            s.displayOverrides["x"] = DisplayProfile(columns: 2, gap: -4, isUserOverride: true)
+        }),
+        ("duplicate hotkey ids", { (s: inout TesseraSettings) in s.hotkeys.append(s.hotkeys[0]) }),
+        ("nameless theme", { (s: inout TesseraSettings) in
+            s.customThemes = [Theme(name: "", ring: Theme.default.ring, preview: .default, accentHex: "#FFFFFF")]
+        }),
+        ("theme opacity 2", { (s: inout TesseraSettings) in
+            var t = Theme.default; t.name = "x"; t.ring.opacity = 2; s.customThemes = [t]
+        }),
         ]
         for (name, mutate) in cases {
             var s = TesseraSettings.defaults
@@ -284,6 +323,15 @@ import Testing
         s.ring.bottomBand = 0.5
         #expect(firstProblem(s) == nil)
         s.sizing.maxColumns = 16
+        s.defaultGap = 0
+        s.defaultPadding = 0
+        s.ring.topBand = 0
+        s.ring.bottomBand = 0
+        s.preview.opacity = 0
+        s.preview.dimStrength = 1
+        s.preview.borderWidth = 0
+        s.snapDuration = SnapSpeed.maxSeconds
+        s.customThemes = [Theme.glass]
         #expect(firstProblem(s) == nil)
     }
 

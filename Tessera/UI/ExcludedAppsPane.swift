@@ -10,13 +10,10 @@ struct ExcludedAppsPane: View {
         Form {
             Section {
                 if model.settings.excludedBundleIDs.isEmpty {
-                    ContentUnavailableView {
-                        Label("No excluded apps", systemImage: "nosign")
-                    } description: {
-                        Text("Add an app below and Tessera will leave the trigger alone while that app is in front.")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
+                    Text("No excluded apps")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
                 }
                 ForEach(model.settings.excludedBundleIDs, id: \.self) { bundleID in
                     HStack {
@@ -35,23 +32,25 @@ struct ExcludedAppsPane: View {
                         .accessibilityLabel("Remove \(Self.name(for: bundleID))")
                     }
                 }
-            }
-
-            Section {
                 HStack {
-                    Menu("Add running app") {
+                    Menu("Add Running App") {
                         ForEach(Self.runningApps(), id: \.bundleID) { app in
                             Button(app.name) { add(app.bundleID) }
                         }
                     }
                     .fixedSize()
-                    Button("Choose app…") { choosing = true }
+                    Button("Choose App…") { choosing = true }
                         .fileImporter(isPresented: $choosing, allowedContentTypes: [.application]) { result in
                             if case .success(let url) = result, let id = Bundle(url: url)?.bundleIdentifier {
                                 add(id)
                             }
                         }
+                    Spacer()
                 }
+            } header: {
+                Text("Apps")
+            } footer: {
+                Footer("While one of these apps is in front, the trigger and hotkeys do nothing, so that app's own shortcuts keep working.")
             }
 
             ResetSection { model.settings.excludedBundleIDs = [] }

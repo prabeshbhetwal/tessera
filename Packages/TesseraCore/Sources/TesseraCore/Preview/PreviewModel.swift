@@ -23,20 +23,20 @@ public struct PreviewLayers: Equatable, Sendable {
     public let label: String?
     public let dimRects: [CGRect]
     public let fromOutline: CGRect?
-    public let showThumbnail: Bool
+    public let style: PreviewStyle
     public let animate: Bool
     /// Seconds, already clamped to 0...0.4.
     public let springResponse: Double
 
     public init(
         frame: CGRect, label: String?, dimRects: [CGRect], fromOutline: CGRect?,
-        showThumbnail: Bool, animate: Bool, springResponse: Double
+        style: PreviewStyle, animate: Bool, springResponse: Double
     ) {
         self.frame = frame
         self.label = label
         self.dimRects = dimRects
         self.fromOutline = fromOutline
-        self.showThumbnail = showThumbnail
+        self.style = style
         self.animate = animate
         self.springResponse = springResponse
     }
@@ -47,25 +47,34 @@ public enum PreviewModel {
     /// A neighbour is dimmed when more than this share of its own area is covered. Exclusive.
     private static let dimThreshold: CGFloat = 0.2
     private static let maxSpringResponse = 0.4
+    /// Pointing sessions that show the "click to add columns" hint before the label drops it.
+    public static let hintSessions = 5
 
-    public static func layers(_ input: PreviewInput, settings: PreviewSettings) -> PreviewLayers {
+    /// `hint` swaps a span's label for the "click to add columns" hint.
+    public static func layers(_ input: PreviewInput, settings: PreviewSettings, hint: Bool = false) -> PreviewLayers {
         let response = settings.springResponse.isFinite
             ? min(max(settings.springResponse, 0), maxSpringResponse)
             : 0
         return PreviewLayers(
             frame: input.target,
-            label: settings.showLabel ? label(for: input.selection, frame: input.target) : nil,
+            label: settings.showLabel
+                ? label(for: input.selection, frame: input.target, hint: hint,
+                        size: settings.labelShowsSize, slot: settings.labelShowsSlot)
+                : nil,
             dimRects: settings.showNeighbours ? dimmed(input.neighbours, by: input.target) : [],
-            fromOutline: settings.showNeighbours ? input.current : nil,
-            showThumbnail: settings.showThumbnail,
+            fromOutline: settings.showCurrentOutline ? input.current : nil,
+            style: settings.style,
             animate: settings.morph && !input.reduceMotion && response > 0,
             springResponse: response
         )
     }
 
-    /// `"756 × 949 · Left half"`, `"1280 × 1047 · cols 2–3 · top"`. Nil for `.none` or a non-finite frame.
-    public static func label(for selection: Selection, frame: CGRect) -> String? {
-        guard frame.width.isFinite, frame.height.isFinite else { return nil }
+    /// `"756 × 949 · Left half"`, `"1280 × 1047 · cols 2–3 · top"`. `size` and `slot` pick the parts; nil for
+    /// `.none`, a non-finite frame, or both parts off. With `hint`, a span reads `"Col 2 · click to add columns"`.
+    public static func label(
+        for selection: Selection, frame: CGRect, hint: Bool = false, size: Bool = true, slot showSlot: Bool = true
+    ) -> String? {
+        guard frame.width.isFinite, frame.height.isFinite, size || showSlot else { return nil }
 
         let slot: String
         switch selection {
@@ -82,9 +91,11 @@ public enum PreviewModel {
             case .top: text += " · top"
             case .bottom: text += " · bottom"
             }
+            if hint { return text.prefix(1).uppercased() + text.dropFirst() + " · click to add columns" }
             slot = text
         }
-        return "\(points(frame.width)) × \(points(frame.height)) · \(slot)"
+        let dimensions = "\(points(frame.width)) × \(points(frame.height))"
+        return [size ? dimensions : nil, showSlot ? slot : nil].compactMap { $0 }.joined(separator: " · ")
     }
 
     private static func dimmed(_ neighbours: [CGRect], by target: CGRect) -> [CGRect] {
