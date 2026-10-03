@@ -178,13 +178,13 @@ LoopAlternative/
 
 The rule is spec §3.3, with `round_half_even` implemented as `.toNearestOrEven`.
 
-- [ ] **Step 1:** Write a parameterised `@Test(arguments:)` over every row of spec §3.4, plus these cases:
+- [x] **Step 1:** Write a parameterised `@Test(arguments:)` over every row of spec §3.4, plus these cases:
   - `testZeroOrTinySizeYieldsOneColumn`: size 300×200 gives min = max = default = 1.
   - `testClampOutOfRange`: a profile with `columns: 9` clamped to the CHG90 range gives 6. A profile with `columns: 0` gives 3.
-- [ ] **Step 2:** Run `swift test --package-path Packages/TesseraCore --scratch-path ~/Library/Caches/tessera-build/core-$TRACK --filter SizingRuleTests`. Expected: FAIL.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run the same command. Expected: PASS.
-- [ ] **Step 5:** Commit with `feat(grid): sizing rule and profile clamping`.
+- [x] **Step 2:** Run `swift test --package-path Packages/TesseraCore --scratch-path ~/Library/Caches/tessera-build/core-$TRACK --filter SizingRuleTests`. Expected: FAIL.
+- [x] **Step 3:** Implement.
+- [x] **Step 4:** Run the same command. Expected: PASS.
+- [x] **Step 5:** Commit with `feat(grid): sizing rule and profile clamping`.
 
 ### Task A2: Geometry and gaps
 
@@ -203,7 +203,7 @@ The rule is spec §3.3, with `round_half_even` implemented as `.toNearestOrEven`
 - Gaps: inset each edge that does not touch the usable frame by `gap / 2`. The `center` action gets no gaps.
 - Portrait displays: a span covers the full width, the column range indexes rows from the top, and `band` is ignored.
 
-- [ ] **Step 1:** Write the tests:
+- [x] **Step 1:** Write the tests:
   - `testFiveColumnsCHG90`: visible frame (0,0,3840,1047), padding 8, gap 8. Columns 1…1 (0-based) give x = 8 + 764.8 + 4 and width = 764.8 − 8, with a tolerance of 0.01.
   - `testSpanUnion`: columns 1…3 give a single frame from the left edge of column 1 to the right edge of column 3.
   - `testTopBand`: the frame's height is half the usable height minus `gap / 2`, and it sits at the top (higher y in AppKit coordinates).
@@ -211,10 +211,10 @@ The rule is spec §3.3, with `round_half_even` implemented as `.toNearestOrEven`
   - `testCenterKeepsSizeAndClamps`.
   - `testPortraitRows`.
   - `testColumnIndexClamps`: x left of the frame gives 0, and x right of the frame gives `columns - 1`.
-- [ ] **Step 2:** Run `--filter GridGeometryTests`. Expected: FAIL.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run it again. Expected: PASS.
-- [ ] **Step 5:** Commit with `feat(grid): span/action frames with gaps`.
+- [x] **Step 2:** Run `--filter GridGeometryTests`. Expected: FAIL.
+- [x] **Step 3:** Implement.
+- [x] **Step 4:** Run it again. Expected: PASS.
+- [x] **Step 5:** Commit with `feat(grid): span/action frames with gaps`.
 
 ### Task A3: CoordinateSpace
 
@@ -230,16 +230,16 @@ The rule is spec §3.3, with `round_half_even` implemented as `.toNearestOrEven`
     - `static func pointFromCG(_ p: CGPoint, primaryHeight: CGFloat) -> CGPoint`
 - The conversion is `y' = primaryHeight − (y + height)`. For points it is `y' = primaryHeight − y`.
 
-- [ ] **Step 1:** Write the tests for three arrangements, using a primary MacBook at 1512×982:
+- [x] **Step 1:** Write the tests for three arrangements, using a primary MacBook at 1512×982:
   - CHG90 to the right of the MacBook
   - CHG90 above the MacBook (negative AX y)
   - a portrait screen to the left (negative x)
 
   Plus `testRoundTrip`: `fromAX(toAX(r))` equals `r`.
-- [ ] **Step 2:** Run the tests. Expected: FAIL.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run them again. Expected: PASS.
-- [ ] **Step 5:** Commit with `feat(grid): AX/AppKit coordinate conversion`.
+- [x] **Step 2:** Run the tests. Expected: FAIL.
+- [x] **Step 3:** Implement.
+- [x] **Step 4:** Run them again. Expected: PASS.
+- [x] **Step 5:** Commit with `feat(grid): AX/AppKit coordinate conversion`.
 
 ---
 
