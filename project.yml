@@ -9,6 +9,7 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    CURRENT_PROJECT_VERSION: "1"
     SWIFT_STRICT_CONCURRENCY: complete
     MACOSX_DEPLOYMENT_TARGET: "15.0"
     CODE_SIGN_IDENTITY: "-"
@@ -55,7 +56,9 @@ targets:
         CFBundleName: Tessera
         CFBundleDisplayName: Tessera
         CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        # Set per build by scripts/build-app.sh. Several builds share the bundle ID, and macOS launches the
+        # highest build number for it (System Settings' "Quit & Reopen", `open -b`), so the newest must win.
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleIconFile: AppIcon
         CFBundleIconName: AppIcon
         LSUIElement: true

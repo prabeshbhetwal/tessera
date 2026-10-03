@@ -21,10 +21,15 @@ else
 fi
 
 xcodegen generate --quiet
+# A build number that always increases, so macOS launches this build rather than an older copy with the
+# same bundle ID (it picks the highest CFBundleVersion).
+BUILD_NUMBER="$(date -u +%Y%m%d.%H%M%S)"
 xcodebuild -project Tessera.xcodeproj -scheme Tessera -configuration "$CONFIG" \
-  -derivedDataPath "$DERIVED" build -quiet
+  -derivedDataPath "$DERIVED" build -quiet CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
 APP="$DERIVED/Build/Products/$CONFIG/Tessera.app"
 # --deep: re-signs nested code (embedded CLI, debug dylib) with the same identity.
 codesign --force --deep -s "$SIGN_ID" "$APP"
+# Tell LaunchServices about this copy now, so a launch by bundle ID finds it straight away.
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP"
 echo "$APP"

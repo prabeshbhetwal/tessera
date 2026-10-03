@@ -57,7 +57,10 @@ public enum PreviewModel {
             : 0
         return PreviewLayers(
             frame: input.target,
-            label: settings.showLabel ? label(for: input.selection, frame: input.target, hint: hint) : nil,
+            label: settings.showLabel
+                ? label(for: input.selection, frame: input.target, hint: hint,
+                        size: settings.labelShowsSize, slot: settings.labelShowsSlot)
+                : nil,
             dimRects: settings.showNeighbours ? dimmed(input.neighbours, by: input.target) : [],
             fromOutline: settings.showCurrentOutline ? input.current : nil,
             style: settings.style,
@@ -66,10 +69,12 @@ public enum PreviewModel {
         )
     }
 
-    /// `"756 × 949 · Left half"`, `"1280 × 1047 · cols 2–3 · top"`. Nil for `.none` or a non-finite frame.
-    /// With `hint`, a span reads `"Col 2 · click to add columns"` instead.
-    public static func label(for selection: Selection, frame: CGRect, hint: Bool = false) -> String? {
-        guard frame.width.isFinite, frame.height.isFinite else { return nil }
+    /// `"756 × 949 · Left half"`, `"1280 × 1047 · cols 2–3 · top"`. `size` and `slot` pick the parts; nil for
+    /// `.none`, a non-finite frame, or both parts off. With `hint`, a span reads `"Col 2 · click to add columns"`.
+    public static func label(
+        for selection: Selection, frame: CGRect, hint: Bool = false, size: Bool = true, slot showSlot: Bool = true
+    ) -> String? {
+        guard frame.width.isFinite, frame.height.isFinite, size || showSlot else { return nil }
 
         let slot: String
         switch selection {
@@ -89,7 +94,8 @@ public enum PreviewModel {
             if hint { return text.prefix(1).uppercased() + text.dropFirst() + " · click to add columns" }
             slot = text
         }
-        return "\(points(frame.width)) × \(points(frame.height)) · \(slot)"
+        let dimensions = "\(points(frame.width)) × \(points(frame.height))"
+        return [size ? dimensions : nil, showSlot ? slot : nil].compactMap { $0 }.joined(separator: " · ")
     }
 
     private static func dimmed(_ neighbours: [CGRect], by target: CGRect) -> [CGRect] {

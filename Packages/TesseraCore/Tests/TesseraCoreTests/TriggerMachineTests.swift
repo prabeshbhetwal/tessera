@@ -170,6 +170,17 @@ private func opened() -> TriggerMachine {
         #expect(m.handle(flags(chord)).outputs == [.open(origin: here)])  // usable again
     }
 
+    /// The tap was disabled between a swallowed key-down/mouse-down and its release: the release may
+    /// never arrive, so the pending swallow must not eat the *next* release of that key or button.
+    @Test func testResetDropsPendingSwallows() {
+        var m = opened()
+        _ = m.handle(.keyDown(keyCode: 124, modifiers: [], location: here))  // → swallowed
+        _ = m.handle(.leftMouseDown(here))                                   // swallowed
+        _ = m.reset()
+        #expect(!m.handle(.keyUp(keyCode: 124)).suppress)
+        #expect(!m.handle(.leftMouseUp(here)).suppress)
+    }
+
     @Test func testExtraModifierStillOpens() {
         var m = newMachine()
         let r = m.handle(flags(chord.union([shift])))

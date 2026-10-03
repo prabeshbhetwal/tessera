@@ -14,7 +14,8 @@ struct AboutPane: View {
         VStack(spacing: 20) {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
-                .frame(width: 96, height: 96)
+                .interpolation(.high)
+                .frame(width: 112, height: 112)
                 .accessibilityHidden(true)
 
             VStack(spacing: 4) {

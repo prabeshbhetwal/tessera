@@ -130,6 +130,23 @@ struct MoveToDisplayIntent: AppIntent {
     }
 }
 
+struct TileWindowsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Tile All Windows"
+    static let description = IntentDescription("Puts every visible window on a display side by side in equal columns.")
+    static let openAppWhenRun = false
+
+    @Parameter(title: "Display") var display: DisplayEntity?
+
+    static var parameterSummary: some ParameterSummary { Summary("Tile all windows") { \.$display } }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let command = Command.tileWindows(display: display.selector)
+        let result = try await IntentRunner.run(command)
+        return .result(dialog: "\(result.message ?? command.summary)")
+    }
+}
+
 struct UndoIntent: AppIntent {
     static let title: LocalizedStringResource = "Undo Move"
     static let description = IntentDescription("Puts the last window Tessera moved back where it was.")

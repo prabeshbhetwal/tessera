@@ -29,9 +29,8 @@ import Testing
         var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(TesseraSettings.defaults)) as! [String: Any]
         object["snapDuration"] = nil
         let data = try JSONSerialization.data(withJSONObject: object)
-        let decoded = try JSONDecoder().decode(TesseraSettings.self, from: data)
-        #expect(decoded.snapDuration == nil)
-        try SettingsValidation.validate(decoded)
+        let decoded = try SettingsStore.decode(data).settings
+        #expect(decoded.snapDuration == 0)
     }
 
     @Test func testValidationRejectsOutOfRangeDuration() {

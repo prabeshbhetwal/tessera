@@ -14,16 +14,29 @@ struct DisplaysPane: View {
                 DisplayRow(model: model, display: display)
             }
 
-            Section("Defaults for displays without an override") {
+            Section {
                 SliderRow(title: "Gap", value: $model.settings.defaultGap, range: 0...40)
                 SliderRow(title: "Padding", value: $model.settings.defaultPadding, range: 0...40)
+            } header: {
+                Text("New displays")
+            } footer: {
+                Footer("Used by any display you haven't changed. Gap is the space between windows; padding is the space at the screen edges.")
             }
 
             Section {
-                DisclosureGroup("Advanced") {
-                    sizingControls
-                    bandControls
-                }
+                sizingControls
+            } header: {
+                Text("Column sizing")
+            } footer: {
+                Footer("These widths decide how many columns each display can hold, from its usable width. Minimum ≤ ideal ≤ maximum.")
+            }
+
+            Section {
+                bandControls
+            } header: {
+                Text("Top and bottom bands")
+            } footer: {
+                Footer("While pointing, the top and bottom of the screen snap a window to half height; the middle is full height.")
             }
 
             ResetSection {
@@ -41,15 +54,14 @@ struct DisplaysPane: View {
     @ViewBuilder private var sizingControls: some View {
         let s = $model.settings.sizing
         let v = model.settings.sizing
-        SliderRow(title: "Narrowest column", value: s.minColumnWidth, range: 200...max(201, v.idealColumnWidth), step: 8)
+        SliderRow(title: "Minimum column width", value: s.minColumnWidth, range: 200...max(201, v.idealColumnWidth), step: 8)
         SliderRow(
-            title: "Ideal column", value: s.idealColumnWidth,
+            title: "Ideal column width", value: s.idealColumnWidth,
             range: v.minColumnWidth...max(v.minColumnWidth + 1, v.maxColumnWidth), step: 8
         )
-        SliderRow(title: "Widest column", value: s.maxColumnWidth, range: v.idealColumnWidth...max(v.idealColumnWidth + 1, 3000), step: 8)
-        SliderRow(title: "Shortest row", value: s.minRowHeight, range: 200...1200, step: 8)
-        StepperRow(title: "Most columns", value: s.maxColumns, range: 1...16)
-        Caption("Narrowest ≤ ideal ≤ widest. Column ranges update when displays are next re-read.")
+        SliderRow(title: "Maximum column width", value: s.maxColumnWidth, range: v.idealColumnWidth...max(v.idealColumnWidth + 1, 3000), step: 8)
+        SliderRow(title: "Minimum row height", value: s.minRowHeight, range: 200...1200, step: 8)
+        StepperRow(title: "Column limit", value: s.maxColumns, range: 1...16)
     }
 
     @ViewBuilder private var bandControls: some View {
@@ -57,7 +69,6 @@ struct DisplaysPane: View {
         let r = model.settings.ring
         SliderRow(title: "Top band", value: ring.topBand, range: 0.1...max(0.11, 0.9 - r.bottomBand), step: 0.05, format: SliderRow.percent)
         SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
-        Caption("In point mode, the top and bottom bands snap to half height; the middle is full height.")
     }
 }
 
@@ -82,7 +93,7 @@ private struct DisplayRow: View {
     }
 
     var body: some View {
-        Section(name) {
+        Section {
             VStack(spacing: 6) {
                 MiniGrid(display: DisplayContext(
                     id: display.id, visibleFrame: display.visibleFrame, range: range, profile: profile
@@ -98,20 +109,23 @@ private struct DisplayRow: View {
 
             StepperRow(title: range.isPortrait ? "Rows" : "Columns", value: binding(\.columns), range: range.minCols...range.maxCols)
                 .disabled(range.minCols == range.maxCols)
-            if range.minCols == range.maxCols {
-                Caption("This display only fits \(range.minCols) with the current sizing constants.")
-            }
             SliderRow(title: "Gap", value: binding(\.gap), range: 0...40)
             SliderRow(title: "Padding", value: binding(\.padding), range: 0...40)
-
+        } header: {
             HStack {
+                Text(name)
                 Spacer()
-                Button("Reset to auto") { model.settings.displayOverrides[key] = nil }
-                    .disabled(override == nil)
+                if override != nil {
+                    Button("Use Automatic") { model.settings.displayOverrides[key] = nil }
+                        .controlSize(.small)
+                }
             }
-            if override == nil {
-                Caption("Using the automatic grid. Any change here saves an override for this display.")
-            }
+        } footer: {
+            Footer(range.minCols == range.maxCols
+                ? "This display fits exactly \(range.minCols) \(range.isPortrait ? "rows" : "columns") with the current column sizing."
+                : override == nil
+                    ? "Automatic: \(range.minCols) to \(range.maxCols) fit this display. Any change here is remembered for it."
+                    : "Your settings for this display. \(range.minCols) to \(range.maxCols) \(range.isPortrait ? "rows" : "columns") fit.")
         }
     }
 

@@ -3,13 +3,19 @@ import QuartzCore
 import TesseraCore
 
 /// Owns one reusable non-activating panel per display plus a HUD panel.
-/// Every update is Core Animation only; nothing here touches SwiftUI or Accessibility.
+///
+/// Each display panel is two views: a vibrant material cut to the ring's shape (the same `NSVisualEffectView`
+/// the system uses for HUDs, so the ring picks up whatever is behind it), and a layer-hosting canvas above it
+/// for the grid, the preview and the ring's paint. The hot path (`update`) is Core Animation only.
 @MainActor
 final class OverlayController {
     /// Layers drawn on one display's panel. All coordinates are panel-local, AppKit orientation.
     @MainActor
     private final class Scene {
         let panel: NSPanel
+        let material = NSVisualEffectView()
+        let canvas = NSView()
+        let gridHalo = CAShapeLayer()
         /// Cells outside the pointed span, faint.
         let grid = CAShapeLayer()
         /// Cells inside the pointed span, outlined in the accent colour on top of the preview.
@@ -21,13 +27,26 @@ final class OverlayController {
 
         init(frame: CGRect) {
             panel = OverlayController.makePanel(frame: frame)
-            let root = panel.contentView?.layer
+            material.material = .hudWindow
+            material.blendingMode = .behindWindow
+            material.state = .active
+            material.isHidden = true
+            canvas.wantsLayer = true
+            canvas.layer = CALayer()
+            canvas.autoresizingMask = [.width, .height]
+            canvas.frame = CGRect(origin: .zero, size: frame.size)
+            panel.contentView?.addSubview(material)
+            panel.contentView?.addSubview(canvas)
+            let root = canvas.layer
+            root?.addSublayer(gridHalo)
             root?.addSublayer(grid)
             root?.addSublayer(preview.root)
             root?.addSublayer(gridActive)
             root?.addSublayer(ring.root)
-            grid.strokeColor = CGColor(gray: 1, alpha: 0.28)
-            grid.fillColor = CGColor(gray: 1, alpha: 0.03)
+            // A dark halo under every light stroke keeps the grid legible on light wallpapers.
+            gridHalo.strokeColor = CGColor(gray: 0, alpha: 0.3)
+            gridHalo.fillColor = nil
+            gridHalo.lineWidth = 3
             grid.lineWidth = 1
             gridActive.fillColor = nil
             gridActive.lineWidth = 2
@@ -64,8 +83,8 @@ final class OverlayController {
     private var theme: Theme = .default
     private var ring: RingSettings = .default
     private var hudPanel: NSPanel?
-    private let hudPill = CALayer()
-    private let hudText = CATextLayer()
+    private let hudMaterial = NSVisualEffectView()
+    private let hudText = NSTextField(labelWithString: "")
     private var hudTask: Task<Void, Never>?
 
     private static let hudFont = NSFont.systemFont(ofSize: 15, weight: .semibold)
@@ -97,7 +116,7 @@ final class OverlayController {
             if scene.panel.frame != frame { scene.panel.setFrame(frame, display: false) }
 
             let bounds = scene.bounds
-            for layer in [scene.grid, scene.gridActive] {
+            for layer in [scene.grid, scene.gridHalo, scene.gridActive] {
                 layer.frame = bounds
                 layer.contentsScale = scale
                 layer.path = nil
@@ -112,6 +131,12 @@ final class OverlayController {
             scene.preview.clear()
             let center = CGPoint(x: origin.x - scene.origin.x, y: origin.y - scene.origin.y)
             scene.ring.configure(bounds: bounds, center: center, ring: ring, theme: theme, scale: scale)
+            Self.layoutMaterial(scene.material, center: center, ring: ring, theme: theme)
+            // Cells outside the pointed span stay faint; the picked ones are outlined in the accent colour.
+            scene.grid.strokeColor = HexColor.cgColor(theme.ring.gridHex, alpha: 0.28)
+            scene.grid.fillColor = HexColor.cgColor(theme.ring.gridHex, alpha: 0.03)
+            // A dark grid colour gets a light halo, a light one a dark halo.
+            scene.gridHalo.strokeColor = CGColor(gray: HexColor.isLight(theme.ring.gridHex) ? 0 : 1, alpha: 0.3)
             scene.panel.orderFrontRegardless()
         }
         CATransaction.commit()
@@ -128,11 +153,11 @@ final class OverlayController {
         default: nil
         }
         let gridKey: GridKey? = switch selection {
-        case .span(let id, let span) where pointMode: displays.first { $0.id == id }.map { GridKey(display: $0, span: span) }
+        case .span(let id, let span) where pointMode && ring.showGrid:
+            displays.first { $0.id == id }.map { GridKey(display: $0, span: span) }
         default: nil
         }
         let visibleLayers = selection == .none ? nil : layers
-        let accent = HexColor.cgColor(theme.accentHex)
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -140,11 +165,13 @@ final class OverlayController {
             scene.ring.setActive(activeWedge)
             scene.ring.setCancelling(cancelling)
             scene.ring.setPointMode(pointMode)
+            scene.material.alphaValue = pointMode ? 0.35 : 1
             updateGrid(scene, key: gridKey?.display.id == id ? gridKey : nil)
-            if let visibleLayers {
+            // Only the display the preview is on draws it; the others just keep theirs cleared.
+            if let visibleLayers, scene.panel.frame.intersects(visibleLayers.frame) {
                 scene.preview.render(
                     visibleLayers, image: image, offset: scene.origin, style: theme.preview,
-                    accent: accent, animate: visibleLayers.animate && !reduceMotion
+                    theme: theme, animate: visibleLayers.animate && !reduceMotion
                 )
             } else {
                 scene.preview.clear()
@@ -158,43 +185,44 @@ final class OverlayController {
             scene.panel.orderOut(nil)
             scene.preview.clear()
             scene.gridKey = nil
+            scene.material.isHidden = true
         }
     }
 
     // MARK: HUD
 
-    /// Shows `text` near the bottom of the screen under the mouse, holds 1.2 s, then fades.
-    func showHUD(_ text: String) {
+    /// Shows `text` on the screen under the mouse at `position`, holds it `seconds`, then fades.
+    func showHUD(_ text: String, position: HUDPosition = .bottom, seconds: Double = 1.2) {
         hudTask?.cancel()
-        let size = (text as NSString).size(withAttributes: [.font: Self.hudFont])
+        hudText.stringValue = text
+        hudText.sizeToFit()
         let padding = CGSize(width: 20, height: 10)
-        let panelSize = CGSize(width: ceil(size.width) + padding.width * 2, height: ceil(size.height) + padding.height * 2)
+        let textSize = hudText.frame.size
+        let panelSize = CGSize(width: ceil(textSize.width) + padding.width * 2, height: ceil(textSize.height) + padding.height * 2)
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
         let visible = screen?.visibleFrame ?? CGRect(origin: .zero, size: panelSize)
+        let y: CGFloat = switch position {
+        case .bottom: visible.minY + visible.height * 0.18
+        case .center: visible.midY - panelSize.height / 2
+        case .top: visible.maxY - visible.height * 0.18 - panelSize.height
+        }
         let frame = CGRect(
-            x: visible.midX - panelSize.width / 2, y: visible.minY + visible.height * 0.18,
+            x: visible.midX - panelSize.width / 2, y: y,
             width: panelSize.width, height: panelSize.height
         )
 
         let panel = hudPanel ?? makeHUDPanel(frame: frame)
         hudPanel = panel
         panel.setFrame(frame, display: false)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        let scale = screen?.backingScaleFactor ?? 2
-        hudPill.frame = CGRect(origin: .zero, size: panelSize)
-        hudPill.cornerRadius = panelSize.height / 2
-        hudText.string = text
-        hudText.frame = CGRect(x: padding.width, y: padding.height, width: ceil(size.width), height: ceil(size.height))
-        hudPill.contentsScale = scale
-        hudText.contentsScale = scale
-        CATransaction.commit()
+        hudMaterial.frame = CGRect(origin: .zero, size: panelSize)
+        hudMaterial.maskImage = Self.capsuleMask(size: panelSize)
+        hudText.frame = CGRect(origin: CGPoint(x: padding.width, y: padding.height), size: textSize)
         panel.alphaValue = 1
         panel.orderFrontRegardless()
 
         hudTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(1.2))
+            try? await Task.sleep(for: .seconds(seconds))
             guard !Task.isCancelled, let panel = self?.hudPanel else { return }
             if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
                 panel.orderOut(nil)
@@ -211,14 +239,52 @@ final class OverlayController {
 
     private func makeHUDPanel(frame: CGRect) -> NSPanel {
         let panel = Self.makePanel(frame: frame)
-        hudPill.backgroundColor = CGColor(gray: 0.1, alpha: 0.85)
+        hudMaterial.material = .hudWindow
+        hudMaterial.blendingMode = .behindWindow
+        hudMaterial.state = .active
+        hudMaterial.appearance = NSAppearance(named: .darkAqua)
         hudText.font = Self.hudFont
-        hudText.fontSize = Self.hudFont.pointSize
-        hudText.foregroundColor = CGColor(gray: 1, alpha: 1)
-        hudText.alignmentMode = .center
-        hudPill.addSublayer(hudText)
-        panel.contentView?.layer?.addSublayer(hudPill)
+        hudText.textColor = .labelColor
+        hudText.alignment = .center
+        hudMaterial.addSubview(hudText)
+        panel.contentView?.addSubview(hudMaterial)
         return panel
+    }
+
+    // MARK: Material
+
+    /// Cuts the material to the eight wedges. A light ring fill gets the light material, a dark one the dark.
+    private static var maskCache: (key: CGSize, image: NSImage)?
+
+    private static func layoutMaterial(_ view: NSVisualEffectView, center: CGPoint, ring: RingSettings, theme: Theme) {
+        let radii = RingLayer.radii(ring)
+        let box = CGRect(x: center.x - radii.outer, y: center.y - radii.outer, width: radii.outer * 2, height: radii.outer * 2)
+        view.frame = box
+        view.alphaValue = 1  // a session that ended in point mode left it dimmed
+        view.appearance = NSAppearance(named: HexColor.isLight(theme.ring.fillHex) ? .aqua : .darkAqua)
+        // The mask only depends on the ring's size, so it is drawn once and reused on every open.
+        let key = CGSize(width: radii.inner, height: radii.outer)
+        if maskCache?.key != key {
+            let path = RingLayer.ringPath(center: CGPoint(x: radii.outer, y: radii.outer), inner: radii.inner, outer: radii.outer)
+            let image = NSImage(size: box.size, flipped: false) { _ in
+                NSColor.black.setFill()
+                NSBezierPath(cgPath: path).fill()
+                return true
+            }
+            maskCache = (key, image)
+        }
+        if view.maskImage !== maskCache?.image { view.maskImage = maskCache?.image }
+        view.isHidden = !(ring.showRing && ring.frosted)
+    }
+
+    private static func capsuleMask(size: CGSize) -> NSImage {
+        let image = NSImage(size: size, flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: size.height / 2, left: size.height / 2, bottom: size.height / 2, right: size.height / 2)
+        return image
     }
 
     // MARK: Grid
@@ -228,12 +294,17 @@ final class OverlayController {
         scene.gridKey = key
         guard let key else {
             scene.grid.path = nil
+            scene.gridHalo.path = nil
             scene.gridActive.path = nil
             for t in scene.numbers { t.isHidden = true }
             return
         }
         let paths = Self.gridPaths(for: key.display, span: key.span, ring: ring, offset: scene.origin)
         scene.grid.path = paths.faint
+        let halo = CGMutablePath()
+        halo.addPath(paths.faint)
+        halo.addPath(paths.active)
+        scene.gridHalo.path = halo
         scene.gridActive.path = paths.active
 
         let columns = ring.showColumnNumbers ? paths.columns : []
@@ -265,9 +336,9 @@ final class OverlayController {
             columns.append(cell)
             if span.columns.contains(c) {
                 let picked = GridGeometry.frame(for: ColumnSpan(columns: c...c, band: span.band), display: display)
-                active.addRect(picked.offsetBy(dx: -offset.x, dy: -offset.y))
+                active.addRoundedRect(in: picked.offsetBy(dx: -offset.x, dy: -offset.y), cornerWidth: 6, cornerHeight: 6)
             } else {
-                faint.addRect(cell)
+                faint.addRoundedRect(in: cell, cornerWidth: 6, cornerHeight: 6)
             }
         }
         if !display.range.isPortrait {
@@ -303,8 +374,6 @@ final class OverlayController {
         panel.hidesOnDeactivate = false  // Tessera is an accessory app and is never active.
         panel.animationBehavior = .none
         let view = NSView(frame: CGRect(origin: .zero, size: frame.size))
-        view.layer = CALayer()
-        view.wantsLayer = true
         view.autoresizingMask = [.width, .height]
         panel.contentView = view
         return panel

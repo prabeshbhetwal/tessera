@@ -33,6 +33,8 @@ public enum Command: Codable, Equatable, Sendable {
     case cycle(name: String)
     case columns(ColumnChange, display: DisplaySelector)
     case moveToDisplay(DisplayStep)
+    /// Every visible window on the display, side by side in equal columns (rows on a portrait display).
+    case tileWindows(display: DisplaySelector)
     case undo
     case openSettings
     case listDisplays
@@ -185,18 +187,26 @@ public struct HotkeyBinding: Codable, Equatable, Sendable, Identifiable {
             HotkeyBinding(id: "display-next", hotkey: Hotkey(keyCode: 45, modifiers: co), command: .moveToDisplay(.next)),
             HotkeyBinding(id: "display-previous", hotkey: Hotkey(keyCode: 35, modifiers: co), command: .moveToDisplay(.previous)),
             HotkeyBinding(id: "undo", hotkey: Hotkey(keyCode: 6, modifiers: co), command: .undo),
+            HotkeyBinding(id: "tile-windows", hotkey: Hotkey(keyCode: 17, modifiers: co),
+                          command: .tileWindows(display: .current)),
             HotkeyBinding(id: "open-settings", hotkey: Hotkey(keyCode: 43, modifiers: [.control, .option, .command]),
                           command: .openSettings),
         ]
         // ⌃⌥1 … ⌃⌥9 → column n on the current display.
-        let digitKeyCodes: [UInt16] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
-        for (i, code) in digitKeyCodes.enumerated() {
+        for (i, code) in KeyCodes.digits.enumerated() {
             let n = i + 1
             list.append(HotkeyBinding(id: "column-\(n)", hotkey: Hotkey(keyCode: code, modifiers: co),
                                       command: .apply(.span(columns: n...n, band: .full), display: .current)))
         }
         return list
     }()
+}
+
+/// ANSI virtual key codes shared by the trigger machine, the default hotkeys and the UI.
+public enum KeyCodes {
+    /// The 1...9 keys on the number row, in digit order.
+    public static let digits: [UInt16] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
+    public static let escape: UInt16 = 53
 }
 
 /// Keys that drive the open ring (M2 spec §3).

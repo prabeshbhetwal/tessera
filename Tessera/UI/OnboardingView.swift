@@ -40,6 +40,7 @@ struct OnboardingView: View {
             footer
         }
         .frame(width: 600, height: 500)
+        .onChange(of: step, initial: true) { _, now in Self.saveStep(now) }
         .onAppear {
             axObserver = Permissions.observeAccessibility { trusted in
                 axTrusted = trusted
@@ -57,6 +58,15 @@ struct OnboardingView: View {
     }
 
     static let accessibilityStep = 1
+
+    /// Step of a setup still in progress, kept across a relaunch. Cleared when the window closes.
+    private static let savedStepKey = "onboardingStep"
+    static var savedStep: Int? { UserDefaults.standard.object(forKey: savedStepKey) as? Int }
+    static func saveStep(_ step: Int?) {
+        if let step { UserDefaults.standard.set(step, forKey: savedStepKey) } else {
+            UserDefaults.standard.removeObject(forKey: savedStepKey)
+        }
+    }
 
     /// Accessibility is required: nothing past its step is reachable until it's granted.
     private var isBlocked: Bool { step == Self.accessibilityStep && !axTrusted }
@@ -84,10 +94,10 @@ struct OnboardingView: View {
                 Button("Done", action: onFinish)
                     .keyboardShortcut(.defaultAction)
             }
-            // Esc skips the current step; on the last step it closes, like Done.
+            // Esc closes the window, as it does everywhere else. Setup reopens until Accessibility is granted.
             KeyCommand(.cancelAction) {
                 guard !isBlocked else { return }
-                if step < Self.stepCount - 1 { step += 1 } else { onFinish() }
+                onFinish()
             }
         }
         .controlSize(.large)
@@ -144,7 +154,7 @@ struct OnboardingView: View {
                 Permissions.requestScreenCapture()
                 screenAllowed = Permissions.isScreenCaptureAllowed
             }
-            Caption("Skip it and the preview uses a tinted rectangle. You can turn it on later in Settings › Preview. macOS may ask you to reopen Tessera first.")
+            Caption("After you allow it, macOS asks to quit and reopen Tessera; setup continues here. Skip it and the preview uses a tinted rectangle. You can turn it on later in Settings › Overlay.")
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
         }
@@ -153,16 +163,14 @@ struct OnboardingView: View {
     private var tryIt: some View {
         StepPage(
             symbol: "hand.point.up.left.fill", tint: .indigo, title: "Try it",
-            text: "Click any other app's window (Tessera can't move its own), hold \(ModifierKey.describe(chord.keyCodes)) and:"
+            text: "Click another app's window, then hold \(ModifierKey.describe(chord.keyCodes))."
         ) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 12) {
-                GestureHint("arrow.left.and.right", "Move left or right for a half.")
-                GestureHint("arrow.up.right", "Move up to maximize, diagonally for a quarter.")
-                GestureHint("rectangle.split.3x1", "Keep going further out to point at a column; click to span several.")
+                GestureHint("arrow.up.left.and.arrow.down.right", "Move a little: an edge is a half, a corner a quarter, up is full screen.")
+                GestureHint("rectangle.split.3x1", "Keep going further out to point at a column. Click to span several.")
                 GestureHint("xmark.circle", "Changed your mind? Release in the middle, press Esc or right-click.")
-                GestureHint("scroll", "Scroll while holding to change the column count.")
-                GestureHint("return", "Release to snap, press Esc to cancel.")
-                GestureHint("keyboard", "Or use the arrow keys and press Return.")
+                GestureHint("scroll", "Scroll while holding to change how many columns the display has.")
+                GestureHint("return", "Release to snap. Arrow keys and Return work too.")
             }
             .frame(maxWidth: 480)
             if !axTrusted {
@@ -188,7 +196,7 @@ struct OnboardingView: View {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
         process.arguments = ["reset", "Accessibility", Bundle.main.bundleIdentifier ?? "com.prabeshbhetwal.Tessera"]
         process.terminationHandler = { _ in
-            Task { @MainActor in Permissions.promptAccessibility() }
+            Task { @MainActor in Permissions.promptAccessibility(freshPrompt: true) }
         }
         do {
             try process.run()

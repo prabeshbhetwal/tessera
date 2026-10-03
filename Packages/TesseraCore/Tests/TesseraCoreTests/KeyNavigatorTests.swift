@@ -163,6 +163,21 @@ private func reduce(_ s: NavState, _ k: NavKey, _ ds: [DisplayContext] = display
         #expect(reduce(state(0, 1...2, .top), .previousDisplay, only) == state(0, 1...2, .top))
     }
 
+    /// Mirrored displays share an origin: the ring's Tab order must match `DisplayResolver.ordered`
+    /// (and so the CLI's display numbers), which breaks the tie by storage key.
+    @Test func displaysWithTheSameOriginOrderLikeTheResolver() {
+        let a = display(9, x: 0, columns: 2), b = display(2, x: 0, columns: 3)
+        let expected = DisplayResolver.ordered([a, b]).map(\.id)
+        let first = KeyNavigator.selection(state(0, 0...0), displays: [a, b])
+        let second = KeyNavigator.selection(reduce(state(0, 0...0), .nextDisplay, [a, b]), displays: [a, b])
+        guard case .span(let firstID, _) = first, case .span(let secondID, _) = second else {
+            Issue.record("expected spans")
+            return
+        }
+        #expect([firstID, secondID] == expected)
+        #expect(KeyNavigator.selection(state(0, 0...0), displays: [b, a]) == first, "input order is irrelevant")
+    }
+
     @Test func emptyDisplaysLeaveStateUntouched() {
         let s = state(0, 1...2)
         for key in [NavKey.left, .right, .nextDisplay, .apply, .column(3)] {

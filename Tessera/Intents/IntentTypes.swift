@@ -23,8 +23,8 @@ enum WindowActionAppEnum: String, AppEnum {
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Window Action"
     static let caseDisplayRepresentations: [WindowActionAppEnum: DisplayRepresentation] = [
-        .maximize: "maximize",
-        .center: "center",
+        .maximize: "maximise",
+        .center: "centre",
         .leftHalf: "left half",
         .rightHalf: "right half",
         .topHalf: "top half",
