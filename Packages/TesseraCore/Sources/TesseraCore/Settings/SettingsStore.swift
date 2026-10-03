@@ -26,16 +26,24 @@ public actor SettingsStore {
         self.now = now
     }
 
-    /// Missing file gives defaults. Unreadable JSON, a newer schema or failed validation moves the
-    /// file to `settings.corrupt-<yyyyMMdd-HHmmss>.json` (UTC) next to it and gives defaults.
+    /// Missing file gives defaults. A v1 file is migrated (M2 spec §7): the original bytes are copied to
+    /// `settings.v1-backup.json` (never overwriting an existing backup; a numbered name is used instead),
+    /// then v2 is saved. Unreadable JSON, a newer schema or failed validation moves the file to
+    /// `settings.corrupt-<yyyyMMdd-HHmmss>.json` (UTC) next to it and gives defaults.
     public func load() -> LoadResult {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return LoadResult(settings: .defaults, recoveredFrom: nil)
         }
         do {
-            let data = try Data(contentsOf: fileURL)
-            let settings = try JSONDecoder().decode(TesseraSettings.self, from: data)
+            let original = try Data(contentsOf: fileURL)
+            let migration = try SettingsMigration.migrate(original)
+            let settings = try JSONDecoder().decode(TesseraSettings.self, from: migration.data)
             try SettingsValidation.validate(settings)
+            // Only touch the file once the migrated result is known to be usable. If the backup cannot be
+            // written the v1 file stays as it is and migrates again next launch.
+            if migration.migratedFrom != nil, writeV1Backup(original) {
+                try? Self.write(settings, to: fileURL, createFolder: false)
+            }
             return LoadResult(settings: settings, recoveredFrom: nil)
         } catch {
             return LoadResult(settings: .defaults, recoveredFrom: setAsideUnusableFile())
@@ -65,7 +73,7 @@ public actor SettingsStore {
         }
         let settings: TesseraSettings
         do {
-            settings = try JSONDecoder().decode(TesseraSettings.self, from: data)
+            settings = try JSONDecoder().decode(TesseraSettings.self, from: SettingsMigration.migrate(data).data)
         } catch {
             throw SettingsError.invalid("\(name) is not a valid Tessera settings file, or comes from a newer version.")
         }
@@ -85,6 +93,19 @@ public actor SettingsStore {
             )
         }
         try data.write(to: url, options: .atomic)
+    }
+
+    /// Copies the v1 bytes next to the settings file. Returns false when no backup could be written.
+    private func writeV1Backup(_ original: Data) -> Bool {
+        let fm = FileManager.default
+        let folder = fileURL.deletingLastPathComponent()
+        for attempt in 0..<100 {
+            let suffix = attempt == 0 ? "" : "-\(attempt)"
+            let destination = folder.appendingPathComponent("settings.v1-backup\(suffix).json")
+            if fm.fileExists(atPath: destination.path) { continue }
+            return (try? original.write(to: destination, options: .withoutOverwriting)) != nil
+        }
+        return false
     }
 
     private func setAsideUnusableFile() -> URL? {
