@@ -54,7 +54,7 @@ final class RingLayer {
     }
 
     /// Wedge `index` is centred `index * 45°` clockwise from straight up, in y-up coordinates.
-    static func wedgePath(index: Int, center: CGPoint, inner: CGFloat, outer: CGFloat) -> CGPath {
+    nonisolated static func wedgePath(index: Int, center: CGPoint, inner: CGFloat, outer: CGFloat) -> CGPath {
         let gap = 1.5 * CGFloat.pi / 180
         let mid = CGFloat.pi / 2 - CGFloat(index) * .pi / 4
         let start = mid - .pi / 8 + gap
