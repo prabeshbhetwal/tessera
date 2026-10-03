@@ -63,6 +63,19 @@ import Testing
         #expect(bottom == "756 × 1047 · col 1 · bottom")
     }
 
+    @Test func testPointingHintReplacesSpanLabelOnly() {
+        let frame = CGRect(x: 0, y: 0, width: 756, height: 1047)
+        let one = Selection.span(display: display, span: ColumnSpan(columns: 1...1, band: .full))
+        let two = Selection.span(display: display, span: ColumnSpan(columns: 1...2, band: .top))
+        #expect(PreviewModel.label(for: one, frame: frame, hint: true) == "Col 2 · click to add columns")
+        #expect(PreviewModel.label(for: two, frame: frame, hint: true) == "Cols 2\u{2013}3 · top · click to add columns")
+        #expect(PreviewModel.label(for: .wedge(index: 6, action: .leftHalf), frame: frame, hint: true) == "756 × 1047 · Left half")
+
+        var hidden = PreviewSettings()
+        hidden.showLabel = false
+        #expect(PreviewModel.layers(input(), settings: hidden, hint: true).label == nil)
+    }
+
     @Test func testLabelNoneIsNil() {
         #expect(PreviewModel.label(for: .none, frame: CGRect(x: 0, y: 0, width: 10, height: 10)) == nil)
     }
@@ -109,13 +122,17 @@ import Testing
     @Test func testFromOutlineAndFrame() {
         let current = CGRect(x: 5, y: 5, width: 40, height: 40)
         let target = CGRect(x: 0, y: 0, width: 756, height: 949)
-        let layers = PreviewModel.layers(input(target: target, current: current), settings: PreviewSettings())
+        #expect(PreviewModel.layers(input(target: target, current: current), settings: PreviewSettings()).fromOutline == nil)
+
+        var s = PreviewSettings()
+        s.showCurrentOutline = true
+        let layers = PreviewModel.layers(input(target: target, current: current), settings: s)
         #expect(layers.frame == target)
         #expect(layers.fromOutline == current)
         #expect(layers.label == "756 × 949 · Left half")
-        #expect(layers.showThumbnail)
+        #expect(layers.style == .tint)
 
-        let none = PreviewModel.layers(input(current: nil), settings: PreviewSettings())
+        let none = PreviewModel.layers(input(current: nil), settings: s)
         #expect(none.fromOutline == nil)
     }
 
@@ -123,7 +140,6 @@ import Testing
 
     @Test func testLayersOff() {
         var s = PreviewSettings()
-        s.showThumbnail = false
         s.showLabel = false
         s.showNeighbours = false
         s.morph = false
@@ -137,7 +153,6 @@ import Testing
         #expect(layers.label == nil)
         #expect(layers.dimRects.isEmpty)
         #expect(layers.fromOutline == nil)
-        #expect(layers.showThumbnail == false)
         #expect(layers.animate == false)
     }
 
@@ -146,20 +161,28 @@ import Testing
         let neighbour = CGRect(x: 10, y: 10, width: 20, height: 20)
         let i = input(current: current, neighbours: [neighbour])
 
-        var s = PreviewSettings()
+        var base = PreviewSettings()
+        base.showCurrentOutline = true
+
+        var s = base
         s.showLabel = false
         var l = PreviewModel.layers(i, settings: s)
-        #expect(l.label == nil && l.fromOutline == current && l.dimRects == [neighbour] && l.showThumbnail && l.animate)
+        #expect(l.label == nil && l.fromOutline == current && l.dimRects == [neighbour] && l.style == .tint && l.animate)
 
-        s = PreviewSettings()
+        s = base
         s.showNeighbours = false
         l = PreviewModel.layers(i, settings: s)
-        #expect(l.label != nil && l.fromOutline == nil && l.dimRects.isEmpty && l.showThumbnail && l.animate)
+        #expect(l.label != nil && l.fromOutline == current && l.dimRects.isEmpty && l.animate)
 
-        s = PreviewSettings()
-        s.showThumbnail = false
+        s = base
+        s.showCurrentOutline = false
         l = PreviewModel.layers(i, settings: s)
-        #expect(l.label != nil && l.fromOutline == current && l.dimRects == [neighbour] && !l.showThumbnail && l.animate)
+        #expect(l.label != nil && l.fromOutline == nil && l.dimRects == [neighbour] && l.animate)
+
+        s = base
+        s.style = .appIcon
+        l = PreviewModel.layers(i, settings: s)
+        #expect(l.style == .appIcon && l.fromOutline == current && l.dimRects == [neighbour])
     }
 
     // MARK: Animation

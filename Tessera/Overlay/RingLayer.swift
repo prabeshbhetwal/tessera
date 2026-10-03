@@ -2,7 +2,7 @@ import QuartzCore
 import TesseraCore
 
 /// Eight-wedge radial menu. One shape layer holds all wedges; a second holds the active wedge in the accent colour.
-/// Each wedge carries a tiny screen glyph of its layout, and a dashed circle marks where pointing at the grid starts.
+/// Each wedge carries a tiny screen glyph of its layout; an optional dashed circle marks where pointing at the grid starts.
 @MainActor
 final class RingLayer {
     let root = CALayer()
@@ -56,6 +56,7 @@ final class RingLayer {
         let flick = CGFloat(ring.flickDistance)
         boundary.path = CGPath(ellipseIn: CGRect(x: center.x - flick, y: center.y - flick, width: flick * 2, height: flick * 2), transform: nil)
         boundary.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.45)
+        boundary.isHidden = !ring.showBoundary
         activeIndex = nil
         highlight.path = nil
         root.opacity = 1

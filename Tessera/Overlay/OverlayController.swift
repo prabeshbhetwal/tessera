@@ -10,24 +10,54 @@ final class OverlayController {
     @MainActor
     private final class Scene {
         let panel: NSPanel
+        /// Cells outside the pointed span, faint.
         let grid = CAShapeLayer()
+        /// Cells inside the pointed span, outlined in the accent colour on top of the preview.
+        let gridActive = CAShapeLayer()
+        var numbers: [CATextLayer] = []
         let preview = PreviewLayer()
         let ring = RingLayer()
-        var gridSource: DisplayContext?
+        var gridKey: GridKey?
 
         init(frame: CGRect) {
             panel = OverlayController.makePanel(frame: frame)
             let root = panel.contentView?.layer
             root?.addSublayer(grid)
             root?.addSublayer(preview.root)
+            root?.addSublayer(gridActive)
             root?.addSublayer(ring.root)
-            grid.strokeColor = CGColor(gray: 1, alpha: 0.55)
-            grid.fillColor = CGColor(gray: 1, alpha: 0.06)
-            grid.lineWidth = 1.5
+            grid.strokeColor = CGColor(gray: 1, alpha: 0.28)
+            grid.fillColor = CGColor(gray: 1, alpha: 0.03)
+            grid.lineWidth = 1
+            gridActive.fillColor = nil
+            gridActive.lineWidth = 2
+        }
+
+        /// Reuses text layers; extra ones are hidden, not removed.
+        func numberLayer(_ i: Int) -> CATextLayer {
+            while numbers.count <= i {
+                let t = CATextLayer()
+                t.font = OverlayController.numberFont
+                t.fontSize = OverlayController.numberFont.pointSize
+                t.alignmentMode = .center
+                t.shadowColor = CGColor(gray: 0, alpha: 1)
+                t.shadowOpacity = 0.7
+                t.shadowRadius = 2
+                t.shadowOffset = .zero
+                gridActive.addSublayer(t)
+                numbers.append(t)
+            }
+            return numbers[i]
         }
 
         var origin: CGPoint { panel.frame.origin }
         var bounds: CGRect { CGRect(origin: .zero, size: panel.frame.size) }
+    }
+
+    /// What the grid was last drawn for; redrawn only when the display or pointed span changes.
+    private struct GridKey: Equatable {
+        let display: DisplayContext
+        let span: ColumnSpan
     }
 
     private var scenes: [DisplayID: Scene] = [:]
@@ -39,6 +69,7 @@ final class OverlayController {
     private var hudTask: Task<Void, Never>?
 
     private static let hudFont = NSFont.systemFont(ofSize: 15, weight: .semibold)
+    fileprivate static let numberFont = NSFont.monospacedDigitSystemFont(ofSize: 15, weight: .semibold)
 
     init() {}
 
@@ -66,10 +97,17 @@ final class OverlayController {
             if scene.panel.frame != frame { scene.panel.setFrame(frame, display: false) }
 
             let bounds = scene.bounds
-            scene.grid.frame = bounds
-            scene.grid.contentsScale = scale
-            scene.grid.path = nil
-            scene.gridSource = nil
+            for layer in [scene.grid, scene.gridActive] {
+                layer.frame = bounds
+                layer.contentsScale = scale
+                layer.path = nil
+            }
+            for t in scene.numbers {
+                t.contentsScale = scale
+                t.isHidden = true
+            }
+            scene.gridActive.strokeColor = HexColor.cgColor(theme.accentHex)
+            scene.gridKey = nil
             scene.preview.layout(bounds: bounds, scale: scale)
             scene.preview.clear()
             let center = CGPoint(x: origin.x - scene.origin.x, y: origin.y - scene.origin.y)
@@ -81,7 +119,7 @@ final class OverlayController {
 
     /// Hot path: called on every mouse move while the menu is open.
     func update(
-        selection: Selection, layers: PreviewLayers?, thumbnail: CGImage?,
+        selection: Selection, layers: PreviewLayers?, image: CGImage?,
         displays: [DisplayContext], pointMode: Bool
     ) {
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -89,8 +127,8 @@ final class OverlayController {
         case .wedge(let index, _): index
         default: nil
         }
-        let gridDisplay: DisplayContext? = switch selection {
-        case .span(let id, _) where pointMode: displays.first { $0.id == id }
+        let gridKey: GridKey? = switch selection {
+        case .span(let id, let span) where pointMode: displays.first { $0.id == id }.map { GridKey(display: $0, span: span) }
         default: nil
         }
         let visibleLayers = selection == .none ? nil : layers
@@ -101,10 +139,10 @@ final class OverlayController {
         for (id, scene) in scenes {
             scene.ring.setActive(activeWedge)
             scene.ring.setPointMode(pointMode)
-            updateGrid(scene, display: gridDisplay?.id == id ? gridDisplay : nil)
+            updateGrid(scene, key: gridKey?.display.id == id ? gridKey : nil)
             if let visibleLayers {
                 scene.preview.render(
-                    visibleLayers, thumbnail: thumbnail, offset: scene.origin, style: theme.preview,
+                    visibleLayers, image: image, offset: scene.origin, style: theme.preview,
                     accent: accent, animate: visibleLayers.animate && !reduceMotion
                 )
             } else {
@@ -118,7 +156,7 @@ final class OverlayController {
         for scene in scenes.values {
             scene.panel.orderOut(nil)
             scene.preview.clear()
-            scene.gridSource = nil
+            scene.gridKey = nil
         }
     }
 
@@ -184,29 +222,62 @@ final class OverlayController {
 
     // MARK: Grid
 
-    private func updateGrid(_ scene: Scene, display: DisplayContext?) {
-        guard display != scene.gridSource else { return }
-        scene.gridSource = display
-        scene.grid.path = display.map { Self.gridPath(for: $0, ring: ring, offset: scene.origin) }
+    private func updateGrid(_ scene: Scene, key: GridKey?) {
+        guard key != scene.gridKey else { return }
+        scene.gridKey = key
+        guard let key else {
+            scene.grid.path = nil
+            scene.gridActive.path = nil
+            for t in scene.numbers { t.isHidden = true }
+            return
+        }
+        let paths = Self.gridPaths(for: key.display, span: key.span, ring: ring, offset: scene.origin)
+        scene.grid.path = paths.faint
+        scene.gridActive.path = paths.active
+
+        let columns = ring.showColumnNumbers ? paths.columns : []
+        let accent = HexColor.cgColor(theme.accentHex)
+        for (i, cell) in columns.enumerated() {
+            let t = scene.numberLayer(i)
+            let text = "\(i + 1)"
+            if t.string as? String != text { t.string = text }
+            t.foregroundColor = key.span.columns.contains(i) ? accent : CGColor(gray: 1, alpha: 0.75)
+            let height = ceil(Self.numberFont.ascender - Self.numberFont.descender)
+            t.frame = CGRect(x: cell.minX, y: cell.maxY - 12 - height, width: cell.width, height: height)
+            t.isHidden = false
+        }
+        for t in scene.numbers.dropFirst(columns.count) { t.isHidden = true }
     }
 
-    /// Cell outlines from `GridGeometry` plus the top/bottom band split lines (landscape only;
-    /// portrait spans ignore bands).
-    static func gridPath(for display: DisplayContext, ring: RingSettings, offset: CGPoint) -> CGPath {
-        let path = CGMutablePath()
+    /// Faint cells outside `span` plus the top/bottom band split lines (landscape only; portrait spans
+    /// ignore bands), the accent outlines of the cells inside `span`, and every full-height column
+    /// rect (panel-local) for placing numbers.
+    static func gridPaths(
+        for display: DisplayContext, span: ColumnSpan, ring: RingSettings, offset: CGPoint
+    ) -> (faint: CGPath, active: CGPath, columns: [CGRect]) {
+        let faint = CGMutablePath()
+        let active = CGMutablePath()
+        var columns: [CGRect] = []
         for c in 0..<max(1, display.profile.columns) {
             let cell = GridGeometry.frame(for: ColumnSpan(columns: c...c, band: .full), display: display)
-            path.addRect(cell.offsetBy(dx: -offset.x, dy: -offset.y))
+                .offsetBy(dx: -offset.x, dy: -offset.y)
+            columns.append(cell)
+            if span.columns.contains(c) {
+                let picked = GridGeometry.frame(for: ColumnSpan(columns: c...c, band: span.band), display: display)
+                active.addRect(picked.offsetBy(dx: -offset.x, dy: -offset.y))
+            } else {
+                faint.addRect(cell)
+            }
         }
         if !display.range.isPortrait {
             let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
             let visible = display.visibleFrame
             for y in [visible.maxY - visible.height * CGFloat(ring.topBand), visible.minY + visible.height * CGFloat(ring.bottomBand)] {
-                path.move(to: CGPoint(x: usable.minX - offset.x, y: y - offset.y))
-                path.addLine(to: CGPoint(x: usable.maxX - offset.x, y: y - offset.y))
+                faint.move(to: CGPoint(x: usable.minX - offset.x, y: y - offset.y))
+                faint.addLine(to: CGPoint(x: usable.maxX - offset.x, y: y - offset.y))
             }
         }
-        return path
+        return (faint, active, columns)
     }
 
     // MARK: Panels
