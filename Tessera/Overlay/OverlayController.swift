@@ -201,7 +201,7 @@ final class OverlayController {
         if !display.range.isPortrait {
             let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
             let visible = display.visibleFrame
-            for y in [visible.maxY - visible.height * ring.topBand, visible.minY + visible.height * ring.bottomBand] {
+            for y in [visible.maxY - visible.height * CGFloat(ring.topBand), visible.minY + visible.height * CGFloat(ring.bottomBand)] {
                 path.move(to: CGPoint(x: usable.minX - offset.x, y: y - offset.y))
                 path.addLine(to: CGPoint(x: usable.maxX - offset.x, y: y - offset.y))
             }

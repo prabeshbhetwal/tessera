@@ -54,11 +54,11 @@ private struct ZoneDiagram: View {
     var body: some View {
         Canvas { context, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let scale = (min(size.width, size.height) / 2 - 24) / max(ring.flickDistance, 1)
-            let flick = ring.flickDistance * scale
-            let dead = ring.deadZone * scale
+            let scale = (min(size.width, size.height) / 2 - 24) / CGFloat(max(ring.flickDistance, 1))
+            let flick = CGFloat(ring.flickDistance) * scale
+            let dead = CGFloat(ring.deadZone) * scale
 
-            func circle(_ r: Double) -> Path {
+            func circle(_ r: CGFloat) -> Path {
                 Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2))
             }
             context.fill(circle(flick), with: .color(.accentColor.opacity(0.12)))
@@ -68,7 +68,7 @@ private struct ZoneDiagram: View {
             var spokes = Path()
             for k in 0..<8 {
                 // Boundaries sit at 22.5° + k·45° clockwise from up; Canvas is y-down.
-                let a = (22.5 + Double(k) * 45) * .pi / 180
+                let a = CGFloat((22.5 + Double(k) * 45) * .pi / 180)
                 spokes.move(to: CGPoint(x: center.x + sin(a) * dead, y: center.y - cos(a) * dead))
                 spokes.addLine(to: CGPoint(x: center.x + sin(a) * flick, y: center.y - cos(a) * flick))
             }
