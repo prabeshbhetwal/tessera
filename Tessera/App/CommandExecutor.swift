@@ -4,6 +4,13 @@ import TesseraCore
 /// Runs every `Command` (M2 spec §2). All surfaces reach it through `CommandBridge`.
 @MainActor
 final class CommandExecutor: CommandExecuting {
+    /// Tessera can't move its own windows, so say what to do instead of just "no window".
+    static var noWindowMessage: String {
+        NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier
+            ? "Click the window you want to move first"
+            : "No window to move"
+    }
+
     private struct Failure: Error {
         let message: String
     }
@@ -165,7 +172,7 @@ final class CommandExecutor: CommandExecuting {
             throw Failure(message: "Tessera needs Accessibility permission to move windows")
         }
         guard let window = await windows.frontmostWindow(), let frame = await windows.frame(of: window) else {
-            throw Failure(message: "No window to move")
+            throw Failure(message: Self.noWindowMessage)
         }
         if let bundle = window.bundleID, model.settings.excludedBundleIDs.contains(bundle) {
             throw Failure(message: "This app is excluded in Tessera settings")

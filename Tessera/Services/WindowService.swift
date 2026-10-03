@@ -37,8 +37,9 @@ actor WindowService {
     private var history: [UndoKey] = []
 
     func frontmostWindow() -> WindowRef? {
-        // Own windows are allowed (onboarding demo). AX to our own pid is serviced by the free main run loop.
-        guard let pid = Self.frontmostPID() else { return nil }
+        // Never our own windows: AX calls on our own pid run in-process on this (non-main) thread and
+        // AppKit traps "Must only be used from the main thread" inside NSWindow.setFrame → crash.
+        guard let pid = Self.frontmostPID(), pid != ProcessInfo.processInfo.processIdentifier else { return nil }
         let app = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app, Self.timeout)
         guard let window = AX.element(app, kAXFocusedWindowAttribute) ?? AX.element(app, kAXMainWindowAttribute) else {

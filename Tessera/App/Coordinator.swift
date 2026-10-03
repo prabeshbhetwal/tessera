@@ -178,7 +178,7 @@ final class Coordinator {
            model.settings.excludedBundleIDs.contains(bundle) { input?.abortSession(); return }
         guard let target = await windows.frontmostWindow() else {
             input?.abortSession()
-            overlay.showHUD("No window to move")
+            overlay.showHUD(CommandExecutor.noWindowMessage)
             return
         }
         let current = await windows.frame(of: target)

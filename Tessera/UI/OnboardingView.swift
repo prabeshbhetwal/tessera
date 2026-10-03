@@ -148,7 +148,7 @@ struct OnboardingView: View {
     private var tryIt: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Try it").font(.title.bold())
-            Text("This window is your demo. Hold \(ModifierKey.describe(chord.keyCodes)) and:")
+            Text("Click any other app's window (Tessera can't move its own), then hold \(ModifierKey.describe(chord.keyCodes)) and:")
             VStack(alignment: .leading, spacing: 6) {
                 Label("Flick left or right for a half.", systemImage: "arrow.left.and.right")
                 Label("Flick up to maximize, diagonally for a quarter.", systemImage: "arrow.up.right")
