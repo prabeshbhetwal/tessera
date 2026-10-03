@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+<dictionary title="Tessera Terminology">
+    <suite name="Tessera Suite" code="Tess" description="Arrange the frontmost window on a column grid.">
+
+        <enumeration name="band" code="TBnd">
+            <enumerator name="full" code="BFul" description="Full height."/>
+            <enumerator name="top" code="BTop" description="Top half."/>
+            <enumerator name="bottom" code="BBot" description="Bottom half."/>
+        </enumeration>
+
+        <record-type name="display info" code="TDin" description="A display and its column grid.">
+            <property name="index" code="pidx" type="integer" description="1-based, left to right."><cocoa key="index"/></property>
+            <property name="id" code="ID  " type="text" description="Stable display identifier (use as display &quot;id:…&quot;)."><cocoa key="displayID"/></property>
+            <property name="name" code="pnam" type="text"><cocoa key="name"/></property>
+            <property name="frame" code="TFrm" description="{x, y, width, height} in points.">
+                <cocoa key="frame"/>
+                <type type="real" list="yes"/>
+            </property>
+            <property name="column count" code="TCol" type="integer"><cocoa key="columnCount"/></property>
+            <property name="minimum columns" code="TMin" type="integer"><cocoa key="minimumColumns"/></property>
+            <property name="maximum columns" code="TMax" type="integer"><cocoa key="maximumColumns"/></property>
+        </record-type>
+
+        <record-type name="window info" code="TWin" description="The frontmost window.">
+            <property name="application name" code="TApp" type="text"><cocoa key="applicationName"/></property>
+            <property name="bundle identifier" code="TBid" type="text"><cocoa key="bundleIdentifier"/></property>
+            <property name="frame" code="TFrm" description="{x, y, width, height} in points.">
+                <cocoa key="frame"/>
+                <type type="real" list="yes"/>
+            </property>
+            <property name="display index" code="TDix" type="integer"><cocoa key="displayIndex"/></property>
+        </record-type>
+
+        <command name="apply columns" code="TessAply" description="Place the frontmost window on a column span.">
+            <cocoa class="TesseraApplyCommand"/>
+            <direct-parameter type="text" description="Columns: &quot;2&quot;, &quot;2-4&quot;, &quot;-1&quot; or &quot;-2..-1&quot;."/>
+            <parameter name="band" code="TBnd" type="band" optional="yes" description="Default full.">
+                <cocoa key="band"/>
+            </parameter>
+            <parameter name="display" code="TDsp" type="text" optional="yes" description="&quot;current&quot; (default), &quot;cursor&quot;, a number, or &quot;id:…&quot;.">
+                <cocoa key="display"/>
+            </parameter>
+        </command>
+
+        <command name="perform action" code="TessPact" description="Run a window action such as &quot;leftHalf&quot; or &quot;maximize&quot;.">
+            <cocoa class="TesseraPerformActionCommand"/>
+            <direct-parameter type="text"/>
+        </command>
+
+        <command name="run cycle" code="TessCycl" description="Advance a named cycle such as &quot;left&quot;.">
+            <cocoa class="TesseraRunCycleCommand"/>
+            <direct-parameter type="text"/>
+        </command>
+
+        <command name="set columns" code="TessScol" description="Set a display's column count.">
+            <cocoa class="TesseraSetColumnsCommand"/>
+            <direct-parameter type="integer"/>
+            <parameter name="display" code="TDsp" type="text" optional="yes" description="&quot;current&quot; (default), &quot;cursor&quot;, a number, or &quot;id:…&quot;.">
+                <cocoa key="display"/>
+            </parameter>
+        </command>
+
+        <command name="change columns" code="TessCcol" description="Add or remove columns on the current display.">
+            <cocoa class="TesseraChangeColumnsCommand"/>
+            <parameter name="by" code="by  " type="integer" description="For example 1 or -1.">
+                <cocoa key="delta"/>
+            </parameter>
+        </command>
+
+        <command name="move to display" code="TessMove" description="Move the frontmost window to another display, keeping its columns.">
+            <cocoa class="TesseraMoveToDisplayCommand"/>
+            <direct-parameter type="text" description="&quot;next&quot;, &quot;previous&quot; or a display number."/>
+        </command>
+
+        <command name="undo move" code="TessUndo" description="Undo the last window move.">
+            <cocoa class="TesseraUndoMoveCommand"/>
+        </command>
+
+        <command name="list displays" code="TessLdsp" description="Describe every display.">
+            <cocoa class="TesseraListDisplaysCommand"/>
+            <result>
+                <type type="display info" list="yes"/>
+            </result>
+        </command>
+
+        <command name="describe window" code="TessDwin" description="Describe the frontmost window.">
+            <cocoa class="TesseraDescribeWindowCommand"/>
+            <result type="window info"/>
+        </command>
+
+        <command name="open settings" code="TessOset" description="Open Tessera's Settings window.">
+            <cocoa class="TesseraOpenSettingsCommand"/>
+        </command>
+    </suite>
+</dictionary>

@@ -27,6 +27,27 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.prabeshbhetwal.Tessera
         PRODUCT_NAME: Tessera
         GENERATE_INFOPLIST_FILE: NO
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postBuildScripts:
+      # The tessera CLI (TesseraCLI package target), embedded at Contents/Helpers/tessera.
+      # Not Contents/MacOS/tessera: on case-insensitive APFS that is the app's own MacOS/Tessera.
+      - name: Embed tessera CLI
+        basedOnDependencyAnalysis: false
+        script: |
+          set -euo pipefail
+          CONF=$(echo "$CONFIGURATION" | tr '[:upper:]' '[:lower:]')
+          [ "$CONF" = "release" ] || CONF=debug
+          SCRATCH="$OBJROOT/tessera-cli"
+          run_swift() {
+            env -i HOME="$HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" DEVELOPER_DIR="$DEVELOPER_DIR" \
+              xcrun swift build -c "$CONF" --package-path "$SRCROOT/Packages/TesseraCore" \
+              --product tessera --scratch-path "$SCRATCH" "$@"
+          }
+          run_swift
+          DEST="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers"
+          mkdir -p "$DEST"
+          cp -f "$(run_swift --show-bin-path)/tessera" "$DEST/tessera"
+          codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$DEST/tessera"
     info:
       path: Tessera/Info.plist
       properties:
