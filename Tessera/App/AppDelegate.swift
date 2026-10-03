@@ -103,6 +103,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             coordinator?.start()
         } else {
             coordinator?.stop()
+            coordinator?.presenter.closeSettings()
+            coordinator?.presenter.showOnboarding(startStep: OnboardingView.accessibilityStep)
         }
     }
 

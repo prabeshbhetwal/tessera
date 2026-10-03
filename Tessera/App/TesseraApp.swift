@@ -34,15 +34,17 @@ private struct MenuContent: View {
     let delegate: AppDelegate
 
     var body: some View {
-        if !delegate.state.accessibilityGranted {
-            Button("Permission needed…") { delegate.coordinator?.presenter.showOnboarding() }
-            Divider()
+        if delegate.state.accessibilityGranted {
+            Button("Settings…") { delegate.coordinator?.presenter.showSettings() }
+                .keyboardShortcut(",")
+            Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
+            Button("Undo last move") { delegate.coordinator?.undoLast() }
+        } else {
+            // Nothing works without Accessibility, so setup is the only thing on offer.
+            Button("Finish setup…") {
+                delegate.coordinator?.presenter.showOnboarding(startStep: OnboardingView.accessibilityStep)
+            }
         }
-        Button("Settings…") { delegate.coordinator?.presenter.showSettings() }
-            .keyboardShortcut(",")
-        Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
-        Button("Undo last move") { delegate.coordinator?.undoLast() }
-            .disabled(!delegate.state.accessibilityGranted)
         Divider()
         Button("Quit Tessera") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")

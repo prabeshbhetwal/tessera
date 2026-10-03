@@ -44,16 +44,21 @@ struct OnboardingView: View {
                 .accessibilityElement()
                 .accessibilityLabel("Step \(step + 1) of \(Self.stepCount)")
                 Spacer()
+                if step == Self.accessibilityStep && !axTrusted {
+                    Button("Quit Tessera") { NSApplication.shared.terminate(nil) }
+                }
                 if step > 0 { Button("Back") { step -= 1 } }
                 if step < Self.stepCount - 1 {
                     Button(nextTitle) { step += 1 }
                         .keyboardShortcut(.defaultAction)
+                        .disabled(isBlocked)
                 } else {
                     Button("Done", action: onFinish)
                         .keyboardShortcut(.defaultAction)
                 }
                 // Esc skips the current step; on the last step it closes, like Done.
                 KeyCommand(.cancelAction) {
+                    guard !isBlocked else { return }
                     if step < Self.stepCount - 1 { step += 1 } else { onFinish() }
                 }
             }
@@ -63,7 +68,10 @@ struct OnboardingView: View {
         .onAppear {
             axObserver = Permissions.observeAccessibility { trusted in
                 axTrusted = trusted
-                if trusted { showFix = false }
+                guard trusted else { return }
+                showFix = false
+                // Granted: move on by itself instead of making the user find the button.
+                if step == Self.accessibilityStep { step += 1 }
             }
         }
         .onDisappear {
@@ -73,9 +81,13 @@ struct OnboardingView: View {
         }
     }
 
+    static let accessibilityStep = 1
+
+    /// Accessibility is required: nothing past its step is reachable until it's granted.
+    private var isBlocked: Bool { step == Self.accessibilityStep && !axTrusted }
+
     private var nextTitle: String {
         switch step {
-        case 1 where !axTrusted: "Skip for now"
         case 2 where !screenAllowed: "Skip"
         default: "Continue"
         }

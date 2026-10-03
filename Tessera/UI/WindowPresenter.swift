@@ -28,6 +28,11 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
 
     /// Opens Settings, optionally on a specific pane (the menu's "Shortcuts…" item passes `.shortcuts`).
     func showSettings(pane: SettingsPane? = nil) {
+        // Every route to Settings (menu, reopen, hotkey, CLI, Shortcuts) lands here: finish setup first.
+        guard Permissions.isAccessibilityTrusted else {
+            showOnboarding(startStep: OnboardingView.accessibilityStep)
+            return
+        }
         if let pane { navigation.pane = pane }
         let window = settingsWindow ?? makeWindow(
             title: "Tessera Settings",
@@ -37,6 +42,11 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         (window.contentViewController as? NSHostingController<SettingsView>)?.rootView =
             SettingsView(model: model, navigation: navigation, displays: displays)
         present(window)
+    }
+
+    /// Closes Settings, e.g. when Accessibility is revoked and setup has to be finished again.
+    func closeSettings() {
+        settingsWindow?.close()
     }
 
     /// `startStep` 1 jumps straight to the Accessibility step (used when permission is missing).
