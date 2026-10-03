@@ -384,17 +384,17 @@ The machine is a value type. It is **confined to the event-tap thread**, which o
 - **Animation:** `animate = morph && !reduceMotion && springResponse > 0`.
 - **Switches:** every layer that is switched off produces nil or an empty value.
 
-- [ ] **Step 1:** Write the tests:
+- [x] **Step 1:** Write the tests:
   - `testLabelFlick`: `"756 × 949 · Left half"`
   - `testLabelSpan`: `"cols 2–3 · top"`, including the en dash
   - `testLabelSingleCol`
   - `testDimThreshold`: exactly 20% is not dimmed, 20.1% is
   - `testLayersOff`
   - `testReduceMotionDisablesAnimate`
-- [ ] **Step 2:** Run `--filter PreviewModelTests`. Expected: FAIL.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run it again. Expected: PASS.
-- [ ] **Step 5:** Commit with `feat(preview): pure preview layer model`.
+- [x] **Step 2:** Run `--filter PreviewModelTests`. Expected: FAIL.
+- [x] **Step 3:** Implement.
+- [x] **Step 4:** Run it again. Expected: PASS.
+- [x] **Step 5:** Commit with `feat(preview): pure preview layer model`.
 
 ### Task C2: SettingsStore
 
@@ -434,17 +434,17 @@ The machine is a value type. It is **confined to the event-tap thread**, which o
 - Validate before returning.
 - On failure, throw `.invalid(firstProblem)` and change nothing on disk.
 
-- [ ] **Step 1:** Write the tests, using temporary directories:
+- [x] **Step 1:** Write the tests, using temporary directories:
   - `testMissingFileGivesDefaults`
   - `testSaveLoadRoundTrip`
   - `testCorruptFileRenamed`: the original bytes are preserved under the new name
   - `testNewerSchemaRenamed`
   - `testExportImportEqual`
   - `testInvalidImportRejectedUntouched`: settings with 7 wedges are rejected and the existing file is unchanged
-- [ ] **Step 2:** Run `--filter SettingsStoreTests`. Expected: FAIL.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run it again. Expected: PASS.
-- [ ] **Step 5:** Commit with `feat(settings): versioned store with import/export and recovery`.
+- [x] **Step 2:** Run `--filter SettingsStoreTests`. Expected: FAIL.
+- [x] **Step 3:** Implement.
+- [x] **Step 4:** Run it again. Expected: PASS.
+- [x] **Step 5:** Commit with `feat(settings): versioned store with import/export and recovery`.
 
 ---
 
