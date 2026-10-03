@@ -83,14 +83,14 @@ The coordinator has already committed **Track 0′**: the contract types, settin
 
 **Syntax:** exactly as in M2 spec §2.
 
-- [ ] Write tests:
+- [x] Write tests:
   - every URL and CLI example in the spec
   - Review Focus 1 and 2
   - `-2..-1` on 5 columns → `3...4`
   - `index(2)` uses left-to-right order
   - `next` from the last display wraps to the first
   - relocate: columns 2–3 of 5 → columns 2–3 of 6, using the rule `round(start*to/from)…max(start, round((end+1)*to/from)-1)`
-- [ ] Watch them fail, implement, watch them pass, commit `feat(commands): parser and resolvers`.
+- [x] Watch them fail, implement, watch them pass, commit `feat(commands): parser and resolvers`.
 
 ---
 
@@ -148,7 +148,7 @@ The coordinator has already committed **Track 0′**: the contract types, settin
     4. Decode.
   - Update tests that used schema 2 as "newer" to use 3.
 
-- [ ] For each unit: write the tests (including Review Focus 3, 4 and 5), watch them fail, implement, watch them pass, then commit with a `feat(keyboard): …` message.
+- [x] For each unit: write the tests (including Review Focus 3, 4 and 5), watch them fail, implement, watch them pass, then commit with a `feat(keyboard): …` message.
 
 ---
 
@@ -177,7 +177,7 @@ The coordinator has already committed **Track 0′**: the contract types, settin
   - Pass `Modifiers(deviceKeyCodes:)` on keyDown.
 - **URL handling:** in `AppDelegate.application(_:open:)`, parse with `CommandParser.parse(url:)` and run with `CommandBridge.execute`. Show a HUD on errors.
 - Until G and H merge, stub their signatures in `Tessera/_Stubs/TrackGHStubs.swift`, with the header comment `// TEMPORARY STUB — coordinator deletes at merge`.
-- [ ] Build passes → commit `feat(app): command executor and keyboard ring`.
+- [x] Build passes → commit `feat(app): command executor and keyboard ring`.
 
 ---
 

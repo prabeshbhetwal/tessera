@@ -141,7 +141,7 @@ All surfaces call `CommandBridge.execute(_:)`, which forwards to the executor.
 
 | Surface | Details |
 |---|---|
-| **URL scheme** | `tessera`. Fire-and-forget. Errors are logged and shown in a HUD. |
+| **URL scheme** | `tessera`. Fire-and-forget. Errors are logged and shown in a HUD. **Security:** any web page can open a `tessera://` link, so URLs reject file commands (`settings export`/`import`) and queries (`displays`, `window`). Use the CLI, AppleScript or Shortcuts for those. |
 | **CLI** | A `tessera` executable built from the TesseraCore package (`TesseraCLI` target) and embedded at `Tessera.app/Contents/MacOS/tessera`. Talks to the running app over a Unix domain socket at `~/Library/Application Support/Tessera/tessera.sock`, mode 0600, created by the app. Protocol: one request line (Command JSON) and one response line (CommandResult JSON). Exit codes: 0 ok, 1 command error, 2 usage error, 3 app not running. Settings → General has an **Install CLI** button that symlinks it to `~/.local/bin/tessera` and shows a PATH hint. |
 | **AppleScript** | `Tessera.sdef` with these commands: `apply columns "2-4" band top display "cursor"`, `perform action "leftHalf"`, `run cycle "left"`, `set columns 6 display "2"`, `change columns by -1`, `move to display "next"`, `undo move`, `list displays` (returns records), `describe window`, `open settings`. `NSAppleScriptEnabled` is on. |
 | **App Intents** | Intents for each command: Apply Columns, Perform Action, Run Cycle, Set Columns, Change Columns, Move to Display, Undo, List Displays, Describe Window, Open Settings. `DisplayEntity` lets Shortcuts pick a display. An `AppShortcutsProvider` exposes Spotlight phrases such as "Tessera maximize". The intents run in-process; `openAppWhenRun` is false. |

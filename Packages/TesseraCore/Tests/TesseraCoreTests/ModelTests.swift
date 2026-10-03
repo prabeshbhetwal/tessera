@@ -5,7 +5,7 @@ import Testing
 @Suite struct ModelTests {
     @Test func defaultsMatchSpec() throws {
         let s = TesseraSettings.defaults
-        #expect(s.schemaVersion == 1)
+        #expect(s.schemaVersion == 2)
         #expect(s.trigger.keyCodes == [59, 58, 55])
         #expect(s.sizing == SizingConstants.default)
         #expect(s.sizing.idealColumnWidth == 768)

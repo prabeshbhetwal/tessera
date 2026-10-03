@@ -93,7 +93,7 @@ private func opened() -> TriggerMachine {
 
     @Test func testNoReopenAfterEscUntilAllReleased() {
         var m = opened()
-        #expect(m.handle(.keyDown(keyCode: 53, location: here)).outputs == [.cancel])
+        #expect(m.handle(.keyDown(keyCode: 53, modifiers: [], location: here)).outputs == [.cancel])
         #expect(!m.isOpen)
         #expect(m.handle(flags(chord)).outputs.isEmpty)
         // Releasing the chord after a cancel must not apply.
@@ -103,7 +103,7 @@ private func opened() -> TriggerMachine {
 
     @Test func testEscCancelsSuppressed() {
         var m = opened()
-        let r = m.handle(.keyDown(keyCode: 53, location: here))
+        let r = m.handle(.keyDown(keyCode: 53, modifiers: [], location: here))
         #expect(r.outputs == [.cancel])
         #expect(r.suppress)
         #expect(!m.isOpen)
@@ -111,7 +111,7 @@ private func opened() -> TriggerMachine {
 
     @Test func testOtherKeyPassesThrough() {
         var m = opened()
-        let r = m.handle(.keyDown(keyCode: 0, location: here))
+        let r = m.handle(.keyDown(keyCode: 0, modifiers: [], location: here))
         #expect(r.outputs == [.cancel])
         #expect(!r.suppress)
         #expect(!m.isOpen)
@@ -182,7 +182,7 @@ private func opened() -> TriggerMachine {
     @Test func testClosedMachineIgnoresEverythingElse() {
         var m = newMachine()
         let events: [InputEvent] = [
-            .keyDown(keyCode: 53, location: here), .keyDown(keyCode: 0, location: here),
+            .keyDown(keyCode: 53, modifiers: [], location: here), .keyDown(keyCode: 0, modifiers: [], location: here),
             .mouseMoved(here), .leftMouseDown(here), .leftMouseUp(here), .scroll(deltaY: 5),
         ]
         for e in events {
