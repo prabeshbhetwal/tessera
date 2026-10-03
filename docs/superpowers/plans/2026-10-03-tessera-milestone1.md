@@ -575,9 +575,9 @@ Every file goes in `Tessera/Overlay/` or `Tessera/UI/`. Each task is checked by 
 - **Morph:** when `layers.animate` is true, use a `CASpringAnimation` built with `perceptualDuration: springResponse, bounce: 0`. Otherwise disable actions inside a `CATransaction`.
 - Keep the hot path out of SwiftUI.
 
-- [ ] **Step 1:** Implement `OverlayController.swift`, `RingLayer.swift` and `PreviewLayer.swift`, each under 500 lines.
-- [ ] **Step 2:** Build. Expected: BUILD SUCCEEDED.
-- [ ] **Step 3:** Commit with `feat(ui): overlay panels, ring, grid, preview layers`.
+- [x] **Step 1:** Implement `OverlayController.swift`, `RingLayer.swift` and `PreviewLayer.swift`, each under 500 lines.
+- [x] **Step 2:** Build. Expected: BUILD SUCCEEDED.
+- [x] **Step 3:** Commit with `feat(ui): overlay panels, ring, grid, preview layers`.
 
 ### Task E2: Settings window and onboarding
 
@@ -601,9 +601,9 @@ Every file goes in `Tessera/Overlay/` or `Tessera/UI/`. Each task is checked by 
 
 A dependent control is disabled and shows a caption explaining why.
 
-- [ ] **Step 1:** Implement the views in `Tessera/UI/`, one file per pane.
-- [ ] **Step 2:** Build. Expected: BUILD SUCCEEDED.
-- [ ] **Step 3:** Commit with `feat(ui): settings panes and onboarding`.
+- [x] **Step 1:** Implement the views in `Tessera/UI/`, one file per pane.
+- [x] **Step 2:** Build. Expected: BUILD SUCCEEDED.
+- [x] **Step 3:** Commit with `feat(ui): settings panes and onboarding`.
 
 ---
 
@@ -637,10 +637,10 @@ A dependent control is disabled and shows a caption explaining why.
   - Show onboarding when Accessibility isn't trusted, or on first launch.
 - **Menu bar:** Settings…, Undo last move, Quit. The icon turns amber when permission is missing.
 
-- [ ] **Step 1:** Implement.
-- [ ] **Step 2:** Build. Expected: BUILD SUCCEEDED.
-- [ ] **Step 3:** Run `swift test --package-path Packages/TesseraCore --scratch-path ~/Library/Caches/tessera-build/core-$TRACK`. Expected: all PASS.
-- [ ] **Step 4:** Commit with `feat(app): coordinator wiring`.
+- [x] **Step 1:** Implement.
+- [x] **Step 2:** Build. Expected: BUILD SUCCEEDED.
+- [x] **Step 3:** Run `swift test --package-path Packages/TesseraCore --scratch-path ~/Library/Caches/tessera-build/core-$TRACK`. Expected: all PASS.
+- [x] **Step 4:** Commit with `feat(app): coordinator wiring`.
 
 ### Task F2: Build script, smoke launch, CI, README
 
@@ -657,11 +657,11 @@ A dependent control is disabled and shows a caption explaining why.
 - **CI:** `macos-15` runner. Steps: `brew install xcodegen`, `swift test --package-path Packages/TesseraCore --scratch-path ~/Library/Caches/tessera-build/core-$TRACK`, then `scripts/build-app.sh`.
 - **README:** what Tessera is, how to build, the permissions it needs, the clean-room statement (inspired by Loop; no Loop code), and the milestone roadmap.
 
-- [ ] **Step 1:** Write the files.
-- [ ] **Step 2:** Run `scripts/build-app.sh`. Expected: it prints `…/Tessera.app`.
-- [ ] **Step 3:** Smoke test: `open -n ~/Library/Caches/tessera-build/dd-main/Build/Products/Debug/Tessera.app; sleep 3; pgrep -x Tessera`. Expected: a PID is printed. Then `pkill -x Tessera`.
+- [x] **Step 1:** Write the files.
+- [x] **Step 2:** Run `scripts/build-app.sh`. Expected: it prints `…/Tessera.app`.
+- [x] **Step 3:** Smoke test: `open -n ~/Library/Caches/tessera-build/dd-main/Build/Products/Debug/Tessera.app; sleep 3; pgrep -x Tessera`. Expected: a PID is printed. Then `pkill -x Tessera`.
   - If the sandbox blocks `open`, use `~/Library/Caches/tessera-build/dd-main/Build/Products/Debug/Tessera.app/Contents/MacOS/Tessera & sleep 3; kill %1` instead.
-- [ ] **Step 4:** Commit with `chore: build script, CI, README`.
+- [x] **Step 4:** Commit with `chore: build script, CI, README`.
 
 ### Task F3: Hand-off checklist (user)
 
