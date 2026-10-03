@@ -18,3 +18,4 @@ tmp/
 .remember/
 Tessera.xcodeproj/
 .claude/worktrees/
+.claude/*.lock
