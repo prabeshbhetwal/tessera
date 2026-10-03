@@ -41,7 +41,7 @@ final class InputService: @unchecked Sendable {
     func start() -> Bool {
         if shared.withLock({ $0.session != nil }) { return true }
 
-        let types: [CGEventType] = [.flagsChanged, .keyDown, .keyUp, .leftMouseDown, .leftMouseUp, .scrollWheel, .mouseMoved, .leftMouseDragged]
+        let types: [CGEventType] = [.flagsChanged, .keyDown, .keyUp, .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .scrollWheel, .mouseMoved, .leftMouseDragged]
         let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
         let (config, generation) = shared.withLock { ($0.config, $0.generation) }
         let session = TapSession(service: self, config: config, generation: generation)
@@ -231,6 +231,10 @@ private final class TapSession: @unchecked Sendable {
             return .leftMouseDown(location)
         case .leftMouseUp:
             return .leftMouseUp(location)
+        case .rightMouseDown:
+            return .rightMouseDown
+        case .rightMouseUp:
+            return .rightMouseUp
         case .scrollWheel:
             // Trackpad: point deltas accumulate in the machine; momentum is swallowed but never steps.
             // Mouse wheel: one notch = one step.

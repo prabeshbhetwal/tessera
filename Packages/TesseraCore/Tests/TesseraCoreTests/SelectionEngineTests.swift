@@ -46,11 +46,14 @@ private func cursor(at degrees: Double, distance: Double = 50) -> CGPoint {
         let c = CGPoint(x: origin.x + 9.99, y: origin.y)
         #expect(engine.select(origin: origin, cursor: c, displays: [chg()], anchor: nil) == .none)
         #expect(engine.select(origin: origin, cursor: origin, displays: [chg()], anchor: nil) == .none)
+        // The ring's whole empty middle (radius − thickness / 2 = 39 pt by default) selects nothing.
+        let edge = CGPoint(x: origin.x + 38.99, y: origin.y)
+        #expect(engine.select(origin: origin, cursor: edge, displays: [chg()], anchor: nil) == .none)
     }
 
     @Test func testFlickBoundaries() {
         let d = [chg()]
-        let at10 = CGPoint(x: origin.x + 10, y: origin.y)
+        let at10 = CGPoint(x: origin.x + RingSettings().cancelRadius, y: origin.y)
         let at8999 = CGPoint(x: origin.x + 89.99, y: origin.y)
         let at90 = CGPoint(x: origin.x + 90, y: origin.y)
         #expect(engine.select(origin: origin, cursor: at10, displays: d, anchor: nil)

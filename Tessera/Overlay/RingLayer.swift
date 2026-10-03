@@ -11,13 +11,17 @@ final class RingLayer {
     private let glyphOutlines = CAShapeLayer()
     private let glyphFills = CAShapeLayer()
     private let boundary = CAShapeLayer()
+    /// ✕ in the empty middle: releasing there cancels. Brightens while the cursor is over it.
+    private let cancelMark = CAShapeLayer()
+    private var cancelling = false
     private var center = CGPoint.zero
     private var inner: CGFloat = 0
     private var outer: CGFloat = 0
     private var activeIndex: Int?
 
     init() {
-        for layer in [boundary, wedges, highlight, glyphOutlines, glyphFills] { root.addSublayer(layer) }
+        for layer in [boundary, wedges, highlight, glyphOutlines, glyphFills, cancelMark] { root.addSublayer(layer) }
+        cancelMark.lineCap = .round
         wedges.lineWidth = 1
         glyphOutlines.lineWidth = 1
         glyphOutlines.fillColor = nil
@@ -28,7 +32,7 @@ final class RingLayer {
 
     /// `center` is in this layer's local coordinates (AppKit orientation, y up).
     func configure(bounds: CGRect, center: CGPoint, ring: RingSettings, theme: Theme, scale: CGFloat) {
-        for layer in [root, wedges, highlight, glyphOutlines, glyphFills, boundary] {
+        for layer in [root, wedges, highlight, glyphOutlines, glyphFills, boundary, cancelMark] {
             layer.frame = bounds
             layer.contentsScale = scale
         }
@@ -56,6 +60,18 @@ final class RingLayer {
         let flick = CGFloat(ring.flickDistance)
         boundary.path = CGPath(ellipseIn: CGRect(x: center.x - flick, y: center.y - flick, width: flick * 2, height: flick * 2), transform: nil)
         boundary.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.45)
+
+        let arm = CGFloat(min(ring.cancelRadius * 0.28, 7))
+        let cross = CGMutablePath()
+        cross.move(to: CGPoint(x: center.x - arm, y: center.y - arm))
+        cross.addLine(to: CGPoint(x: center.x + arm, y: center.y + arm))
+        cross.move(to: CGPoint(x: center.x - arm, y: center.y + arm))
+        cross.addLine(to: CGPoint(x: center.x + arm, y: center.y - arm))
+        cancelMark.path = cross
+        cancelMark.lineWidth = 2
+        cancelMark.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 1)
+        cancelling = false
+        cancelMark.opacity = 0.35
         activeIndex = nil
         highlight.path = nil
         root.opacity = 1
@@ -65,6 +81,13 @@ final class RingLayer {
         guard index != activeIndex else { return }
         activeIndex = index
         highlight.path = index.map { Self.wedgePath(index: $0, center: center, inner: inner, outer: outer) }
+    }
+
+    /// True while the cursor is in the empty middle, where releasing cancels.
+    func setCancelling(_ on: Bool) {
+        guard on != cancelling else { return }
+        cancelling = on
+        cancelMark.opacity = on ? 1 : 0.35
     }
 
     /// The ring stays visible but recedes while the grid is the focus.

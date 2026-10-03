@@ -159,6 +159,7 @@ struct OnboardingView: View {
                 GestureHint("arrow.left.and.right", "Move left or right for a half.")
                 GestureHint("arrow.up.right", "Move up to maximize, diagonally for a quarter.")
                 GestureHint("rectangle.split.3x1", "Cross the dashed circle to point at a column; click to span several.")
+                GestureHint("xmark.circle", "Changed your mind? Release in the middle, press Esc or right-click.")
                 GestureHint("scroll", "Scroll while holding to change the column count.")
                 GestureHint("return", "Release to snap, press Esc to cancel.")
                 GestureHint("keyboard", "Or use the arrow keys and press Return.")

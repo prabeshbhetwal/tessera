@@ -32,7 +32,7 @@ public struct SelectionEngine: Sendable {
         let dy = Double(cursor.y - origin.y)
         let distance = hypot(dx, dy)
 
-        if distance < ring.deadZone { return .none }
+        if distance < ring.cancelRadius { return .none }
         if distance < ring.flickDistance - (pointing ? Self.pointHysteresis : 0) { return wedge(dx: dx, dy: dy) }
 
         guard let display = displays.display(at: cursor) else {
