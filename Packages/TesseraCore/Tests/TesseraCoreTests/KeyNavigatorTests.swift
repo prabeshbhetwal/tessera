@@ -67,11 +67,31 @@ private func reduce(_ s: NavState, _ k: NavKey, _ ds: [DisplayContext] = display
     }
 
     @Test func extendGrowsSpanAndClamps() {
-        #expect(reduce(state(0, 2...2), .extendRight) == state(0, 2...3))
-        #expect(reduce(state(0, 2...2), .extendLeft) == state(0, 1...2))
-        #expect(reduce(state(0, 1...3), .extendRight) == state(0, 1...4))
-        #expect(reduce(state(0, 0...4), .extendRight) == state(0, 0...4))
-        #expect(reduce(state(0, 0...4), .extendLeft) == state(0, 0...4))
+        #expect(reduce(state(0, 2...2), .extendRight).columns == 2...3)
+        #expect(reduce(state(0, 2...2), .extendLeft).columns == 1...2)
+        #expect(reduce(state(0, 1...3), .extendRight).columns == 1...4)
+        #expect(reduce(state(0, 0...4), .extendRight).columns == 0...4)
+        // Anchored at the right edge, extendLeft grows; clamps at column 0.
+        #expect(reduce(NavState(displayIndex: 0, columns: 0...4, band: .full, anchor: 4), .extendLeft).columns == 0...4)
+    }
+
+    @Test func extendOppositeWayRetractsToAnchor() {
+        // Grow right from column 2, then Shift+Left retracts back to 2, then grows left.
+        var s = state(0, 2...2)
+        s = reduce(s, .extendRight); s = reduce(s, .extendRight)
+        #expect(s.columns == 2...4)
+        s = reduce(s, .extendLeft)
+        #expect(s.columns == 2...3)
+        s = reduce(s, .extendLeft)
+        #expect(s.columns == 2...2)
+        s = reduce(s, .extendLeft)
+        #expect(s.columns == 1...2)
+        // Mirror: grow left, Shift+Right retracts.
+        s = reduce(s, .extendRight)
+        #expect(s.columns == 2...2)
+        // A plain move resets the anchor to the new column.
+        s = reduce(reduce(s, .extendRight), .right)
+        #expect(s == state(0, 4...4))
     }
 
     // MARK: band

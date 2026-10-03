@@ -7,11 +7,15 @@ public struct NavState: Equatable, Sendable {
     /// 0-based, inclusive.
     public var columns: ClosedRange<Int>
     public var band: Band
+    /// The column a Shift+arrow stretch grows from, so the opposite arrow retracts back toward it.
+    /// Always within `columns`; defaults to `columns.lowerBound`.
+    public var anchor: Int
 
-    public init(displayIndex: Int, columns: ClosedRange<Int>, band: Band) {
+    public init(displayIndex: Int, columns: ClosedRange<Int>, band: Band, anchor: Int? = nil) {
         self.displayIndex = displayIndex
         self.columns = columns
         self.band = band
+        self.anchor = anchor ?? columns.lowerBound
     }
 }
 
@@ -46,8 +50,9 @@ public enum KeyNavigator {
         switch key {
         case .left: s.columns = max(lo - 1, 0)...max(lo - 1, 0)
         case .right: s.columns = min(hi + 1, n - 1)...min(hi + 1, n - 1)
-        case .extendLeft: s.columns = max(lo - 1, 0)...hi
-        case .extendRight: s.columns = lo...min(hi + 1, n - 1)
+        // Like Shift+arrow text selection: shrink the edge past the anchor first, then grow.
+        case .extendLeft: s.columns = hi > s.anchor ? lo...(hi - 1) : max(lo - 1, 0)...hi
+        case .extendRight: s.columns = lo < s.anchor ? (lo + 1)...hi : lo...min(hi + 1, n - 1)
         case .bandUp: s.band = s.band == .bottom ? .full : .top
         case .bandDown: s.band = s.band == .top ? .full : .bottom
         case .column(let c):
@@ -58,8 +63,14 @@ public enum KeyNavigator {
         case .nextDisplay, .previousDisplay:
             let step = key == .nextDisplay ? 1 : ordered.count - 1
             let to = (s.displayIndex + step) % ordered.count
+            let atRightEdge = s.anchor == hi && lo < hi
             s.columns = relocate(s.columns, from: n, to: columnCount(ordered[to]))
+            s.anchor = atRightEdge ? s.columns.upperBound : s.columns.lowerBound
             s.displayIndex = to
+        }
+        switch key {
+        case .left, .right, .column: s.anchor = s.columns.lowerBound  // a plain move starts a new stretch
+        default: break
         }
         return s
     }
@@ -87,7 +98,7 @@ public enum KeyNavigator {
         let n = columnCount(ordered[index])
         let lo = min(max(s.columns.lowerBound, 0), n - 1)
         let hi = min(max(s.columns.upperBound, lo), n - 1)
-        return NavState(displayIndex: index, columns: lo...hi, band: s.band)
+        return NavState(displayIndex: index, columns: lo...hi, band: s.band, anchor: min(max(s.anchor, lo), hi))
     }
 
     /// Keeps the column ratio: `round(start*to/from)...max(start', round((end+1)*to/from)-1)`.
