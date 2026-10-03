@@ -36,7 +36,7 @@ struct OverlayPane: View {
                 // Re-picking the current theme must not throw away preview changes made since it was picked.
                 Picker("Theme", selection: Binding.choice(model.settings.themeName) { name in
                     model.settings.themeName = name
-                    model.settings.preview = model.settings.selectedTheme.preview
+                    applyPreview(of: model.settings.selectedTheme)
                 }) {
                     ForEach(model.settings.allThemes, id: \.name) { Text($0.name).tag($0.name) }
                 }
@@ -56,7 +56,7 @@ struct OverlayPane: View {
                         Button("Delete \u{201C}\(model.settings.customThemes[customIndex].name)\u{201D}", role: .destructive) {
                             model.settings.customThemes.remove(at: customIndex)
                             model.settings.themeName = Theme.default.name
-                            model.settings.preview = Theme.default.preview
+                            applyPreview(of: .default)
                         }
                     }
                 }
@@ -136,7 +136,7 @@ struct OverlayPane: View {
 
             ResetSection(keeps: "Keeps your custom themes.") {
                 model.settings.themeName = Theme.default.name
-                model.settings.preview = Theme.default.preview
+                applyPreview(of: .default)
             }
         }
         .formStyle(.grouped)
@@ -149,6 +149,15 @@ struct OverlayPane: View {
         case .snapshot: "The box appears first, then a picture of the window fades in, scaled to fit."
         case .appIcon: "The box with the moving app's icon in the middle."
         }
+    }
+
+    /// Takes a theme's preview look. Motion owns the morph and spring speed, so picking, deleting or
+    /// resetting a theme here must leave those two alone.
+    private func applyPreview(of theme: Theme) {
+        var preview = theme.preview
+        preview.morph = model.settings.preview.morph
+        preview.springResponse = model.settings.preview.springResponse
+        model.settings.preview = preview
     }
 
     /// Applies a change to the selected custom theme, forking a built-in one into "Custom" first.
