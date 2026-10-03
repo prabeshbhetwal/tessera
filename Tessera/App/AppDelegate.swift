@@ -21,6 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // After the single-instance guard: start() replaces any existing socket file.
         socketServer.start()
+        switch CLIInstaller.repairIfStale() {
+        case .success(let link)?: log.info("repointed \(link.path, privacy: .public) at this build")
+        case .failure(let error)?: log.error("CLI link repair failed: \(error.localizedDescription, privacy: .public)")
+        case nil: break
+        }
         statusItem = StatusItemController(
             model: model,
             presenter: { [weak self] in self?.coordinator?.presenter },
