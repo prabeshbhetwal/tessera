@@ -15,6 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let state = AppState()
     private(set) var coordinator: Coordinator?
     private var permissionObserver: NSObjectProtocol?
+    /// URLs that arrive before the coordinator exists (app launched by a `tessera://` link).
+    private var pendingURLs: [URL] = []
     private let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "app")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -32,6 +34,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.settings = loaded.settings
             let coordinator = Coordinator(model: model, store: store)
             self.coordinator = coordinator
+            CommandBridge.executor = coordinator.executor
+            let queued = pendingURLs
+            pendingURLs = []
+            for url in queued { await handle(url, with: coordinator) }
             if let recovered = loaded.recoveredFrom { showRecoveryAlert(recovered) }
             permissionObserver = Permissions.observeAccessibility { [weak self] granted in
                 self?.permissionChanged(granted)
@@ -53,6 +59,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.stop()
+    }
+
+    /// `tessera://` URLs (M2 spec §5): fire-and-forget; errors are logged and shown in the HUD.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let coordinator else {
+            pendingURLs += urls
+            return
+        }
+        Task {
+            for url in urls { await handle(url, with: coordinator) }
+        }
+    }
+
+    private func handle(_ url: URL, with coordinator: Coordinator) async {
+        let command: Command
+        do {
+            command = try CommandParser.parse(url: url)
+        } catch {
+            let message = if case let CommandParseError.invalid(m) = error { m } else { error.localizedDescription }
+            log.notice("bad URL \(url.absoluteString, privacy: .public): \(message, privacy: .public)")
+            coordinator.showHUD(message)
+            return
+        }
+        // Any web page can open a URL, so file access stays with the CLI and AppleScript.
+        switch command {
+        case .exportSettings, .importSettings:
+            log.notice("refused settings file command from URL")
+            coordinator.showHUD("Settings import/export isn't available from URLs")
+        default:
+            await coordinator.run(command)
+        }
     }
 
     private func permissionChanged(_ granted: Bool) {
