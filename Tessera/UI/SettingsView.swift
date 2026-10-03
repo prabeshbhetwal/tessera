@@ -23,11 +23,11 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         switch self {
         case .general: "gearshape.fill"
         case .shortcuts: "command"
-        case .displays: "display.2"
-        case .ring: "circle.dashed"
-        case .preview: "rectangle.dashed"
+        case .displays: "display"
+        case .ring: "smallcircle.filled.circle"
+        case .preview: "rectangle.lefthalf.filled"
         case .appearance: "paintpalette.fill"
-        case .excludedApps: "nosign"
+        case .excludedApps: "hand.raised.fill"
         case .about: "info"
         }
     }
@@ -50,10 +50,10 @@ enum SettingsPane: Int, CaseIterable, Hashable {
     /// One sentence under the pane title: what the pane controls.
     var blurb: String {
         switch self {
-        case .general: "The trigger chord, launch behaviour, settings files and the command-line tool."
+        case .general: "The trigger chord, snap speed, launch behaviour, settings files and the command-line tool."
         case .shortcuts: "Global hotkeys, named cycles and keyboard control of the open ring."
         case .displays: "Column count, gap and padding for each connected display."
-        case .ring: "How far you flick before pointing, and what each direction does."
+        case .ring: "Where directions end and pointing begins, and what each direction does."
         case .preview: "What the snap preview shows while you hold the trigger."
         case .appearance: "Themes and colours for the ring and preview."
         case .excludedApps: "Apps in front of which the trigger stays off."
@@ -93,6 +93,9 @@ final class SettingsNavigation {
 
 /// Settings window root: sidebar of panes, grouped form on the right (spec §6.1, M2 §6).
 struct SettingsView: View {
+    /// Fixed window width (content points); only the height is user-adjustable.
+    static let width: CGFloat = 820
+
     @Bindable var model: SettingsModel
     @Bindable var navigation: SettingsNavigation
     var displays: [DisplayContext]
@@ -133,7 +136,8 @@ struct SettingsView: View {
                 KeyCommand(KeyEquivalent(Character("\(pane.rawValue + 1)"))) { navigation.pane = pane }
             }
         }
-        .frame(minWidth: 760, idealWidth: 820, minHeight: 540, idealHeight: 640)
+        .frame(width: Self.width)
+        .frame(minHeight: 540, idealHeight: 640)
     }
 
     @ViewBuilder private var paneView: some View {
@@ -156,11 +160,18 @@ struct PaneIcon: View {
     var size: CGFloat = 20
 
     var body: some View {
+        let tile = RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
+        // Fit every glyph into the same box so wide and tall symbols read at the same size.
         Image(systemName: pane.symbol)
-            .font(.system(size: size * 0.55, weight: .medium))
+            .resizable()
+            .scaledToFit()
+            .fontWeight(.semibold)
             .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.2), radius: size * 0.02, y: size * 0.02)
+            .frame(width: size * 0.58, height: size * 0.58)
             .frame(width: size, height: size)
-            .background(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).fill(pane.tint))
+            .background(tile.fill(pane.tint.gradient))
+            .overlay(tile.strokeBorder(.white.opacity(0.2), lineWidth: 0.5))
             .accessibilityHidden(true)
     }
 }

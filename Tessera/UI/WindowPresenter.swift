@@ -69,9 +69,22 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         // Size the window here and let the view fill it instead.
         controller.sizingOptions = []
         let window = makeWindow(title: "Tessera Settings", controller: controller, resizable: true)
-        window.setContentSize(NSSize(width: 820, height: 640))
-        window.contentMinSize = NSSize(width: 760, height: 540)
+        // Like System Settings: fixed width, height adjustable for long panes, never zoomed or full screen.
+        let width = SettingsView.width
+        window.setContentSize(NSSize(width: width, height: 640))
+        window.contentMinSize = NSSize(width: width, height: 540)
+        window.contentMaxSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
+        window.collectionBehavior.insert(.fullScreenNone)
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
         window.center()
+        // Restores the last size and position (saved by AppKit on every move/resize) and keeps saving them.
+        window.setFrameAutosaveName("TesseraSettings")
+        // A saved frame can predate the fixed width, or sit on a display that's gone.
+        let content = window.contentRect(forFrameRect: window.frame)
+        if content.width != width {
+            window.setContentSize(NSSize(width: width, height: max(content.height, window.contentMinSize.height)))
+        }
+        if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(window.frame) }) { window.center() }
         return window
     }
 
@@ -88,7 +101,8 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
 
     private func present(_ window: NSWindow) {
         NSApp.setActivationPolicy(.regular)
-        if !window.isVisible { window.center() }
+        // Autosaved windows reopen where the user left them.
+        if !window.isVisible, window.frameAutosaveName.isEmpty { window.center() }
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         // Plain activate() is "cooperative" on macOS 14+ and is often ignored for a background agent,

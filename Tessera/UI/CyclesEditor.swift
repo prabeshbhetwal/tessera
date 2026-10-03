@@ -155,16 +155,22 @@ struct ColumnStepper: View {
     @Binding var value: Int
 
     var body: some View {
-        Stepper {
-            Text("\(title) \(value)").monospacedDigit()
-        } onIncrement: {
-            value = value == -1 ? 1 : min(16, value + 1)
-        } onDecrement: {
-            value = value == 1 ? -1 : max(-16, value - 1)
+        // Label outside the Stepper: inside a grouped Form a labelled Stepper becomes a full-width
+        // label…control row, which pushed step rows wider than the form and clipped them.
+        HStack(spacing: 4) {
+            Text("\(title) \(value)")
+                .monospacedDigit()
+                .accessibilityHidden(true)
+            Stepper(title) {
+                value = value == -1 ? 1 : min(16, value + 1)
+            } onDecrement: {
+                value = value == 1 ? -1 : max(-16, value - 1)
+            }
+            .labelsHidden()
+            .accessibilityLabel("\(title) column")
+            .accessibilityValue(value < 0 ? "\(-value) from the right" : "\(value)")
         }
         .fixedSize()
-        .accessibilityLabel("\(title) column")
-        .accessibilityValue(value < 0 ? "\(-value) from the right" : "\(value)")
     }
 }
 
@@ -205,10 +211,10 @@ struct DisplaySelectorEditor: View {
                 .accessibilityLabel(title)
                 switch selector {
                 case .index(let n):
-                    Stepper(value: Binding(get: { n }, set: { selector = .index($0) }), in: 1...16) {
-                        Text("\(n)").monospacedDigit()
-                    }
-                    .accessibilityLabel("Display number")
+                    Text("\(n)").monospacedDigit().accessibilityHidden(true)
+                    Stepper("Display number", value: Binding(get: { n }, set: { selector = .index($0) }), in: 1...16)
+                        .labelsHidden()
+                        .accessibilityValue("\(n)")
                 case .id(let key):
                     TextField("Display ID", text: Binding(get: { key }, set: { selector = .id($0) }))
                         .frame(minWidth: 120)
