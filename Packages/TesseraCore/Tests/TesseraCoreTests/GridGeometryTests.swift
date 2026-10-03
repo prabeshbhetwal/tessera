@@ -98,7 +98,7 @@ import Testing
         let d = Self.context(CGRect(x: -1440, y: 0, width: 1440, height: 2543), columns: 3)
         #expect(d.range.isPortrait)
         let usable = CGRect(x: -1432, y: 8, width: 1424, height: 2527)
-        let rowH = 2527.0 / 3
+        let rowH: CGFloat = 2527.0 / 3
         let top = GridGeometry.frame(for: ColumnSpan(columns: 0...0, band: .bottom), display: d)
         Self.expectEqual(top, CGRect(x: usable.minX, y: usable.maxY - rowH + 4, width: usable.width, height: rowH - 4))
         let last = GridGeometry.frame(for: ColumnSpan(columns: 2...2, band: .top), display: d)
