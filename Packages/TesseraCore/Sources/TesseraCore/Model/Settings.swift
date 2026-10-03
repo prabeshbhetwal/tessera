@@ -121,6 +121,11 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     public var excludedBundleIDs: [String] = []
     public var launchAtLogin = false
     public var showMenuBarIcon = true
+    // M2 (schema v2): keyboard + automation.
+    public var hotkeys: [HotkeyBinding] = HotkeyBinding.defaults
+    public var cycles: [Cycle] = Cycle.defaults
+    public var ringKeyNavigation = true
+    public var announceSelection = true
 
     public init() {}
     public static let defaults = TesseraSettings()

@@ -90,6 +90,7 @@ final class Coordinator {
         case let .step(delta): step(delta)
         case .apply: await apply()
         case .cancel: cancelSession()
+        case .nav, .command: break // M2 Track I wires these.
         }
     }
 

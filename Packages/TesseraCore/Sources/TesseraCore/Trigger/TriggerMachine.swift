@@ -21,6 +21,10 @@ public enum TriggerOutput: Sendable, Equatable {
     case step(Int)
     case apply
     case cancel
+    /// M2: a navigation key while the ring is open.
+    case nav(NavKey)
+    /// M2: a matched hotkey (ring closed, or ring cancelled by it).
+    case command(Command)
 }
 
 public struct TriggerResult: Equatable, Sendable {

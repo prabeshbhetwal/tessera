@@ -18,13 +18,28 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.prabeshbhetwal.Tessera</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tessera</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleScriptEnabled</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Tessera — inspired by Loop, contains no Loop code.</string>
+	<key>OSAScriptingDefinition</key>
+	<string>Tessera.sdef</string>
 </dict>
 </plist>

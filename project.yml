@@ -37,6 +37,11 @@ targets:
         LSUIElement: true
         LSMinimumSystemVersion: "15.0"
         NSHumanReadableCopyright: "Tessera — inspired by Loop, contains no Loop code."
+        NSAppleScriptEnabled: true
+        OSAScriptingDefinition: Tessera.sdef
+        CFBundleURLTypes:
+          - CFBundleURLName: com.prabeshbhetwal.Tessera
+            CFBundleURLSchemes: [tessera]
 schemes:
   Tessera:
     build:
