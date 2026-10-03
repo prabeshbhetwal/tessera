@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var permissionObserver: NSObjectProtocol?
     /// URLs that arrive before the coordinator exists (app launched by a `tessera://` link).
     private var pendingURLs: [URL] = []
+    /// CLI endpoint; answers "still starting up" until the executor exists.
+    private let socketServer = SocketServer()
     private let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "app")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -24,6 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        // After the single-instance guard: start() replaces any existing socket file.
+        socketServer.start()
         guard let fileURL = Self.settingsURL() else {
             log.fault("no Application Support directory")
             return
@@ -58,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        socketServer.stop()
         coordinator?.stop()
     }
 
