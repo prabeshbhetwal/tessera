@@ -38,7 +38,7 @@ final class Coordinator {
         /// Read once per session; it is an IPC-backed system setting, too slow for every mouse move.
         let reduceMotion: Bool
         var selection: Selection = .none
-        /// Something was selected at some point: releasing back in the middle then cancels, it isn't a tap.
+        /// The cursor moved or something was selected: releasing back in the middle then cancels, it isn't a tap.
         var leftDeadZone = false
         var displays: [DisplayContext]
         var cursor: CGPoint
@@ -292,6 +292,7 @@ final class Coordinator {
             var rect = CGRect(x: 0, y: 0, width: 256, height: 256)
             session?.image = NSRunningApplication(processIdentifier: target.pid)?.icon?
                 .cgImage(forProposedRect: &rect, context: nil, hints: nil)
+            refreshSelection()
         case .snapshot:
             guard Permissions.isScreenCaptureAllowed, let windowID = target.windowID else { break }
             Task {
@@ -336,7 +337,10 @@ final class Coordinator {
         let frame = targetFrame(for: selection, in: s)
         s.targetFrame = frame
         s.selection = selection
-        if selection != .none { s.leftDeadZone = true }
+        // Any real move ends the tap, even when no gesture is on to turn it into a selection.
+        if selection != .none || hypot(s.cursor.x - s.origin.x, s.cursor.y - s.origin.y) > SelectionEngine.jitterTolerance {
+            s.leftDeadZone = true
+        }
         // Announcing is an accessibility round trip; only do it when someone can hear it.
         if model.settings.announceSelection, NSWorkspace.shared.isVoiceOverEnabled,
            let label = frame.flatMap({ PreviewModel.label(for: selection, frame: $0) }), label != s.announced {

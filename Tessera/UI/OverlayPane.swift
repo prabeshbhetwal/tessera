@@ -15,6 +15,8 @@ struct OverlayPane: View {
     private var customIndex: Int? { model.customThemeIndex }
     private var trimmedName: String { newThemeName.trimmingCharacters(in: .whitespaces) }
     private var nameTakenByBuiltIn: Bool { Theme.builtIn.contains { $0.name == trimmedName } }
+    /// "Custom" is where colour edits to a built-in theme land, overwriting it each time.
+    private var nameReserved: Bool { trimmedName == Self.editedName }
 
     var body: some View {
         let s = model.settings.preview
@@ -43,10 +45,12 @@ struct OverlayPane: View {
                 HStack {
                     TextField("Save the current look as", text: $newThemeName, prompt: Text("Theme name"))
                     Button("Save") { saveTheme() }
-                        .disabled(trimmedName.isEmpty || nameTakenByBuiltIn)
+                        .disabled(trimmedName.isEmpty || nameTakenByBuiltIn || nameReserved)
                 }
                 if nameTakenByBuiltIn {
                     Caption("\(trimmedName) is a built-in theme. Pick another name.")
+                } else if nameReserved {
+                    Caption("\u{201C}\(trimmedName)\u{201D} holds your unsaved colour changes. Pick another name.")
                 } else if model.settings.customThemes.contains(where: { $0.name == trimmedName }) {
                     Caption("Saving replaces the theme named \(trimmedName).")
                 }
