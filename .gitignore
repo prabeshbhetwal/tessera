@@ -17,3 +17,4 @@ logs/
 tmp/
 .remember/
 Tessera.xcodeproj/
+.claude/worktrees/

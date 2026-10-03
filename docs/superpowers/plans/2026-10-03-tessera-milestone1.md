@@ -467,9 +467,9 @@ These are not unit-tested, because they need system permissions. The deliverable
     - `static var isScreenCaptureAllowed: Bool` (`CGPreflightScreenCaptureAccess`)
     - `static func requestScreenCapture()` (`CGRequestScreenCaptureAccess`)
 
-- [ ] **Step 1:** Implement `SPI.swift` and `Permissions.swift`.
-- [ ] **Step 2:** Build with `xcodegen generate && xcodebuild -project Tessera.xcodeproj -scheme Tessera -derivedDataPath ~/Library/Caches/tessera-build/dd-$TRACK build`. Expected: BUILD SUCCEEDED with zero concurrency warnings in these files.
-- [ ] **Step 3:** Commit with `feat(services): SPI loader and permissions`.
+- [x] **Step 1:** Implement `SPI.swift` and `Permissions.swift`.
+- [x] **Step 2:** Build with `xcodegen generate && xcodebuild -project Tessera.xcodeproj -scheme Tessera -derivedDataPath ~/Library/Caches/tessera-build/dd-$TRACK build`. Expected: BUILD SUCCEEDED with zero concurrency warnings in these files.
+- [x] **Step 3:** Commit with `feat(services): SPI loader and permissions`.
 
 ### Task D2: DisplayService
 
@@ -487,9 +487,9 @@ These are not unit-tested, because they need system permissions. The deliverable
 - **Profile:** use the user override from `settings().displayOverrides[id.storageKey]`, clamped to the display's range. Otherwise use `.auto`.
 - **Refreshing:** listen for `NSApplication.didChangeScreenParametersNotification` and call `refresh()` then `onChange`.
 
-- [ ] **Step 1:** Implement.
-- [ ] **Step 2:** Build. Expected: BUILD SUCCEEDED.
-- [ ] **Step 3:** Commit with `feat(services): display service with stable IDs`.
+- [x] **Step 1:** Implement.
+- [x] **Step 2:** Build. Expected: BUILD SUCCEEDED.
+- [x] **Step 3:** Commit with `feat(services): display service with stable IDs`.
 
 ### Task D3: InputService
 
@@ -511,9 +511,9 @@ These are not unit-tested, because they need system permissions. The deliverable
   4. Return nil if `suppress` is true.
 - **Tap disabled:** on `tapDisabledByTimeout` or `tapDisabledByUserInput`, re-enable the tap. If that happens more than 5 times in 2 s, pause for 2 s. Shared state is guarded by `OSAllocatedUnfairLock`.
 
-- [ ] **Step 1:** Implement.
-- [ ] **Step 2:** Build. Expected: BUILD SUCCEEDED.
-- [ ] **Step 3:** Commit with `feat(services): event tap input service`.
+- [x] **Step 1:** Implement.
+- [x] **Step 2:** Build. Expected: BUILD SUCCEEDED.
+- [x] **Step 3:** Commit with `feat(services): event tap input service`.
 
 ### Task D4: WindowService and ThumbnailService
 
@@ -539,9 +539,9 @@ These are not unit-tested, because they need system permissions. The deliverable
   - `SCShareableContent.current`, find the window by ID, then `SCScreenshotManager.captureImage(contentFilter: SCContentFilter(desktopIndependentWindow:), configuration:)`.
   - Race the capture against a 150 ms `Task.sleep` and return nil on timeout or error.
 
-- [ ] **Step 1:** Implement.
-- [ ] **Step 2:** Build. Expected: BUILD SUCCEEDED.
-- [ ] **Step 3:** Commit with `feat(services): AX window service and thumbnail capture`.
+- [x] **Step 1:** Implement.
+- [x] **Step 2:** Build. Expected: BUILD SUCCEEDED.
+- [x] **Step 3:** Commit with `feat(services): AX window service and thumbnail capture`.
 
 ---
 
