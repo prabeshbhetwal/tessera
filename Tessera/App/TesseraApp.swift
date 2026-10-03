@@ -19,10 +19,13 @@ struct TesseraApp: App {
         }
     }
 
+    /// One-way on purpose. macOS hides/shows status items itself (crowded or notched menu bars) and SwiftUI
+    /// writes those flips back through `isInserted`. Writing them into settings re-rendered the scene, which
+    /// re-set visibility, which wrote again: an endless loop that froze the app. Only Settings changes this.
     private var showIcon: Binding<Bool> {
         Binding(
             get: { delegate.model.settings.showMenuBarIcon },
-            set: { delegate.model.settings.showMenuBarIcon = $0 }
+            set: { _ in }
         )
     }
 }

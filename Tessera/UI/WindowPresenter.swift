@@ -20,6 +20,7 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
 
     /// Call when `DisplayService` reports a change so the Displays pane lists the current screens.
     func updateDisplays(_ displays: [DisplayContext]) {
+        guard displays != self.displays else { return }
         self.displays = displays
         (settingsWindow?.contentViewController as? NSHostingController<SettingsView>)?.rootView =
             SettingsView(model: model, navigation: navigation, displays: displays)
@@ -33,7 +34,8 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
             controller: NSHostingController(rootView: SettingsView(model: model, navigation: navigation, displays: displays))
         )
         settingsWindow = window
-        updateDisplays(displays)
+        (window.contentViewController as? NSHostingController<SettingsView>)?.rootView =
+            SettingsView(model: model, navigation: navigation, displays: displays)
         present(window)
     }
 

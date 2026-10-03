@@ -11,6 +11,8 @@ struct GeneralPane: View {
     @State private var ioMessage: String?
     @State private var cliInstalled = CLIInstaller.isInstalled
     @State private var cliMessage: String?
+    /// Read once per appearance; `SMAppService.status` is IPC and must never run in `body`.
+    @State private var loginNeedsApproval = false
 
     var body: some View {
         Form {
@@ -24,7 +26,7 @@ struct GeneralPane: View {
                     set: { setLaunchAtLogin($0) }
                 ))
                 if let loginError { Caption(loginError) }
-                if SMAppService.mainApp.status == .requiresApproval {
+                if loginNeedsApproval {
                     Caption("Approve Tessera in System Settings › General › Login Items.")
                 }
                 Toggle("Show menu bar icon", isOn: $model.settings.showMenuBarIcon)
@@ -71,6 +73,7 @@ struct GeneralPane: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear { loginNeedsApproval = SMAppService.mainApp.status == .requiresApproval }
     }
 
     private func setLaunchAtLogin(_ on: Bool) {
@@ -78,6 +81,7 @@ struct GeneralPane: View {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             model.settings.launchAtLogin = on
             loginError = nil
+            loginNeedsApproval = SMAppService.mainApp.status == .requiresApproval
         } catch {
             loginError = "Couldn't change the login item: \(error.localizedDescription)"
         }
