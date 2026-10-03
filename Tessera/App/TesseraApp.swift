@@ -33,18 +33,19 @@ struct TesseraApp: App {
 private struct MenuContent: View {
     let delegate: AppDelegate
 
+    // Static item list on purpose: SwiftUI drops conditional (`if`) items from MenuBarExtra menus when
+    // the condition changes after the menu is first built, leaving only Quit. Items toggle `disabled` instead.
     var body: some View {
-        if delegate.state.accessibilityGranted {
-            Button("Settings…") { delegate.coordinator?.presenter.showSettings() }
-                .keyboardShortcut(",")
-            Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
-            Button("Undo last move") { delegate.coordinator?.undoLast() }
-        } else {
-            // Nothing works without Accessibility, so setup is the only thing on offer.
-            Button("Finish setup…") {
-                delegate.coordinator?.presenter.showOnboarding(startStep: OnboardingView.accessibilityStep)
-            }
-        }
+        let granted = delegate.state.accessibilityGranted
+        Text(granted ? "Ready" : "Accessibility not granted")
+        Divider()
+        // Always available: routes to setup until Accessibility is granted, then to Settings.
+        Button("Settings…") { delegate.coordinator?.presenter.showSettings() }
+            .keyboardShortcut(",")
+        Button("Shortcuts…") { delegate.coordinator?.presenter.showSettings(pane: .shortcuts) }
+            .disabled(!granted)
+        Button("Undo last move") { delegate.coordinator?.undoLast() }
+            .disabled(!granted)
         Divider()
         Button("Quit Tessera") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
