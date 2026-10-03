@@ -311,7 +311,9 @@ private struct FlickDemo: View {
     private let sequence = [6, 2, 0, 3, 7]
 
     var body: some View {
-        TimelineView(.animation(paused: reduceMotion)) { timeline in
+        // 30 fps is plenty for a decorative demo; the default follows the display (120 Hz on ProMotion)
+        // and cost ~25% CPU for as long as onboarding stayed open.
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { timeline in
             Canvas { context, size in
                 let t = reduceMotion ? 0.6 : timeline.date.timeIntervalSinceReferenceDate
                 let cycle = Int(t / 1.6)
