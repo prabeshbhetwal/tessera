@@ -148,13 +148,13 @@ struct OnboardingView: View {
     private var screenRecording: some View {
         StepPage(
             symbol: "rectangle.dashed.badge.record", tint: .teal, title: "Live window thumbnails",
-            text: "Optional. With Screen Recording allowed, the snap preview shows a picture of the window you're moving. Tessera takes one still snapshot per gesture and never records or saves anything."
+            text: "Optional, and only used by the Window snapshot preview style. The preview is a tinted box by default; with Screen Recording allowed you can switch it to show a picture of the window you're moving. Tessera takes one still snapshot per gesture and never records or saves anything."
         ) {
             PermissionRow(title: "Screen Recording", granted: screenAllowed, actionTitle: "Allow…") {
                 Permissions.requestScreenCapture()
                 screenAllowed = Permissions.isScreenCaptureAllowed
             }
-            Caption("After you allow it, macOS asks to quit and reopen Tessera; setup continues here. Skip it and the preview uses a tinted rectangle. You can turn it on later in Settings › Overlay.")
+            Caption("Allowing it doesn't change the preview by itself: pick Window snapshot in Settings › Overlay › Preview style. After you allow it, macOS asks to quit and reopen Tessera; setup continues here.")
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
         }
