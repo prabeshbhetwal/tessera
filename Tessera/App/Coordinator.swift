@@ -32,7 +32,12 @@ final class Coordinator {
         var cursor: CGPoint
         var anchor: SpanAnchor?
         var neighbours: [CGRect] = []
-        var thumbnail: CGImage?
+        /// Window snapshot or app icon, per `PreviewSettings.style`.
+        var image: CGImage?
+        /// Pointing labels carry the "click to add columns" hint this session.
+        let hint: Bool
+        /// The cursor reached the grid at least once (counts toward the hint's limit).
+        var pointed = false
         var targetFrame: CGRect?
         /// Keyboard selection; overrides the cursor while set.
         var nav: NavState?
@@ -187,13 +192,14 @@ final class Coordinator {
         sessionCounter += 1
         let id = sessionCounter
         session = Session(id: id, origin: origin, target: target, current: current,
-                          displays: displays.displays, cursor: origin)
+                          displays: displays.displays, cursor: origin,
+                          hint: model.settings.ring.pointingHintDue)
         overlay.show(origin: origin, displays: displays.displays, ring: model.settings.ring, theme: model.settings.activeTheme)
         refreshSelection() // the cursor starts in the middle: show the cancel mark lit
         loadContext(for: id, target: target)
     }
 
-    /// Neighbour frames and the thumbnail load concurrently; late results are dropped if the session changed.
+    /// Neighbour frames and the snapshot load concurrently; late results are dropped if the session changed.
     private func loadContext(for id: Int, target: WindowRef) {
         let preview = model.settings.preview
         let height = DisplayService.primaryHeight
@@ -205,11 +211,20 @@ final class Coordinator {
                 refreshSelection()
             }
         }
-        if preview.showThumbnail, Permissions.isScreenCaptureAllowed, let windowID = target.windowID {
+        switch preview.style {
+        case .tint:
+            break
+        case .appIcon:
+            // A nil rect picks the 32 pt representation, which blurs at preview size.
+            var rect = CGRect(x: 0, y: 0, width: 256, height: 256)
+            session?.image = NSRunningApplication(processIdentifier: target.pid)?.icon?
+                .cgImage(forProposedRect: &rect, context: nil, hints: nil)
+        case .snapshot:
+            guard Permissions.isScreenCaptureAllowed, let windowID = target.windowID else { break }
             Task {
                 let image = await thumbnails.snapshot(windowID: windowID)
                 guard session?.id == id else { return }
-                session?.thumbnail = image
+                session?.image = image
                 refreshSelection()
             }
         }
@@ -243,6 +258,7 @@ final class Coordinator {
             selection = engine.select(origin: s.origin, cursor: s.cursor, displays: s.displays,
                                       anchor: s.anchor, pointing: s.pointing)
             if case .span = selection { s.pointing = true } else { s.pointing = false }
+            if s.pointing { s.pointed = true }
         }
         let frame = targetFrame(for: selection, in: s)
         s.targetFrame = frame
@@ -259,14 +275,14 @@ final class Coordinator {
             PreviewModel.layers(
                 PreviewInput(target: $0, current: s.current, neighbours: s.neighbours, selection: selection,
                              reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion),
-                settings: model.settings.preview
+                settings: model.settings.preview, hint: s.hint && s.nav == nil // clicks span columns; keys don't
             )
         }
         var pointMode = false
         if case .span = selection { pointMode = true }
         let cancelling = s.nav == nil
             && hypot(s.cursor.x - s.origin.x, s.cursor.y - s.origin.y) < model.settings.ring.cancelRadius
-        overlay.update(selection: selection, layers: layers, thumbnail: s.thumbnail,
+        overlay.update(selection: selection, layers: layers, image: s.image,
                        displays: s.displays, pointMode: pointMode, cancelling: cancelling)
     }
 
@@ -303,8 +319,7 @@ final class Coordinator {
 
     private func apply() async {
         guard let s = session else { return }
-        session = nil
-        overlay.hide()
+        end(s)
         guard let frame = s.targetFrame else { return }
         // Not awaited: a glide must never hold up the next ring or hotkey.
         Task {
@@ -317,9 +332,16 @@ final class Coordinator {
     }
 
     private func cancelSession() {
-        guard session != nil else { return }
+        guard let s = session else { return }
+        end(s)
+    }
+
+    private func end(_ s: Session) {
         session = nil
         overlay.hide()
+        if s.hint, s.pointed {
+            model.settings.ring.pointingHintsSeen = (model.settings.ring.pointingHintsSeen ?? 0) + 1
+        }
     }
 
     // MARK: - Changes

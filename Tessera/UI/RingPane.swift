@@ -15,8 +15,8 @@ struct RingPane: View {
                     .frame(height: 220)
                 VStack(alignment: .leading, spacing: 6) {
                     Label("**Direction** — move a little toward an edge or corner. The wedge you head for lights up and shows its layout.", systemImage: "arrow.up.right.circle")
-                    Label("**Point** — keep going past the dashed circle and the ring fades. Point at a column of the grid; click to span several.", systemImage: "rectangle.split.3x1")
-                    Label("Come back inside the dashed circle to return to directions. Release the trigger to snap.", systemImage: "arrow.uturn.backward.circle")
+                    Label("**Point** — keep going further out and the grid appears. Point at a column; click to span several.", systemImage: "rectangle.split.3x1")
+                    Label("Move back toward where you started to return to directions. Release the trigger to snap.", systemImage: "arrow.uturn.backward.circle")
                     Label("**Cancel** — release in the ring's empty middle (✕), press Esc, or right-click. Nothing moves.", systemImage: "xmark.circle")
                 }
                 .font(.callout)
@@ -26,7 +26,15 @@ struct RingPane: View {
             Section("Zones") {
                 let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
                 SliderRow(title: "Pointing starts at", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
-                Caption("The dashed circle on screen sits here. Make it bigger if you slip into pointing by accident.")
+                Caption("Make it bigger if you slip into pointing by accident.")
+            }
+
+            Section("Pointing") {
+                Toggle("Show a dashed circle where pointing starts", isOn: ring.showBoundary)
+                Toggle("Number the grid's columns", isOn: ring.showColumnNumbers)
+                Toggle("Show \"click to add columns\" the first few times", isOn: ring.showPointingHint)
+                Button("Show the hint again") { model.settings.ring.pointingHintsSeen = nil }
+                    .disabled(!r.showPointingHint || r.pointingHintDue)
             }
 
             Section("Wedges") {
@@ -53,6 +61,9 @@ struct RingPane: View {
                 model.settings.ring.wedges = d.wedges
                 model.settings.ring.radius = d.radius
                 model.settings.ring.thickness = d.thickness
+                model.settings.ring.boundary = nil
+                model.settings.ring.columnNumbers = nil
+                model.settings.ring.pointingHint = nil
             }
         }
         .formStyle(.grouped)

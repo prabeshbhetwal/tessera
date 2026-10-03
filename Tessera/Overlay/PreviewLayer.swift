@@ -2,14 +2,16 @@ import AppKit
 import QuartzCore
 import TesseraCore
 
-/// Renders one `PreviewLayers` value: dimmed neighbours, dashed "from" outline,
-/// tinted/thumbnail frame with border, and a label pill. Pure Core Animation.
+/// Renders one `PreviewLayers` value: dimmed neighbours, dashed "from" outline, tinted frame with
+/// border, an optional image (window snapshot or app icon), and a label pill. Pure Core Animation.
 @MainActor
 final class PreviewLayer {
     let root = CALayer()
     private let dim = CAShapeLayer()
     private let fromOutline = CAShapeLayer()
     private let fill = CALayer()
+    /// Window snapshot (letterboxed to the frame) or app icon (centred). Full opacity, above the tint.
+    private let image = CALayer()
     private let border = CALayer()
     private let pill = CALayer()
     private let text = CATextLayer()
@@ -19,9 +21,11 @@ final class PreviewLayer {
     private static let windowCornerRadius: CGFloat = 10
     private static let labelFont = NSFont.systemFont(ofSize: 13, weight: .medium)
     private static let pillPadding = CGSize(width: 12, height: 5)
+    private static let maxIconSide: CGFloat = 96
+    private static let imageFade = 0.15
 
     init() {
-        for layer in [dim, fromOutline, fill, border, pill] as [CALayer] {
+        for layer in [dim, fromOutline, fill, image, border, pill] as [CALayer] {
             root.addSublayer(layer)
         }
         pill.addSublayer(text)
@@ -30,8 +34,8 @@ final class PreviewLayer {
         fromOutline.strokeColor = CGColor(gray: 1, alpha: 0.85)
         fromOutline.lineWidth = 1.5
         fromOutline.lineDashPattern = [6, 4]
-        fill.masksToBounds = true
-        fill.contentsGravity = .resizeAspectFill
+        image.masksToBounds = true
+        image.contentsGravity = .resizeAspect
         pill.backgroundColor = CGColor(gray: 0, alpha: 0.72)
         text.font = Self.labelFont
         text.fontSize = Self.labelFont.pointSize
@@ -44,7 +48,7 @@ final class PreviewLayer {
         root.frame = bounds
         dim.frame = bounds
         fromOutline.frame = bounds
-        for layer in [root, dim, fromOutline, fill, border, pill, text] as [CALayer] {
+        for layer in [root, dim, fromOutline, fill, image, border, pill, text] as [CALayer] {
             layer.contentsScale = scale
         }
     }
@@ -52,12 +56,12 @@ final class PreviewLayer {
     func clear() {
         root.isHidden = true
         hasFrame = false
-        fill.contents = nil
+        image.contents = nil
     }
 
     /// `offset` is the panel origin in global AppKit coordinates; every rect in `layers` is global.
     func render(
-        _ layers: PreviewLayers, thumbnail: CGImage?, offset: CGPoint,
+        _ layers: PreviewLayers, image picture: CGImage?, offset: CGPoint,
         style: PreviewSettings, accent: CGColor, animate: Bool
     ) {
         root.isHidden = false
@@ -73,7 +77,15 @@ final class PreviewLayer {
         fill.cornerRadius = radius
         fill.backgroundColor = accent
         fill.opacity = Float(style.opacity)
-        fill.contents = layers.showThumbnail ? thumbnail : nil
+        let shown = layers.style == .tint ? nil : picture
+        if shown != nil, image.contents == nil, animate {
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 0
+            fade.duration = Self.imageFade
+            image.add(fade, forKey: "fade")
+        }
+        image.contents = shown
+        image.cornerRadius = layers.style == .snapshot ? radius : 0
         border.cornerRadius = radius
         border.borderColor = accent
         border.borderWidth = CGFloat(style.borderWidth)
@@ -82,9 +94,16 @@ final class PreviewLayer {
         let response: Double? = animate && hasFrame ? layers.springResponse : nil
         let target = local(layers.frame)
         place(fill, target, response)
+        place(image, layers.style == .appIcon ? Self.iconFrame(in: target) : target, response)
         place(border, target, response)
         placeLabel(layers.label, in: target, position: style.labelPosition, response: response)
         hasFrame = true
+    }
+
+    /// Square centred in `frame`, a third of its short side, capped at `maxIconSide`.
+    private static func iconFrame(in frame: CGRect) -> CGRect {
+        let side = min(maxIconSide, min(frame.width, frame.height) / 3)
+        return CGRect(x: frame.midX - side / 2, y: frame.midY - side / 2, width: side, height: side)
     }
 
     private func placeLabel(_ label: String?, in frame: CGRect, position: LabelPosition, response: Double?) {

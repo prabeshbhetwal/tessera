@@ -20,6 +20,35 @@ public struct RingSettings: Codable, Equatable, Sendable {
     public var thickness: Double = 22
     public var topBand: Double = 0.30
     public var bottomBand: Double = 0.30
+    // Optional so files written before they existed still decode; read and write the computed twins.
+    public var boundary: Bool?
+    public var columnNumbers: Bool?
+    public var pointingHint: Bool?
+    /// Pointing sessions that have shown the hint so far; nil = none.
+    public var pointingHintsSeen: Int?
+
+    /// Whether the next pointing session should carry the hint.
+    public var pointingHintDue: Bool {
+        showPointingHint && (pointingHintsSeen ?? 0) < PreviewModel.hintSessions
+    }
+
+    /// Circle on screen at `flickDistance`, where pointing starts. Off by default.
+    public var showBoundary: Bool {
+        get { boundary ?? false }
+        set { boundary = newValue }
+    }
+
+    /// 1 2 3 … over the grid's columns while pointing.
+    public var showColumnNumbers: Bool {
+        get { columnNumbers ?? true }
+        set { columnNumbers = newValue }
+    }
+
+    /// "Col 2 · click to add columns" for the first `PreviewModel.hintSessions` pointing sessions.
+    public var showPointingHint: Bool {
+        get { pointingHint ?? true }
+        set { pointingHint = newValue }
+    }
 
     /// The ring's empty middle: nothing is selected inside it, so releasing there cancels.
     public var cancelRadius: Double { max(radius - thickness / 2, 8) }
@@ -30,12 +59,45 @@ public struct RingSettings: Codable, Equatable, Sendable {
     public static let `default` = RingSettings()
 }
 
+/// What fills the snap preview box.
+public enum PreviewStyle: String, Codable, CaseIterable, Sendable {
+    /// Accent-tinted box. Instant, needs no permission.
+    case tint
+    /// Tinted box, then the window's snapshot fades in (needs Screen Recording; stays tinted without it).
+    case snapshot
+    /// Tinted box with the app's icon in the middle.
+    case appIcon
+
+    public var displayName: String {
+        switch self {
+        case .tint: "Tinted box"
+        case .snapshot: "Window snapshot"
+        case .appIcon: "App icon"
+        }
+    }
+}
+
 public enum LabelPosition: String, Codable, Sendable {
     case center, bottom
 }
 
 public struct PreviewSettings: Codable, Equatable, Sendable {
-    public var showThumbnail = true
+    // Optional so files written before they existed still decode (an old `showThumbnail` key is
+    // ignored, so everyone starts on the tinted box); read and write the computed twins.
+    public var previewStyle: PreviewStyle?
+    public var outlineCurrent: Bool?
+
+    public var style: PreviewStyle {
+        get { previewStyle ?? .tint }
+        set { previewStyle = newValue }
+    }
+
+    /// Dashed outline of the window's current frame. Off by default.
+    public var showCurrentOutline: Bool {
+        get { outlineCurrent ?? false }
+        set { outlineCurrent = newValue }
+    }
+
     public var showLabel = true
     public var showNeighbours = true
     public var morph = true
@@ -87,7 +149,6 @@ public struct Theme: Codable, Equatable, Sendable {
 
     public static let minimal: Theme = {
         var p = PreviewSettings()
-        p.showThumbnail = false
         p.opacity = 0
         return Theme(
             name: "Minimal",
