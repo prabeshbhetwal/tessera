@@ -48,8 +48,7 @@ public enum SplitLearner {
 
         let frames = boxes.map(\.rect)
         return .success(readingOrder(frames).map { index in
-            // "?" is the placeholder `SplitKey` uses for a window without a bundle ID.
-            Slot(bundleID: windows[index].bundleID ?? "?", rect: UnitRect(frames[index], in: usable))
+            Slot(bundleID: windows[index].bundleID ?? SplitKey.unknownApp, rect: UnitRect(frames[index], in: usable))
         })
     }
 

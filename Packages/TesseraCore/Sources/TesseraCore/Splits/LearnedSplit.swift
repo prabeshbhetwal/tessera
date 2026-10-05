@@ -56,10 +56,13 @@ public struct SplitKey: Codable, Hashable, Sendable {
     public let display: String
     public let apps: [String]
 
-    /// `apps` is stored sorted with repeats kept; a window without a bundle ID becomes `"?"`.
+    /// Stands in for a window without a bundle ID.
+    public static let unknownApp = "?"
+
+    /// `apps` is stored sorted with repeats kept; a window without a bundle ID becomes `unknownApp`.
     public init(display: String, bundleIDs: [String?]) {
         self.display = display
-        self.apps = bundleIDs.map { $0 ?? "?" }.sorted()
+        self.apps = bundleIDs.map { $0 ?? Self.unknownApp }.sorted()
     }
 
     /// Re-runs the sorting init so a hand-edited or unsorted payload still equals a freshly built key.
