@@ -331,6 +331,7 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     public var splitGapWhenGrowing: SplitGapWhenGrowing = .fixed
     /// Oldest first, at most `SplitMemory.capacity`.
     public var learnedSplits: [LearnedSplit] = []
+    public var updates = UpdateSettings()
 
     public init() {}
     public static let defaults = TesseraSettings()
