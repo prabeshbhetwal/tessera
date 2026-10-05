@@ -18,6 +18,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let model: SettingsModel
     private let presenter: () -> WindowPresenter?
     private let run: (Command) -> Void
+    private let updates: UpdateService
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var icon: MenuBarIcon = .grid
     private let status = NSMenuItem()
@@ -28,9 +29,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
     private let shortcutsItem = NSMenuItem(title: "Shortcuts…", action: #selector(openShortcuts), keyEquivalent: "")
     private let undoItem = NSMenuItem(title: "Undo Last Move", action: #selector(undoLastMove), keyEquivalent: "")
+    private let checkItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
 
-    init(model: SettingsModel, presenter: @escaping () -> WindowPresenter?, run: @escaping (Command) -> Void) {
+    init(model: SettingsModel, updates: UpdateService, presenter: @escaping () -> WindowPresenter?,
+         run: @escaping (Command) -> Void) {
         self.model = model
+        self.updates = updates
         self.presenter = presenter
         self.run = run
         super.init()
@@ -38,7 +42,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.autoenablesItems = false
         menu.delegate = self
         status.isEnabled = false
-        for entry in [settingsItem, shortcutsItem, undoItem] { entry.target = self }
+        for entry in [settingsItem, shortcutsItem, undoItem, checkItem] { entry.target = self }
         snapItem.submenu = Self.submenu(
             [("Tile All Windows", .tileWindows(display: .current)), ("Remember Split", .rememberSplit(display: .current))]
                 + WindowAction.allCases.map { action in (action.displayName, .apply(.action(action), display: .current)) },
@@ -50,7 +54,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             target: self, separatorAfter: 1)
         let quit = NSMenuItem(title: "Quit Tessera", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         for entry in [status, statusSeparator, snapItem, columnsItem, actionsSeparator,
-                      settingsItem, shortcutsItem, undoItem, .separator(), quit] {
+                      settingsItem, shortcutsItem, undoItem, checkItem, .separator(), quit] {
             menu.addItem(entry)
         }
         item.menu = menu
@@ -85,6 +89,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         shortcutsItem.isHidden = !items.shortcuts
         undoItem.isHidden = !items.undo
         for entry in [snapItem, columnsItem, shortcutsItem, undoItem] { entry.isEnabled = granted }
+        // Not gated on Accessibility: updating is how a broken build gets fixed. Greyed only while a check runs.
+        checkItem.isEnabled = updates.canCheckForUpdates
     }
 
     private func updateIcon() {
@@ -120,6 +126,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func openSettings() { presenter()?.showSettings() }
     @objc private func openShortcuts() { presenter()?.showSettings(pane: .shortcuts) }
     @objc private func undoLastMove() { run(.undo) }
+    @objc private func checkForUpdates() { updates.checkForUpdates() }
 }
 
 /// `Command` is a Swift enum; menu items carry objects.

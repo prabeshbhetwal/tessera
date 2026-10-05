@@ -53,6 +53,8 @@ struct GeneralPane: View {
                 Text("App")
             }
 
+            UpdatesSection(model: model)
+
             Section {
                 Toggle("Show the menu bar icon", isOn: $model.settings.showMenuBarIcon)
                 Group {
@@ -165,6 +167,7 @@ struct GeneralPane: View {
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
                 model.settings.snapSeconds = SnapSpeed.instant.seconds
+                model.settings.updates = UpdateSettings()
                 if model.settings.launchAtLogin { setLaunchAtLogin(false) }
             }
         }

@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         statusItem = StatusItemController(
             model: model,
+            updates: updates,
             presenter: { [weak self] in self?.coordinator?.presenter },
             run: { [weak self] command in
                 guard let coordinator = self?.coordinator else { return }
