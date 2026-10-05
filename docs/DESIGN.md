@@ -4,7 +4,7 @@ Tessera is a native SwiftUI macOS app. It has no palette of its own: colours, ty
 
 ## Visual Theme
 
-Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the left, grouped forms on the right, one header per pane that says what the pane controls. Panes, in ⌘1–9 order: General, Excluded Apps (Setup); Shortcuts, Cycles (Control); Displays, Ring, Overlay, Motion (Snapping); About. Spelling is en-AU throughout (Maximise, Centre, colour); command identifiers stay en-US.
+Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the left, grouped forms on the right, one header per pane that says what the pane controls. Panes, in ⌘1–9 order: General, Excluded Apps (Setup); Shortcuts, Cycles, Splits (Control); Displays, Ring, Overlay, Motion (Snapping); About on ⌘0. Spelling is en-AU throughout (Maximise, Centre, colour); command identifiers stay en-US.
 
 The signature is the overlay: a vibrant material ring and a lifted preview frame, the one place Tessera looks like itself rather than like a form.
 

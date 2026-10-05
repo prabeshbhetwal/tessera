@@ -47,7 +47,7 @@ Everything works without a mouse.
 | ⌃⌥Z | Undo |
 | ⌃⌥⌘, | Settings |
 
-**Settings window.** ⌘1–9 switches panes (General, Excluded Apps, Shortcuts, Cycles, Displays, Ring, Overlay, Motion, About), and every control can be reached with Tab. Settings → Overlay has a **Show on Screen** button that shows the real ring and preview for three seconds, so a theme can be judged without holding the trigger.
+**Settings window.** ⌘1–9 switches panes (General, Excluded Apps, Shortcuts, Cycles, Splits, Displays, Ring, Overlay, Motion) and ⌘0 opens About, and every control can be reached with Tab. Settings → Overlay has a **Show on Screen** button that shows the real ring and preview for three seconds, so a theme can be judged without holding the trigger.
 
 ## Automation
 
@@ -59,6 +59,7 @@ tessera action leftHalf
 tessera cycle left
 tessera columns --set 6 --display 2
 tessera move next
+tessera remember                        # save how the windows are arranged now; Tile reuses it
 tessera displays --json
 tessera settings export ~/tessera.json
 ```
