@@ -7,8 +7,8 @@ public enum SplitApplier {
     ///
     /// Each window takes the slot of its app (duplicates pair in reading order). A split that is one row, or one
     /// column on `portrait`, is packed along that axis: windows go in their current order, each taking its slot's size,
-    /// and the learned gaps are laid between them as `gapPlacement` says. Any other split, or `restoresOrder`, puts
-    /// every window in its own slot.
+    /// and the learned gaps are laid between them as `gapPlacement` says; a window that would end up past either end
+    /// of the usable frame slides back inside. Any other split, or `restoresOrder`, puts every window in its own slot.
     public static func frames(for split: LearnedSplit, windows: [(bundleID: String?, frame: CGRect)], usable: CGRect,
                               portrait: Bool, restoresOrder: Bool, gapPlacement: SplitGapPlacement) -> [CGRect]? {
         guard let slotOf = pair(windows, with: split.slots) else { return nil }
@@ -43,7 +43,9 @@ public enum SplitApplier {
             }
             let size = axis.along(slots[slot]).length
             let span = Interval(lo: cursor + lead, hi: cursor + lead + size)
-            frames[window] = axis.rect(along: span, like: slots[slot]).absolute(in: usable)
+            // A negative learned gap (slots that overlapped) can carry a window past an end of the line. Slide it back
+            // inside, which brings back at most the overlap that was learned.
+            frames[window] = axis.rect(along: span.insideUnit, like: slots[slot]).absolute(in: usable)
             cursor = span.hi + trail
         }
         return frames
@@ -61,6 +63,14 @@ public enum SplitApplier {
             open[app] = queue
         }
         return slotOf
+    }
+}
+
+private extension Interval {
+    /// This span slid, keeping its length, to lie within 0…1. The start wins if the span is longer than that.
+    var insideUnit: Interval {
+        let lo = max(0, min(self.lo, 1 - length))
+        return Interval(lo: lo, hi: lo + length)
     }
 }
 
