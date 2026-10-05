@@ -1,32 +1,84 @@
 # Learned splits — design
 
 Date: 5 October 2026
-Status: approved in conversation; awaiting written-spec review
-Scope: piece 1 of 3 (1 learned splits → 2 named layouts → 3 remembered slot in the Ring)
+Status: decisions settled in design review (grilling); awaiting written-spec review
+Scope: piece 1 of 3 (1 learned splits → 2 named layouts → 3 app memory with the Ring slot), delivered as two PRs: **1a engine**, **1b Splits pane**.
 
 ## Goal
 
-Tile currently gives every visible window on a display an equal share. People rarely want equal: two Chrome windows at 30 / 70, or editor + two references at 50 / 25 / 25. Tessera should learn the proportions a person sets by hand and reuse them the next time the same group of windows is tiled.
+Tile gives every visible window on a display an equal share. People rarely want equal: two Chrome windows at 30 / 70, an editor at half width beside two references, a strip of desktop left free on the right. Tessera should learn the arrangement a person sets by hand and reuse it the next time the same group of windows is tiled.
 
-Success: tile, drag to the split you want once, and every later Tile of that same group on that display reproduces it, including after Tessera relaunches.
+Success: tile, adjust the windows by hand once, and every later Tile of that group on that display reproduces it, including after Tessera relaunches.
+
+## Principles from review
+
+- Every behaviour with more than one reasonable answer is a **setting**, and each setting shows a **live preview** of what its options do (1b). Defaults are listed below.
+- Learning is automatic but never silent: a short message says what was learned.
+- Tessera still never moves a window unless the person triggers a command.
 
 ## Behaviour
 
-1. **Tile looks up a learned split.** The group key is the display plus the apps and how many windows each has (for example `C49 · Chrome ×2`). App order does not matter.
-   - No learned split: equal shares, exactly as today.
-   - Learned split: its shares, for example 30 / 70.
-   - Windows keep today's ordering rule (left to right; top to bottom on a portrait display) to decide which window takes which share.
-2. **Automatic learning after Tile.** Hand adjustments to the tiled windows update that group's shares about one second after the last drag.
-3. **Remember this split.** A new command saves the shares of whatever sits side by side on a display now, even if Tessera never tiled it. Available from the menu bar, a bindable hotkey, the CLI (`tessera remember [--display D]`) and AppleScript (`remember split`).
-4. **Only clean rows are learned.** Windows must sit side by side along the tiling axis (columns; rows on a portrait display) and span the usable area. A 2×2 grid or overlapping windows is not a split: nothing is saved, and Remember says why ("Windows aren't side by side").
-5. **Settings → Splits pane.** Lists every learned split ("Chrome ×2 · C49 · 30 / 70") with a Forget button per row and Forget All, plus a "Learn from my adjustments" switch (on by default). The pane will also host named layouts in piece 2.
-6. **Persistence.** Learned splits live in the settings file, so they survive restarts. Undo (⌃⌥Z) still reverts a whole Tile in one step.
+### Groups
+
+A group is **every visible window on one display**, using Tile's existing rules (excluded apps, minimised, hidden and tiny windows are left out). Its key is the display's stable storage key plus the multiset of bundle IDs, e.g. `C49 · Chrome ×2, Slack, Mail`. App order does not matter. The same apps with a different count, or on a different display, form a different group.
+
+### What is learned
+
+Each window's full rectangle, relative to the display's usable frame: position, width and height. Empty space is anything not covered, so strips at the edges and gaps between windows are learned too. Gaps no larger than the display's own gap setting (plus 8 pt) count as no gap.
+
+Any **non-overlapping** arrangement is learned: rows, stacks, grids, uneven mixes. Windows overlapping by more than 24 pt are a messy desk, not a split, so nothing is learned and Remember explains why ("Windows overlap").
+
+Rectangles are stored exactly (no snapping); the pane rounds for display.
+
+### When it learns
+
+- **After a Tile, and after Remember**, Tessera watches that group's windows. About one second after each hand adjustment ends, it re-reads the group and saves the arrangement.
+- Watching continues until the group changes: a watched window closes, leaves the display, or a window joins; another Tile or Remember starts; learning is switched off; or Tessera quits.
+- **Remember this split** saves the current arrangement of the display on demand, even if Tessera never tiled it, then watches as above. Surfaces: menu bar item, bindable command, CLI `tessera remember [--display D]`, AppleScript `remember split`.
+- Each save shows a short message, "Learned split · Chrome ×2 · C49", through the existing message system (Show messages, position and duration apply).
+
+### When it applies
+
+Tile looks up the group's key.
+
+- **Nothing learned:** equal shares, exactly as today.
+- **Learned:** each window takes **its app's learned size**. Several windows of the same app pair with that app's learned rectangles in reading order. Tile's message adds "· your split".
+
+Where windows go depends on the **Restore last order** setting (default **off**):
+
+- **Off:** windows keep their **current** order. In a single row (or a single column on a portrait display), windows are packed in current order, each at its app's learned width and height and vertical offset, with empty space placed by the **Empty space** setting:
+  - **Stays in place** (default): each strip keeps its slot in the sequence (far right stays far right; a gap between positions 1 and 2 stays between positions 1 and 2) and its size.
+  - **Follows its neighbour:** each strip stays attached to the window it sat beside (its right side; a leading strip to the first window's left).
+  Both always fit, because the group's widths and gaps add up to the same extent.
+- **On:** every window returns to its learned rectangle, so order and empty space are restored exactly.
+
+**Grids and stacks** (more than one row or column) always restore learned rectangles, whatever Restore last order says: different-sized cells can't be repacked in a new order without overlap. The setting's preview shows this.
+
+### Settings (all persisted in the settings file)
+
+| Setting | Options | Default |
+|---|---|---|
+| Learn from my adjustments | on / off | on |
+| Restore last order | on / off | off |
+| Empty space when order changes | stays in place / follows its neighbour | stays in place |
+| Empty space when a window grows (pane editing) | stays fixed / shrinks like a window | stays fixed |
+
+Turning learning off stops all watching; Remember still works (explicit), and Tile still uses existing splits.
+
+### Splits pane
+
+A new Settings pane after Cycles. ⌘1–9 number the first nine panes; About moves to ⌘0.
+
+- **1a:** list of learned splits grouped by display ("Chrome ×2 · C49"), Forget per split, Forget All, and the four settings as plain controls.
+- **1b:**
+  - Each split drawn as a miniature of its display: every window with its app icon and name, placed exactly as Tile will place it.
+  - Drag a window's edge in the miniature to resize it; other windows give way proportionally, and empty space follows the "when a window grows" setting.
+  - A **Show percentages** toggle (off by default) reveals each window's width, height and position as editable percentages for power users.
+  - Each setting gets a live preview: a small animated miniature showing what each option does.
 
 ## Approach
 
-Resize notifications (chosen over polling, which wastes CPU and misses later adjustments, and over learning lazily at the next Tile, which can learn a half-messed desk).
-
-After a Tile, Tessera subscribes to Accessibility move/resize/destroy notifications for exactly the tiled windows, debounces them, and learns when the person stops dragging.
+Accessibility notifications, chosen over polling (wasteful, misses later adjustments) and over learning lazily at the next Tile (can learn a half-messed desk). After Tile or Remember, Tessera subscribes to move, resize and destroy notifications for exactly the group's windows, debounces, and learns once the person stops adjusting.
 
 ## Components
 
@@ -34,59 +86,78 @@ After a Tile, Tessera subscribes to Accessibility move/resize/destroy notificati
 
 | Unit | Responsibility |
 |---|---|
-| `SplitKey` | Value type: display storage key + sorted multiset of bundle IDs + axis. Stable string form for storage and display. |
-| `LearnedSplit` | `key`, `shares: [Double]` (each > 0, sum 1, count = window count), `updated: Date`. |
-| `SplitLearner` | `shares(frames: [CGRect], in usable: CGRect, axis: Axis) -> Result<[Double], NotARow>`. Orders frames along the axis, accepts gaps and overlaps up to a tolerance (default 24 pt or the display's gap, whichever is larger), requires the row to cover at least 90 % of the usable extent, and normalises out gaps and padding. |
-| `GridGeometry.tiles(_:display:shares:)` | Weighted version of today's `tiles`. `shares == nil` or a count mismatch falls back to equal shares. Gap and padding behave as today. |
-| `SplitMemory` | Pure operations on `[LearnedSplit]`: lookup by key, upsert (moves the entry to newest), forget one, forget all, cap at 50 entries (oldest dropped). |
-| Settings | `learnedSplits: [LearnedSplit] = []`, `learnSplits: Bool = true`. Missing keys are filled by `SettingsMigration`; no schema bump. Validation rejects shares that are non-finite, ≤ 0, or don't sum to 1 ± 0.001. |
-| Command | `.rememberSplit(display: DisplaySelector)`, with CLI grammar `remember [--display D]` in `CommandParser` and a summary for the Shortcuts pane. |
+| `SplitKey` | Display storage key + sorted bundle-ID multiset. Stable string form for storage and display. |
+| `LearnedSplit` | `key`, `slots: [Slot]` in reading order, `updated: Date`. `Slot` = bundle ID + unit rectangle (x, y, width, height in 0…1 of the usable frame). |
+| `SplitLearner` | Frames in, `Result<[Slot], SplitRejection>` out. Rejects overlap beyond 24 pt; normalises to the usable frame; treats gaps up to the display gap + 8 pt as none. |
+| `SplitApplier` | Learned split + current windows (bundle ID, frame) + settings in, target frame per window out. Implements app matching, the off / on order modes, both empty-space rules, the grid fallback, and the usable-frame scaling. |
+| `SplitMemory` | Lookup by key, upsert (moves to newest), forget, forget all, cap at 50 (oldest dropped). |
+| `SplitEditor` (1b) | Pure resize of one slot inside a split, applying the "when a window grows" rule; keeps every slot inside the frame and non-overlapping. |
+| Settings | `learnSplits`, `splitRestoresOrder`, `splitGapPlacement`, `splitGapWhenGrowing`, `learnedSplits`. Missing keys are filled by `SettingsMigration`; no schema bump. Validation rejects non-finite or out-of-range rectangles and overlapping slots. |
+| Command | `.rememberSplit(display: DisplaySelector)`; `CommandParser` grammar `remember [--display D]`; Shortcuts-pane summary. |
 
 ### App (`Tessera/`)
 
 | Unit | Responsibility |
 |---|---|
-| `SplitWatcher` (new file) | `@MainActor`. `watch(_ windows: [WindowRef], key: SplitKey, display: DisplayContext, after: Date)`. One `AXObserver` per app; observes `kAXMovedNotification`, `kAXResizedNotification`, `kAXUIElementDestroyedNotification`. Ignores events before `after` (the end of Tessera's own glide). Debounces 1 s, reads the frames through `WindowService`, asks `SplitLearner`, and on success upserts into settings. Stops when a watched window is destroyed, leaves the display, a new `watch` starts, or learning is switched off. |
-| `CommandExecutor.tile` | Builds the `SplitKey`, looks up shares, calls the weighted `tiles`, and after the moves hands the windows to `SplitWatcher`. File stays under 300 lines; any extra logic goes in a sibling `CommandExecutor+Splits.swift`. |
-| `CommandExecutor.rememberSplit` | Reads visible windows on the resolved display, asks `SplitLearner`, saves or reports why not. |
-| `SplitsPane` (new file) | List of learned splits grouped by display, Forget / Forget All, the learning switch. |
-| `SettingsPane` | New case `splits`, placed after `cycles`. ⌘1–9 keep numbering the first nine panes; About moves to ⌘0. |
-| Menu bar | "Remember Split" item next to Tile. |
+| `SplitWatcher` (new file) | `@MainActor`. One `AXObserver` per app for move, resize and destroy. Ignores events until Tessera's own moves (and glide) finish. Debounces 1 s, re-reads the group via `WindowService`, runs `SplitLearner`, upserts, posts the message. Stops on the group-change conditions above. |
+| `CommandExecutor+Splits.swift` (new) | Builds the key, applies `SplitApplier` inside Tile, implements Remember, starts the watcher. Keeps `CommandExecutor.swift` under 300 lines. |
+| `SplitsPane` (new file) | 1a list and controls; 1b miniature editor, percentages, previews (split into sub-views to stay under 300 lines each). |
+| `SettingsPane` | New `splits` case after `cycles`; About on ⌘0. |
+| Menu bar / AppleScript | "Remember Split" item; `remember split` script command. |
 
 ## Data flow
 
 ```
-Tile ─► visibleWindows ─► SplitKey ─► SplitMemory.lookup ─► GridGeometry.tiles(shares:) ─► place ×N
-                                                                                   │
-                                                              SplitWatcher.watch(after: glide end)
-                                                                                   │
-     person drags an edge ─► AX notifications ─► debounce 1 s ─► read frames ─► SplitLearner
-                                                                                   │
-                                                              SplitMemory.upsert ─► settings save
+Tile ─► visibleWindows ─► SplitKey ─► SplitMemory.lookup ─┬─ none ─► GridGeometry.tiles (equal)
+                                                          └─ found ─► SplitApplier ─► frames
+                                                                         │
+                                     place ×N (one undo step) ─► SplitWatcher.watch(after: moves end)
+                                                                         │
+person adjusts ─► AX notifications ─► debounce 1 s ─► read frames ─► SplitLearner ─► SplitMemory.upsert
+                                                                         │
+                                                         settings save + "Learned split" message
 ```
 
 ## Edge cases
 
-- **A window can't shrink far enough.** The share is a target; the existing re-anchoring keeps the constrained window on its edge. Learning reads actual frames, so it never stores an impossible share.
-- **Group changes mid-watch** (a window closes, moves display, or a new window joins). The watch stops; nothing is learned from a partial group.
-- **Unplugged display.** Its splits stay stored and apply again when it returns (the key uses the display's stable storage key).
-- **Same apps, different count** (Chrome ×2 vs Chrome ×3). Different keys; each learns separately and starts equal.
-- **Excluded apps and tiny windows.** Same exclusions as Tile today, applied before the key is built, so they never affect a group.
-- **Learning switched off.** No watcher starts; Remember still works (it's explicit). Existing splits are still used by Tile.
-- **Accessibility revoked mid-watch.** Observer callbacks stop; the watch ends silently.
+- **Window can't reach its size** (minimum width): existing re-anchoring keeps it on its edge; learning reads actual frames, so an impossible size is never stored.
+- **Group changes mid-watch:** watching stops; nothing is learned from a partial group.
+- **Display unplugged:** its splits stay stored and apply when it returns.
+- **Display resolution or Dock change:** rectangles are relative to the usable frame, so they scale.
+- **Accessibility revoked mid-watch:** callbacks stop; watching ends quietly.
+- **Undo:** a Tile with a learned split is still one ⌃⌥Z step. Undoing doesn't teach Tessera anything, because watching ignores Tessera's own moves.
 
 ## Testing
 
-Core (Swift Testing, about 15 new tests):
-- `SplitLearner`: clean two- and three-window rows; gaps and padding normalised out; overlap within tolerance accepted; 2×2 grid, overlapping and partial-coverage rows rejected; portrait axis.
-- `GridGeometry.tiles(shares:)`: weighted widths sum to the usable extent minus gaps; `nil` and count mismatch fall back to equal; portrait.
-- `SplitMemory`: lookup, upsert-moves-to-newest, forget, forget all, cap at 50.
-- `SplitKey`: app order independence; different counts differ; different displays differ.
-- Settings: old file without the new keys decodes with defaults; validation rejects bad shares.
+Core (Swift Testing):
+- `SplitLearner`:
+  - rows, stacks and grids accepted
+  - overlap beyond tolerance rejected
+  - small gaps treated as none, large gaps kept
+  - normalisation to the usable frame; portrait
+- `SplitApplier`:
+  - app matching, including duplicates in reading order
+  - order off: stays-in-place and follows-neighbour gap rules on rows
+  - order on: exact restore
+  - grid fallback
+  - scaling to a different usable frame
+  - equal fallback when nothing is learned
+- `SplitMemory`: lookup, upsert-to-newest, forget, forget all, cap at 50.
+- `SplitKey`: app-order independence; count and display sensitivity.
+- `SplitEditor` (1b): proportional shrink, both gap rules, bounds and non-overlap.
+- Settings: old file decodes with defaults; validation rejects bad slots.
 - `CommandParser`: `remember`, `remember --display 2`.
 
-Manual (signed build): tile two Chrome windows, drag to roughly 30 / 70, wait a second, Tile again and confirm 30 / 70; relaunch Tessera and confirm again; use Remember on a hand-made arrangement; Forget in the Splits pane and confirm Tile returns to equal.
+Manual (signed build):
+1. Tile two Chrome windows, drag to about 30 / 70 and confirm the message; Tile again and confirm 30 / 70.
+2. Relaunch Tessera and confirm the split again.
+3. Leave a strip on the right and confirm it returns.
+4. Swap two apps and check both empty-space settings.
+5. Build a 2×2 grid and Remember it.
+6. Forget, and confirm Tile is equal again.
 
 ## Out of scope
 
-Named layouts (piece 2), the remembered slot in the Ring (piece 3), and two-dimensional splits (grids).
+- Named layouts (piece 2).
+- App memory (piece 3): close-size memory, optional position, Ring-only restore, and the "tiled apps only / every app" setting.
+- Moving windows automatically on app launch.
