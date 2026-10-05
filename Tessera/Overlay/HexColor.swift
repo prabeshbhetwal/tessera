@@ -23,6 +23,14 @@ enum HexColor {
         return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] > 0.5
     }
 
+    /// Choose the ink with the larger WCAG contrast ratio against an opaque accent.
+    static func contrastingInk(_ hex: String) -> CGColor {
+        let c = cgColor(hex).components ?? [1, 1, 1, 1]
+        func linear(_ v: CGFloat) -> CGFloat { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+        let luminance = 0.2126 * linear(c[0]) + 0.7152 * linear(c[1]) + 0.0722 * linear(c[2])
+        return CGColor(gray: luminance > 0.179 ? 0 : 1, alpha: 1)
+    }
+
     static func hex(_ color: CGColor) -> String {
         guard
             let space = CGColorSpace(name: CGColorSpace.sRGB),

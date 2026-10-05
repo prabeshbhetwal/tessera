@@ -98,7 +98,7 @@ struct GeneralPane: View {
             } header: {
                 Text("Messages")
             } footer: {
-                Footer("Short results such as \u{201C}5 columns\u{201D} or \u{201C}Nothing to undo\u{201D}, shown on the screen under the mouse.")
+                Footer("Shortcut confirmations and short results such as \u{201C}5 columns\u{201D}, shown on the screen under the mouse.")
             }
 
             Section {

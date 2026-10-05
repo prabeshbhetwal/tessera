@@ -1,9 +1,8 @@
+import AppKit
 import QuartzCore
 import TesseraCore
 
-/// Eight-wedge radial menu drawn over a vibrant material (see `OverlayController`). The layers here are the
-/// paint on top of that material: a tint, hairline wedge edges, the active wedge in the accent colour, a
-/// small screen glyph per wedge showing its layout, and a dashed circle where pointing at the grid starts, and a ✕ in the empty middle where releasing cancels.
+/// A light, icon-only direction palette. The destination gets the accent; the desktop stays visible.
 @MainActor
 final class RingLayer {
     let root = CALayer()
@@ -12,24 +11,35 @@ final class RingLayer {
     private let highlight = CAShapeLayer()
     private let glyphOutlines = CAShapeLayer()
     private let glyphFills = CAShapeLayer()
+    private let activeGlyphOutlines = CAShapeLayer()
+    private let activeGlyphFills = CAShapeLayer()
     private let boundaryHalo = CAShapeLayer()
     private let boundary = CAShapeLayer()
-    /// ✕ in the empty middle: releasing there cancels. Brightens while the cursor is over it.
+    /// Kept separate from selection; the centre remains the cancellation area.
     private let cancelMark = CAShapeLayer()
     private var cancelling = false
     private var center = CGPoint.zero
     private var inner: CGFloat = 0
     private var outer: CGFloat = 0
     private var activeIndex: Int?
+    private var spanVisible = false
+    private var settings = RingSettings.default
+    private var aspect: CGFloat = 1.6
+    private var animate = false
+    private let hub = RingHubLayer()
 
     init() {
-        for layer in [boundaryHalo, boundary, tint, edges, highlight, glyphOutlines, glyphFills, cancelMark] { root.addSublayer(layer) }
+        for layer in [boundaryHalo, boundary, tint, edges, highlight, glyphOutlines, glyphFills,
+                      activeGlyphOutlines, activeGlyphFills, cancelMark] { root.addSublayer(layer) }
         edges.fillColor = nil
         edges.lineWidth = 1
         cancelMark.lineCap = .round
         glyphOutlines.lineWidth = 1
         glyphOutlines.fillColor = nil
         glyphOutlines.lineJoin = .round
+        activeGlyphOutlines.fillColor = nil
+        activeGlyphOutlines.lineJoin = .round
+        activeGlyphOutlines.lineCap = .round
         boundary.fillColor = nil
         boundary.lineWidth = 1.5
         boundary.lineDashPattern = [4, 5]
@@ -40,36 +50,60 @@ final class RingLayer {
         highlight.shadowOpacity = 0.35
         highlight.shadowRadius = 4
         highlight.shadowOffset = CGSize(width: 0, height: -1)
+        root.addSublayer(hub.root)
     }
 
     /// `center` is in this layer's local coordinates (AppKit orientation, y up).
     func configure(bounds: CGRect, center: CGPoint, ring: RingSettings, theme: Theme, scale: CGFloat) {
-        for layer in [root, tint, edges, highlight, glyphOutlines, glyphFills, boundary, boundaryHalo, cancelMark] {
+        for layer in [root, tint, edges, highlight, glyphOutlines, glyphFills, activeGlyphOutlines,
+                      activeGlyphFills, boundary, boundaryHalo, cancelMark] {
             layer.frame = bounds
             layer.contentsScale = scale
+            layer.opacity = 1
         }
         self.center = center
+        settings = ring
+        aspect = 1.6
+        animate = theme.preview.morph && theme.preview.springResponse > 0
+            && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let radii = Self.radii(ring)
         inner = radii.inner
         outer = radii.outer
 
-        let path = Self.ringPath(center: center, inner: inner, outer: outer)
-        tint.path = path
+        let path = RingGeometry.path(center: center, ring: ring)
+        tint.path = ring.showGlyphs && ring.iconStyle == .layouts ? path : nil
         tint.fillColor = HexColor.cgColor(theme.ring.fillHex, alpha: theme.ring.opacity)
-        edges.path = path
-        edges.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.22)
-        highlight.fillColor = HexColor.cgColor(theme.accentHex, alpha: 0.92)
+        tint.shadowColor = CGColor(gray: 0, alpha: 1)
+        tint.shadowOpacity = 0.18
+        tint.shadowRadius = 3
+        tint.shadowOffset = .zero
+        tint.shadowPath = tint.path
+        edges.path = nil
+        edges.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.16)
+        highlight.fillColor = HexColor.cgColor(theme.accentHex)
+        highlight.shadowColor = HexColor.cgColor(theme.accentHex)
 
-        glyphOutlines.lineWidth = ring.iconStyle == .arrows ? 1.6 : 1
+        glyphOutlines.lineWidth = ring.iconStyle == .arrows ? 1.8 : 1.25
+        activeGlyphOutlines.lineWidth = glyphOutlines.lineWidth + 0.25
+        activeGlyphOutlines.strokeColor = HexColor.cgColor(theme.ring.strokeHex)
+        activeGlyphFills.fillColor = HexColor.cgColor(theme.accentHex)
         glyphOutlines.lineCap = .round
-        let glyphColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.95)
+        let glyphColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.65)
         glyphOutlines.strokeColor = glyphColor
-        glyphFills.fillColor = glyphColor
+        glyphFills.fillColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.28)
+        for layer in [glyphOutlines, activeGlyphOutlines] {
+            layer.shadowColor = CGColor(gray: HexColor.isLight(theme.ring.strokeHex) ? 0 : 1, alpha: 1)
+            layer.shadowOpacity = 0.5
+            layer.shadowRadius = 1.5
+            layer.shadowOffset = .zero
+        }
         let glyphs = ring.showGlyphs
-            ? Self.glyphPaths(ring: ring, center: center, aspect: bounds.height > 0 ? bounds.width / bounds.height : 1.6)
+            ? Self.glyphPaths(ring: ring, center: center, aspect: aspect)
             : nil
         glyphOutlines.path = glyphs?.outlines
         glyphFills.path = glyphs?.fills
+        hub.configure(bounds: bounds, center: center, ring: ring, theme: theme, scale: scale)
+        hub.root.isHidden = true
 
         // The boundary only means something when both gestures are on.
         let flick = CGFloat(ring.flickDistance)
@@ -81,38 +115,72 @@ final class RingLayer {
         root.isHidden = !ring.showRing
         boundary.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.55)
 
-        let arm = CGFloat(min(ring.cancelRadius * 0.28, 7))
-        let cross = CGMutablePath()
-        cross.move(to: CGPoint(x: center.x - arm, y: center.y - arm))
-        cross.addLine(to: CGPoint(x: center.x + arm, y: center.y + arm))
-        cross.move(to: CGPoint(x: center.x - arm, y: center.y + arm))
-        cross.addLine(to: CGPoint(x: center.x + arm, y: center.y - arm))
-        cancelMark.path = cross
-        cancelMark.lineWidth = 2
+        cancelMark.path = CGPath(ellipseIn: CGRect(x: center.x - 1.25, y: center.y - 1.25,
+                                                  width: 2.5, height: 2.5), transform: nil)
+        cancelMark.fillColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.8)
+        cancelMark.lineWidth = 0
         cancelMark.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 1)
         cancelling = false
         cancelMark.opacity = 0.35
         activeIndex = nil
+        spanVisible = false
         highlight.path = nil
+        activeGlyphOutlines.path = nil
+        activeGlyphFills.path = nil
+        root.removeAllAnimations()
         root.opacity = 1
     }
 
     func setActive(_ index: Int?) {
-        guard index != activeIndex else { return }
+        guard index != activeIndex || spanVisible else { return }
+        spanVisible = false
         activeIndex = index
-        highlight.path = index.map { Self.wedgePath(index: $0, center: center, inner: inner, outer: outer) }
+        highlight.path = nil
+        let action = index.flatMap { settings.wedges.indices.contains($0) ? settings.wedges[$0] : nil }
+        hub.select(action.map(Self.unitRect), direction: index)
+        hub.root.isHidden = true
+        let glyph = index.flatMap { selected in
+            settings.showGlyphs ? Self.glyphPaths(ring: settings, center: center, aspect: aspect, only: selected) : nil
+        }
+        activeGlyphOutlines.path = glyph?.outlines
+        activeGlyphFills.path = glyph?.fills
+        guard animate, index != nil else { activeGlyphFills.removeAllAnimations(); return }
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 0.45
+        fade.toValue = 1
+        fade.duration = 0.12
+        activeGlyphFills.add(fade, forKey: "selection")
     }
 
     /// True while the cursor is in the empty middle, where releasing cancels.
     func setCancelling(_ on: Bool) {
         guard on != cancelling else { return }
         cancelling = on
+        hub.setCancelling(on)
         cancelMark.opacity = on ? 1 : 0.35
     }
 
     /// The ring stays visible but recedes while the grid is the focus.
     func setPointMode(_ on: Bool) {
-        root.opacity = on ? 0.35 : 1
+        for layer in [tint, edges, highlight, glyphOutlines, glyphFills, activeGlyphOutlines,
+                      activeGlyphFills, boundary, boundaryHalo] { layer.opacity = on ? 0.25 : 1 }
+    }
+
+    func setCenterVisible(_ visible: Bool) { hub.root.isHidden = !visible; cancelMark.isHidden = !visible }
+
+    func setSpan(_ span: ColumnSpan, columns: Int, portrait: Bool = false) {
+        if activeIndex != nil { setActive(nil) }
+        spanVisible = true
+        hub.root.isHidden = !settings.showGlyphs
+        let count = CGFloat(max(columns, 1))
+        if portrait {
+            hub.select(CGRect(x: 0, y: 1 - CGFloat(span.columns.upperBound + 1) / count,
+                              width: 1, height: CGFloat(span.columns.count) / count))
+            return
+        }
+        let y: CGFloat = span.band == .top ? 0.5 : 0
+        hub.select(CGRect(x: CGFloat(span.columns.lowerBound) / count, y: y,
+                          width: CGFloat(span.columns.count) / count, height: span.band == .full ? 1 : 0.5))
     }
 
     // MARK: - Geometry shared with the material mask and the Settings diagram
@@ -134,17 +202,15 @@ final class RingLayer {
 
     /// One icon per wedge, centred on the ring: a screen with its layout filled in, or an arrow pointing the
     /// wedge's way (`ring.iconStyle`). Nil when the ring is too thin to fit one.
-    nonisolated static func glyphPaths(ring: RingSettings, center: CGPoint, aspect: CGFloat) -> (outlines: CGPath, fills: CGPath)? {
-        let height = CGFloat(ring.thickness) * 0.42
+    nonisolated static func glyphPaths(ring: RingSettings, center: CGPoint, aspect: CGFloat, only index: Int? = nil) -> (outlines: CGPath, fills: CGPath)? {
+        let height = RingGeometry.glyphRect(index: 0, center: center, ring: ring, aspect: aspect).height
         guard height >= 5 else { return nil }
-        if ring.iconStyle == .arrows { return arrowPaths(ring: ring, center: center, size: height * 1.15) }
-        let width = min(height * min(max(aspect, 1.2), 2.2), CGFloat(ring.radius) * 0.6)
+        if ring.iconStyle == .arrows { return arrowPaths(ring: ring, center: center, size: height * 1.15, only: index) }
         let outlines = CGMutablePath()
         let fills = CGMutablePath()
         for (i, action) in ring.wedges.prefix(8).enumerated() {
-            let angle = CGFloat.pi / 2 - CGFloat(i) * .pi / 4
-            let mid = CGPoint(x: center.x + cos(angle) * CGFloat(ring.radius), y: center.y + sin(angle) * CGFloat(ring.radius))
-            let screen = CGRect(x: mid.x - width / 2, y: mid.y - height / 2, width: width, height: height)
+            if let index, i != index { continue }
+            let screen = RingGeometry.glyphRect(index: i, center: center, ring: ring, aspect: aspect)
             outlines.addRoundedRect(in: screen.insetBy(dx: 0.5, dy: 0.5), cornerWidth: 1.5, cornerHeight: 1.5)
             let u = unitRect(action)
             let inner = screen.insetBy(dx: 2, dy: 2)
@@ -156,12 +222,14 @@ final class RingLayer {
     }
 
     /// An outward arrow per wedge: a shaft and a two-line head, stroked like the screen outlines.
-    nonisolated private static func arrowPaths(ring: RingSettings, center: CGPoint, size: CGFloat) -> (outlines: CGPath, fills: CGPath) {
+    nonisolated private static func arrowPaths(ring: RingSettings, center: CGPoint, size: CGFloat, only index: Int?) -> (outlines: CGPath, fills: CGPath) {
         let path = CGMutablePath()
         for i in 0..<8 {
+            if let index, i != index { continue }
             let angle = CGFloat.pi / 2 - CGFloat(i) * .pi / 4
             let d = CGPoint(x: cos(angle), y: sin(angle))
-            let mid = CGPoint(x: center.x + d.x * CGFloat(ring.radius), y: center.y + d.y * CGFloat(ring.radius))
+            let glyph = RingGeometry.glyphRect(index: i, center: center, ring: ring, aspect: 1.6)
+            let mid = CGPoint(x: glyph.midX, y: glyph.midY)
             let tail = CGPoint(x: mid.x - d.x * size / 2, y: mid.y - d.y * size / 2)
             let tip = CGPoint(x: mid.x + d.x * size / 2, y: mid.y + d.y * size / 2)
             path.move(to: tail)
@@ -191,16 +259,11 @@ final class RingLayer {
         }
     }
 
-    /// Wedge `index` is centred `index * 45°` clockwise from straight up, in y-up coordinates.
+    /// Compatibility geometry for the onboarding direction sketch.
     nonisolated static func wedgePath(index: Int, center: CGPoint, inner: CGFloat, outer: CGFloat) -> CGPath {
-        let gap = 1.5 * CGFloat.pi / 180
-        let mid = CGFloat.pi / 2 - CGFloat(index) * .pi / 4
-        let start = mid - .pi / 8 + gap
-        let end = mid + .pi / 8 - gap
-        let path = CGMutablePath()
-        path.addArc(center: center, radius: outer, startAngle: start, endAngle: end, clockwise: false)
-        path.addArc(center: center, radius: inner, startAngle: end, endAngle: start, clockwise: true)
-        path.closeSubpath()
-        return path
+        var ring = RingSettings.default
+        ring.radius = Double((inner + outer) / 2)
+        ring.thickness = Double(max(1, outer - inner))
+        return RingGeometry.tilePath(index: index, center: center, ring: ring)
     }
 }

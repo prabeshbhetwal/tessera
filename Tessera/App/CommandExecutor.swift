@@ -77,7 +77,7 @@ final class CommandExecutor: CommandExecuting {
             let (window, frame) = try await frontmost()
             let display = try resolve(selector, windowFrame: frame)
             try await move(window, from: frame, to: TargetResolver.frame(for: target, display: display, current: frame))
-            return .success
+            return CommandResult(ok: true, message: appliedTitle(target, on: display))
         case let .cycle(name):
             return try await cycle(name)
         case let .columns(change, selector):
@@ -125,7 +125,7 @@ final class CommandExecutor: CommandExecuting {
             let goal = TargetResolver.frame(for: cycle.steps[index], display: display, current: frame)
             if !Self.sameFrame(goal, frame) {
                 try await move(window, from: frame, to: goal)
-                return .success
+                return CommandResult(ok: true, message: appliedTitle(cycle.steps[index], on: display))
             }
         }
         return CommandResult(ok: true, message: "Window already fits every step")
@@ -201,6 +201,11 @@ final class CommandExecutor: CommandExecuting {
     }
 
     // MARK: - Helpers
+
+    private func appliedTitle(_ target: Target, on display: DisplayContext) -> String {
+        guard let span = TargetResolver.span(for: target, display: display) else { return target.summary }
+        return Target.span(columns: (span.columns.lowerBound + 1)...(span.columns.upperBound + 1), band: span.band).summary
+    }
 
     private func frontmost() async throws(Failure) -> (window: WindowRef, frame: CGRect) {
         guard Permissions.isAccessibilityTrusted else {
