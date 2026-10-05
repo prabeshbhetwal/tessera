@@ -1,6 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Tessera</title>
+        <item>
+            <title>Tessera 0.2.0-beta.1</title>
+            <pubDate>Mon, 05 Oct 2026 09:58:34 +0000</pubDate>
+            <sparkle:version>20261005.095705</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.1</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Tessera 0.2.0 beta 1
+
+The first beta delivered through Tessera's built-in updater.
+
+**New**
+
+- **Check for Updates.** It's in About, the menu bar menu and General → Updates. Tessera checks on the schedule you choose (daily, weekly, fortnightly or monthly), shows these notes, and installs only updates signed with Tessera's key. Turn on "Include beta versions" to receive betas like this one.
+- **Update cue.** When an automatic check finds an update, a dot appears on the menu bar icon and the menu item reads "Update Available…".
+- **Learned splits.** After Tile or Remember Split, Tessera learns how you adjust a display's windows and reuses those sizes next time. Manage them in Settings → Splits.
+- **Icon-only Ring**, with an action caption and shortcut receipts.
+
+**Changed**
+
+- About has its own pane (⌘0).
+
+This beta isn't notarised. On a Mac that hasn't run Tessera before, Control-click the app and choose Open the first time.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.1/Tessera-0.2.0-beta.1.zip" length="3933950" type="application/octet-stream" sparkle:edSignature="zcrayy0v4VTT+WoTXAAlmoUGXOf8EM0gQ/zx45PGAOOaSQ8Em5i2yj7NE9VAwSIwrSoO0nzPo8jLeAZ9aLZUCA==" />
+        </item>
     </channel>
 </rss>
