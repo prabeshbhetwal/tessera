@@ -96,28 +96,23 @@ struct RingPane: View {
 
             Section {
                 let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
-                SliderRow(title: "Point threshold", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
-                    .disabled(!(r.directions && r.pointing))
-            } header: {
-                Text("Zones")
-            } footer: {
-                Footer("Nothing is picked in the ring's empty middle (\(Int(r.cancelRadius)) pt), so releasing there cancels. Past the point threshold the grid takes over; raise it if you slip into pointing by accident.")
-            }
-
-            Section("Size") {
                 SliderRow(title: "Radius", value: ring.radius, range: 20...max(21, min(150, r.flickDistance - r.thickness / 2)))
+                    .disabled(!r.showRing)
                 SliderRow(title: "Thickness", value: ring.thickness,
                           range: 4...max(5, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2)))
-                Caption("The ring always stays inside the point threshold; its empty middle is the cancel area.")
+                    .disabled(!r.showRing)
+                SliderRow(title: "Point threshold", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
+                    .disabled(!(r.directions && r.pointing))
+                SliderRow(title: "Top band", value: ring.topBand, range: 0.1...max(0.11, 0.9 - r.bottomBand), step: 0.05, format: SliderRow.percent)
+                SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
+            } header: {
+                Text("Size and zones")
+            } footer: {
+                Footer("Releasing in the ring's empty middle (\(Int(r.cancelRadius)) pt) cancels. The ring always stays inside the point threshold; past it the grid takes over, so raise it if you slip into pointing by accident. While pointing, the top and bottom bands of the screen snap a window to half height; the middle is full height.")
             }
-            .disabled(!r.showRing)
 
             ResetSection {
-                // Bands belong to the Displays pane and keep their values.
-                var d = RingSettings.default
-                d.topBand = r.topBand
-                d.bottomBand = r.bottomBand
-                model.settings.ring = d
+                model.settings.ring = .default
             }
         }
         .formStyle(.grouped)
