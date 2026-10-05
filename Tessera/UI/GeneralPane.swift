@@ -53,8 +53,6 @@ struct GeneralPane: View {
                 Text("App")
             }
 
-            UpdatesSection(model: model)
-
             Section {
                 Toggle("Show the menu bar icon", isOn: $model.settings.showMenuBarIcon)
                 Group {
@@ -103,6 +101,8 @@ struct GeneralPane: View {
             } footer: {
                 Footer("Shortcut confirmations and short results such as \u{201C}5 columns\u{201D}, shown on the screen under the mouse.")
             }
+
+            UpdatesSection(model: model)
 
             Section {
                 HStack {
