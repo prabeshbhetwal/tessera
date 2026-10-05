@@ -262,7 +262,8 @@ final class OverlayController {
 
     // MARK: Material
 
-    /// Cuts the material to the eight wedges. A light ring fill gets the light material, a dark one the dark.
+    /// Cuts the material to the eight icon tiles (layout pictures and arrows share them). A light ring fill gets
+    /// the light material, a dark one the dark.
     private static var maskCache: (key: CGSize, image: NSImage)?
 
     private static func layoutMaterial(_ view: NSVisualEffectView, center: CGPoint, ring: RingSettings, theme: Theme) {
@@ -283,7 +284,7 @@ final class OverlayController {
             maskCache = (key, image)
         }
         if view.maskImage !== maskCache?.image { view.maskImage = maskCache?.image }
-        view.isHidden = !(ring.showRing && ring.showGlyphs && ring.iconStyle == .layouts && ring.frosted)
+        view.isHidden = !(ring.showRing && ring.showGlyphs && ring.frosted)
     }
 
     private static func capsuleMask(size: CGSize) -> NSImage {
