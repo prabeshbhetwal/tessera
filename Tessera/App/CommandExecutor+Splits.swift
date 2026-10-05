@@ -24,7 +24,7 @@ extension CommandExecutor {
     func splitFrames(for ordered: [(window: WindowRef, frame: CGRect)], display: DisplayContext)
         -> (frames: [CGRect], learned: Bool) {
         let settings = model.settings
-        if let split = SplitMemory.lookup(splitKey(ordered, display), in: settings.learnedSplits),
+        if let split = SplitMemory.lookup(SplitKey(ordered, on: display), in: settings.learnedSplits),
            let frames = SplitApplier.frames(
                for: split, windows: ordered.map { (bundleID: $0.window.bundleID, frame: $0.frame) },
                usable: GridGeometry.usableFrame(display.visibleFrame, profile: display.profile),
@@ -35,31 +35,16 @@ extension CommandExecutor {
         return (GridGeometry.tiles(ordered.count, display: display), false)
     }
 
-    /// Watches `ordered` for hand adjustments, skipping the moves that placed them.
-    func watchSplit(_ ordered: [(window: WindowRef, frame: CGRect)], display: DisplayContext) {
-        splitWatcher.watch(ordered.map(\.window), key: splitKey(ordered, display), display: display,
-                           ignoreUntil: ContinuousClock.now + SplitWatcher.settle)
-    }
-
-    /// Saves how the windows on the display are arranged now; Tile reuses it.
+    /// Saves how the windows on the display are arranged now, then watches them; Tile reuses the split.
     func rememberSplit(_ selector: DisplaySelector) async throws(Failure) -> CommandResult {
         let (display, found) = try await windowsOnDisplay(selector)
-        let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
-        let frames = found.map { (bundleID: $0.window.bundleID, frame: $0.frame) }
-        switch SplitLearner.learn(frames, usable: usable, gap: display.profile.gap) {
+        switch splitWatcher.save(found, display: display) {
         case let .failure(rejection):
             throw Failure(message: rejection.message)
-        case let .success(slots):
-            let key = splitKey(found, display)
-            let split = LearnedSplit(key: key, slots: slots, updated: Date())
-            model.settings.learnedSplits = SplitMemory.upsert(split, into: model.settings.learnedSplits)
-            watchSplit(found, display: display)
+        case let .success((key, _)):
+            splitWatcher.watch(found, display: display)
             return CommandResult(ok: true, message: "Remembered split · \(SplitLabel.apps(key)) · "
                 + SplitLabel.display(key, displays: [display]))
         }
-    }
-
-    private func splitKey(_ group: [(window: WindowRef, frame: CGRect)], _ display: DisplayContext) -> SplitKey {
-        SplitKey(display: display.id.storageKey, bundleIDs: group.map(\.window.bundleID))
     }
 }

@@ -30,7 +30,7 @@ final class CommandExecutor: CommandExecuting {
         self.windows = windows
         self.presenter = presenter
         self.store = store
-        self.splitWatcher = SplitWatcher(windows: windows, model: model)
+        self.splitWatcher = SplitWatcher(windows: windows, displays: displays, model: model)
     }
 
     func execute(_ command: Command) async -> CommandResult {
@@ -45,7 +45,9 @@ final class CommandExecutor: CommandExecuting {
 
     /// Moves `window` to `goal`, using the cross-display write order when the window changes display.
     func place(_ window: WindowRef, current: CGRect?, goal: CGRect) async -> ApplyResult {
-        splitWatcher.stop()  // Tessera's own moves must not teach a split; Tile restarts the watch afterwards
+        // Tessera's own moves must not teach a split: the watcher ignores them until they settle, and keeps watching.
+        splitWatcher.beginOwnMove()
+        defer { splitWatcher.endOwnMove() }
         let list = displays.displays
         let from = current.flatMap { list.display(at: CGPoint(x: $0.midX, y: $0.midY))?.id }
         let to = list.first { $0.visibleFrame.intersects(goal) }?.id
@@ -137,8 +139,9 @@ final class CommandExecutor: CommandExecuting {
         return CommandResult(ok: true, message: "Window already fits every step")
     }
 
-    /// Every visible window on the display, side by side in equal shares: 3 windows get a third each. Windows
-    /// keep their left-to-right order (top-to-bottom on a portrait display). Each move can be undone.
+    /// Every visible window on the display, side by side: in the display's learned split for those apps when there is
+    /// one, otherwise in equal shares (3 windows get a third each). Windows keep their left-to-right order
+    /// (top-to-bottom on a portrait display) unless the split restores its own. One ⌃⌥Z undoes the lot.
     private func tile(_ selector: DisplaySelector) async throws(Failure) -> CommandResult {
         let (display, found) = try await windowsOnDisplay(selector)
         guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display") }
@@ -158,7 +161,7 @@ final class CommandExecutor: CommandExecuting {
             return count
         }
         await windows.mergeLastMoves(moved)  // one ⌃⌥Z puts every tiled window back
-        watchSplit(ordered, display: display)
+        splitWatcher.watch(ordered, display: display)  // after the moves, so their settling is already ignored
         let n = ordered.count
         let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
         return CommandResult(ok: moved > 0, message: learned ? message + " · your split" : message)
