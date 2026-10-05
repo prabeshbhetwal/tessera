@@ -52,6 +52,25 @@ import Testing
         #expect(unit == UnitRect(x: 0, y: 0, width: 0, height: 0))
     }
 
+    // MARK: LearnedSplit.matches
+
+    @Test func matchesWithinAPointOnTheUsableFrame() {
+        let usable = CGRect(x: -1000, y: 0, width: 1000, height: 500)
+        let stored = LearnedSplit(key: SplitKey(display: "d", bundleIDs: ["a", "b"]), slots: [
+            Slot(bundleID: "a", rect: UnitRect(x: 0, y: 0, width: 0.3, height: 1)),
+            Slot(bundleID: "b", rect: UnitRect(x: 0.308, y: 0, width: 0.692, height: 1)),
+        ], updated: Date(timeIntervalSince1970: 0))
+        func moved(_ points: Double, app: String = "b") -> [Slot] {
+            [stored.slots[0], Slot(bundleID: app, rect: UnitRect(x: 0.308 + points / 1000, y: 0, width: 0.692, height: 1))]
+        }
+        #expect(stored.matches(stored.slots, usable: usable))
+        #expect(stored.matches(moved(0.9), usable: usable))        // late echo of the same arrangement
+        #expect(!stored.matches(moved(2), usable: usable))         // a real adjustment
+        #expect(!stored.matches(moved(0, app: "c"), usable: usable))
+        #expect(!stored.matches(Array(stored.slots.reversed()), usable: usable))
+        #expect(!stored.matches([stored.slots[0]], usable: usable))
+    }
+
     // MARK: SplitMemory
 
     @Test func lookupFindsByKey() {

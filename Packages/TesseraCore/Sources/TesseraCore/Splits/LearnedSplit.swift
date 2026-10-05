@@ -85,6 +85,16 @@ public struct LearnedSplit: Codable, Equatable, Sendable {
         self.slots = slots
         self.updated = updated
     }
+
+    /// Whether `other` holds the same apps in the same order as `slots`, every edge within `tolerance` points once
+    /// laid on `usable`. A re-learn that matches only repeats what is stored.
+    public func matches(_ other: [Slot], usable: CGRect, tolerance: Double = 1) -> Bool {
+        slots.count == other.count && zip(slots, other).allSatisfy { a, b in
+            let (p, q) = (a.rect.absolute(in: usable), b.rect.absolute(in: usable))
+            return a.bundleID == b.bundleID
+                && [p.minX - q.minX, p.maxX - q.maxX, p.minY - q.minY, p.maxY - q.maxY].allSatisfy { abs($0) <= tolerance }
+        }
+    }
 }
 
 /// Whether a learned gap keeps its sequence index or travels with the slot it followed
