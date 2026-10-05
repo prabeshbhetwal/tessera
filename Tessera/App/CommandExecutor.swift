@@ -11,15 +11,16 @@ final class CommandExecutor: CommandExecuting {
             : "No window to move"
     }
 
-    private struct Failure: Error {
+    struct Failure: Error {
         let message: String
     }
 
-    private let model: SettingsModel
+    let model: SettingsModel
     private let displays: DisplayService
-    private let windows: WindowService
+    let windows: WindowService
     private let presenter: WindowPresenter
     private let store: SettingsStore
+    let splitWatcher: SplitWatcher
     private var cycles = CycleTracker()
 
     init(model: SettingsModel, displays: DisplayService, windows: WindowService,
@@ -29,6 +30,7 @@ final class CommandExecutor: CommandExecuting {
         self.windows = windows
         self.presenter = presenter
         self.store = store
+        self.splitWatcher = SplitWatcher(windows: windows, displays: displays, model: model)
     }
 
     func execute(_ command: Command) async -> CommandResult {
@@ -43,6 +45,9 @@ final class CommandExecutor: CommandExecuting {
 
     /// Moves `window` to `goal`, using the cross-display write order when the window changes display.
     func place(_ window: WindowRef, current: CGRect?, goal: CGRect) async -> ApplyResult {
+        // Tessera's own moves must not teach a split: the watcher ignores them until they settle, and keeps watching.
+        splitWatcher.beginOwnMove()
+        defer { splitWatcher.endOwnMove() }
         let list = displays.displays
         let from = current.flatMap { list.display(at: CGPoint(x: $0.midX, y: $0.midY))?.id }
         let to = list.first { $0.visibleFrame.intersects(goal) }?.id
@@ -77,7 +82,7 @@ final class CommandExecutor: CommandExecuting {
             let (window, frame) = try await frontmost()
             let display = try resolve(selector, windowFrame: frame)
             try await move(window, from: frame, to: TargetResolver.frame(for: target, display: display, current: frame))
-            return .success
+            return CommandResult(ok: true, message: appliedTitle(target, on: display))
         case let .cycle(name):
             return try await cycle(name)
         case let .columns(change, selector):
@@ -89,7 +94,10 @@ final class CommandExecutor: CommandExecuting {
             return try await moveToDisplay(step)
         case let .tileWindows(selector):
             return try await tile(selector)
+        case let .rememberSplit(selector):
+            return try await rememberSplit(selector)
         case .undo:
+            splitWatcher.stop()
             guard await windows.undoLast() else { throw Failure(message: "Nothing to undo") }
             return .success
         case .openSettings:
@@ -125,30 +133,21 @@ final class CommandExecutor: CommandExecuting {
             let goal = TargetResolver.frame(for: cycle.steps[index], display: display, current: frame)
             if !Self.sameFrame(goal, frame) {
                 try await move(window, from: frame, to: goal)
-                return .success
+                return CommandResult(ok: true, message: appliedTitle(cycle.steps[index], on: display))
             }
         }
         return CommandResult(ok: true, message: "Window already fits every step")
     }
 
-    /// Keeps the window's grid span (scaled to the new column count), or its proportional frame when off-grid.
-    /// Every visible window on the display, side by side in equal shares: 3 windows get a third each. Windows
-    /// keep their left-to-right order (top-to-bottom on a portrait display). Each move can be undone.
+    /// Every visible window on the display, side by side: in the display's learned split for those apps when there is
+    /// one, otherwise in equal shares (3 windows get a third each). Windows keep their left-to-right order
+    /// (top-to-bottom on a portrait display) unless the split restores its own. One ⌃⌥Z undoes the lot.
     private func tile(_ selector: DisplaySelector) async throws(Failure) -> CommandResult {
-        guard Permissions.isAccessibilityTrusted else {
-            throw Failure(message: "Tessera needs Accessibility permission to move windows")
-        }
-        // `.current` is the front window's display; with no front window (desktop or Tessera in front) the
-        // display under the cursor.
-        let front = await windows.frontmostWindow()
-        let frontFrame: CGRect? = if let front { await windows.frame(of: front) } else { nil }
-        let display = try resolve(selector == .current && frontFrame == nil ? .cursor : selector, windowFrame: frontFrame)
-        let found = await windows.visibleWindows(on: display.frame, primaryHeight: DisplayService.primaryHeight,
-                                                 excluding: Set(model.settings.excludedBundleIDs))
+        let (display, found) = try await windowsOnDisplay(selector)
         guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display") }
         let portrait = display.range.isPortrait
         let ordered = found.sorted { portrait ? $0.frame.midY > $1.frame.midY : $0.frame.minX < $1.frame.minX }
-        let slots = GridGeometry.tiles(ordered.count, display: display)
+        let (slots, learned) = splitFrames(for: ordered, display: display)
         // All at once, so with a snap speed set the windows glide together instead of one after another.
         let moved = await withTaskGroup(of: Bool.self) { group in
             for (entry, slot) in zip(ordered, slots) {
@@ -162,8 +161,10 @@ final class CommandExecutor: CommandExecuting {
             return count
         }
         await windows.mergeLastMoves(moved)  // one ⌃⌥Z puts every tiled window back
+        splitWatcher.watch(ordered, display: display)  // after the moves, so their settling is already ignored
         let n = ordered.count
-        return CommandResult(ok: moved > 0, message: moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows")
+        let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
+        return CommandResult(ok: moved > 0, message: learned ? message + " · your split" : message)
     }
 
     private func moveToDisplay(_ step: DisplayStep) async throws(Failure) -> CommandResult {
@@ -202,6 +203,11 @@ final class CommandExecutor: CommandExecuting {
 
     // MARK: - Helpers
 
+    private func appliedTitle(_ target: Target, on display: DisplayContext) -> String {
+        guard let span = TargetResolver.span(for: target, display: display) else { return target.summary }
+        return Target.span(columns: (span.columns.lowerBound + 1)...(span.columns.upperBound + 1), band: span.band).summary
+    }
+
     private func frontmost() async throws(Failure) -> (window: WindowRef, frame: CGRect) {
         guard Permissions.isAccessibilityTrusted else {
             throw Failure(message: "Tessera needs Accessibility permission to move windows")
@@ -215,7 +221,7 @@ final class CommandExecutor: CommandExecuting {
         return (window, frame)
     }
 
-    private func resolve(_ selector: DisplaySelector, windowFrame: CGRect?) throws(Failure) -> DisplayContext {
+    func resolve(_ selector: DisplaySelector, windowFrame: CGRect?) throws(Failure) -> DisplayContext {
         guard let display = DisplayResolver.resolve(selector, displays: displays.displays,
                                                     windowFrame: windowFrame, cursor: NSEvent.mouseLocation) else {
             throw Failure(message: "No such display")

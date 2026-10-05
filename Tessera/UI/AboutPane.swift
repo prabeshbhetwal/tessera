@@ -38,15 +38,10 @@ struct AboutPane: View {
 
             Divider().frame(width: 240)
 
-            VStack(spacing: 6) {
-                Text(info["NSHumanReadableCopyright"] as? String ?? "")
-                    .multilineTextAlignment(.center)
-                if let loop = URL(string: "https://github.com/MrKai77/Loop") {
-                    Link("Loop by MrKai77", destination: loop)
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Text(info["NSHumanReadableCopyright"] as? String ?? "")
+                .multilineTextAlignment(.center)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

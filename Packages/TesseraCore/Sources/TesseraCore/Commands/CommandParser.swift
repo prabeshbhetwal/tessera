@@ -22,7 +22,8 @@ public enum CommandParser {
           tessera cycle <name>
           tessera columns (--set N | --delta N) [--display D]
           tessera move <next|previous|N>
-          tessera tile [--display D]               (every visible window, side by side in equal columns)
+          tessera tile [--display D]               (every visible window side by side: the learned split, else equal shares)
+          tessera remember [--display D]           (save how the windows are arranged now; Tile reuses it)
           tessera undo
           tessera displays [--json]
           tessera window [--json]
@@ -32,7 +33,7 @@ public enum CommandParser {
         Use `..` for ranges that involve a negative column. Negative columns count from the right (-1 is the last).
         """
 
-    private static let verbs = "apply, action, cycle, columns, move, tile, undo, displays, window, settings"
+    private static let verbs = "apply, action, cycle, columns, move, tile, remember, undo, displays, window, settings"
 
     // MARK: Entry points
 
@@ -160,6 +161,11 @@ public enum CommandParser {
             let selector = try display()
             try finish()
             return .tileWindows(display: selector)
+
+        case "remember":
+            let selector = try display()
+            try finish()
+            return .rememberSplit(display: selector)
 
         case "undo":
             try finish()

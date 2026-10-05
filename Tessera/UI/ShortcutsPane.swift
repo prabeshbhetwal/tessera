@@ -134,12 +134,12 @@ struct CommandEditor: View {
 
     private enum Kind: String, CaseIterable, Identifiable {
         case apply = "Move window", cycle = "Run cycle", columns = "Change columns", move = "Move to display"
-        case tile = "Tile all windows"
+        case tile = "Tile all windows", remember = "Remember split"
         case undo = "Undo last move", openSettings = "Open Settings", listDisplays = "List displays"
         case describeWindow = "Describe window", exportSettings = "Export settings", importSettings = "Import settings"
         var id: Self { self }
 
-        static let offered: [Kind] = [.apply, .cycle, .tile, .columns, .move, .undo, .openSettings]
+        static let offered: [Kind] = [.apply, .cycle, .tile, .remember, .columns, .move, .undo, .openSettings]
     }
 
     private var kind: Kind {
@@ -149,6 +149,7 @@ struct CommandEditor: View {
         case .columns: .columns
         case .moveToDisplay: .move
         case .tileWindows: .tile
+        case .rememberSplit: .remember
         case .undo: .undo
         case .openSettings: .openSettings
         case .listDisplays: .listDisplays
@@ -165,6 +166,7 @@ struct CommandEditor: View {
         case .columns: .columns(.delta(1), display: .current)
         case .move: .moveToDisplay(.next)
         case .tile: .tileWindows(display: .current)
+        case .remember: .rememberSplit(display: .current)
         case .undo: .undo
         case .openSettings: .openSettings
         case .listDisplays: .listDisplays
@@ -198,6 +200,8 @@ struct CommandEditor: View {
             moveEditor(step)
         case .tileWindows(let display):
             DisplaySelectorEditor(title: "Display", selector: Binding(get: { display }, set: { command = .tileWindows(display: $0) }))
+        case .rememberSplit(let display):
+            DisplaySelectorEditor(title: "Display", selector: Binding(get: { display }, set: { command = .rememberSplit(display: $0) }))
         case .exportSettings(let path):
             TextField("File path", text: Binding(get: { path }, set: { command = .exportSettings(path: $0) }))
         case .importSettings(let path):
@@ -260,6 +264,7 @@ extension Command {
         case .moveToDisplay(.previous): return "Move to previous display"
         case .moveToDisplay(.index(let n)): return "Move to display \(n)"
         case .tileWindows(let display): return "Tile all windows" + on(display)
+        case .rememberSplit(let display): return "Remember split" + on(display)
         case .undo: return "Undo last move"
         case .openSettings: return "Open Settings"
         case .listDisplays: return "List displays"

@@ -63,7 +63,7 @@ targets:
         CFBundleIconName: AppIcon
         LSUIElement: true
         LSMinimumSystemVersion: "15.0"
-        NSHumanReadableCopyright: "Tessera — inspired by Loop, contains no Loop code."
+        NSHumanReadableCopyright: "© 2026 Prabesh Bhetwal"
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: Tessera.sdef
         CFBundleURLTypes:

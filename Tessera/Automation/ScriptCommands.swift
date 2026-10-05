@@ -113,6 +113,16 @@ final class SetColumnsScriptCommand: TesseraScriptCommand {
     }
 }
 
+/// `remember split display "2"`
+@objc(TesseraRememberSplitCommand)
+final class RememberSplitScriptCommand: TesseraScriptCommand {
+    override func makeCommand() throws(InvalidInput) -> Command {
+        var args = ["remember"]
+        if let display = text(evaluatedArguments?["display"]) { args += ["--display", display] }
+        return try parse(args)
+    }
+}
+
 /// `change columns by -1`
 @objc(TesseraChangeColumnsCommand)
 final class ChangeColumnsScriptCommand: TesseraScriptCommand {

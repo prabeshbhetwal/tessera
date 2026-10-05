@@ -13,6 +13,8 @@ final class Coordinator {
     private let windows: WindowService
     private let thumbnails = ThumbnailService()
     private let overlay = OverlayController()
+    private let shortcutReceipt = ShortcutReceipt()
+    private var hotkeyFeedbackGeneration = 0
     private var input: InputService?
     private var engine: SelectionEngine
     private var session: Session?
@@ -89,9 +91,11 @@ final class Coordinator {
         }
         previewObserver = NotificationCenter.default.addObserver(
             forName: .tesseraPreviewOverlay, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.showOverlaySample() }
+        ) { [weak self] note in
+            let shortcut = note.userInfo?["shortcut"] as? Bool ?? false
+            MainActor.assumeIsolated { self?.showOverlaySample(shortcut: shortcut) }
         }
+        executor.splitWatcher.onLearned = { [weak self] in self?.showHUD($0) }
     }
 
     private var recorderObserver: NSObjectProtocol?
@@ -102,8 +106,15 @@ final class Coordinator {
 
     /// Shows the real overlay for a few seconds on the display under the mouse, with the right half
     /// selected, so a theme can be judged on screen without holding the trigger. A real session wins.
-    private func showOverlaySample() {
+    private func showOverlaySample(shortcut: Bool = false) {
         guard session == nil else { return }
+        sampleTask?.cancel()
+        overlay.hide()
+        shortcutReceipt.hide()
+        if shortcut {
+            shortcutReceipt.show(title: "Right half", action: .rightHalf, settings: model.settings)
+            return
+        }
         let all = displays.displays
         guard let display = all.display(at: NSEvent.mouseLocation) ?? all.first else { return }
         let origin = CGPoint(x: display.visibleFrame.midX, y: display.visibleFrame.midY)
@@ -179,9 +190,19 @@ final class Coordinator {
 
     /// Runs a command through the bridge. The HUD shows a failure, and any message a success carries
     /// ("5 columns", "Already on that display"): a hotkey has no other way to tell the user what happened.
-    func run(_ command: Command) async {
+    func run(_ command: Command, hotkey: Bool = false) async {
+        if hotkey { hotkeyFeedbackGeneration += 1; shortcutReceipt.hide() }
+        let feedbackGeneration = hotkeyFeedbackGeneration
         let result = await CommandBridge.execute(command)
+        if hotkey, feedbackGeneration != hotkeyFeedbackGeneration { return }
         if !result.ok { log.notice("command failed: \(result.message ?? "?", privacy: .public)") }
+        if hotkey, result.ok, model.settings.showHUD, session == nil, command != .openSettings {
+            let title = result.message ?? command.summary
+            let action: WindowAction? = if case let .apply(.action(value), _) = command { value }
+                else { WindowAction.allCases.first { $0.displayName == title } }
+            shortcutReceipt.show(title: title, action: action, settings: model.settings)
+            return
+        }
         if let message = result.ok ? result.message : (result.message ?? "Command failed") {
             showHUD(message)
         }
@@ -229,7 +250,7 @@ final class Coordinator {
         case let .command(command):
             // Not awaited: a command can glide a window for up to a second, and this loop is the only
             // consumer of trigger outputs. Awaiting it would hold up the next ring open or hotkey.
-            Task { await run(command) }
+            Task { await run(command, hotkey: true) }
         }
     }
 
@@ -237,6 +258,8 @@ final class Coordinator {
     /// Accessibility round trip to the front app can take tens of milliseconds, and nothing on screen, nor any
     /// mouse move, waits for it.
     private func open(at origin: CGPoint) async {
+        hotkeyFeedbackGeneration += 1
+        shortcutReceipt.hide()
         // A running sample is left to its own timer: after a successful open it finds a session and does
         // nothing; after an aborted open it still hides the sample panels.
         cancelSession()
@@ -363,7 +386,9 @@ final class Coordinator {
         let cancelling = s.nav == nil
             && hypot(s.cursor.x - s.origin.x, s.cursor.y - s.origin.y) < model.settings.ring.cancelRadius
         overlay.update(selection: selection, layers: layers, image: s.image,
-                       displays: s.displays, pointMode: pointMode, cancelling: cancelling)
+                       displays: s.displays, pointMode: pointMode, cancelling: cancelling,
+                       keyboard: s.nav != nil, keyboardEnabled: model.settings.ringKeyNavigation,
+                       tapToTile: !s.leftDeadZone && model.settings.ring.tapTilesWindows, hasMoved: s.leftDeadZone)
     }
 
     private func targetFrame(for selection: Selection, in s: Session) -> CGRect? {
@@ -446,6 +471,7 @@ final class Coordinator {
     // MARK: - Changes
 
     private func displaysChanged() {
+        executor.splitWatcher.stop()
         input?.updatePrimaryHeight(DisplayService.primaryHeight)
         presenter.updateDisplays(displays.displays)
         cancelSession() // spec §7: display unplugged mid-session
@@ -453,6 +479,7 @@ final class Coordinator {
 
     private func settingsChanged(_ settings: TesseraSettings) {
         engine = SelectionEngine(ring: settings.ring)
+        if !settings.learnSplits { executor.splitWatcher.stop() }
         applyInputConfig()
         displays.refresh()
         presenter.updateDisplays(displays.displays)

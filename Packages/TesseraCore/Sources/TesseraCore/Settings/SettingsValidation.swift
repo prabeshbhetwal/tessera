@@ -68,6 +68,23 @@ public enum SettingsValidation {
             "Snap duration must be between 0 and \(SnapSpeed.maxSeconds) seconds."
         )
 
+        // Only corrupt numbers and the cap are rejected. A split whose slots don't match its key, or whose
+        // slots overlap, is harmless: at Tile time the applier returns nil when the apps don't match (Tile
+        // then uses equal shares) and lays overlapping slots out as learned. Rejecting either here would
+        // quarantine the user's whole settings file.
+        try require(s.learnedSplits.count <= SplitMemory.capacity,
+                    "Too many learned splits (at most \(SplitMemory.capacity)).")
+        for split in s.learnedSplits {
+            for r in split.slots.map(\.rect) {
+                try require(
+                    r.x.isFinite && r.y.isFinite && r.width.isFinite && r.height.isFinite
+                        && r.width > 0 && r.height > 0 && r.x >= 0 && r.y >= 0
+                        && r.x + r.width <= 1.0001 && r.y + r.height <= 1.0001,
+                    "A learned split has an invalid size."
+                )
+            }
+        }
+
         for key in s.displayOverrides.keys.sorted() {
             let profile = s.displayOverrides[key] ?? DisplayProfile(columns: 0)
             try require(profile.columns >= 1, "Display \(key) needs at least 1 column (found \(profile.columns)).")
