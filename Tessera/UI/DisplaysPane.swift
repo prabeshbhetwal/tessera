@@ -31,21 +31,11 @@ struct DisplaysPane: View {
                 Footer("These widths decide how many columns each display can hold, from its usable width. Minimum ≤ ideal ≤ maximum.")
             }
 
-            Section {
-                bandControls
-            } header: {
-                Text("Top and bottom bands")
-            } footer: {
-                Footer("While pointing, the top and bottom of the screen snap a window to half height; the middle is full height.")
-            }
-
             ResetSection {
                 model.settings.displayOverrides = [:]
                 model.settings.sizing = .default
                 model.settings.defaultGap = TesseraSettings.defaults.defaultGap
                 model.settings.defaultPadding = TesseraSettings.defaults.defaultPadding
-                model.settings.ring.topBand = RingSettings.default.topBand
-                model.settings.ring.bottomBand = RingSettings.default.bottomBand
             }
         }
         .formStyle(.grouped)
@@ -62,13 +52,6 @@ struct DisplaysPane: View {
         SliderRow(title: "Maximum column width", value: s.maxColumnWidth, range: v.idealColumnWidth...max(v.idealColumnWidth + 1, 3000), step: 8)
         SliderRow(title: "Minimum row height", value: s.minRowHeight, range: 200...1200, step: 8)
         StepperRow(title: "Column limit", value: s.maxColumns, range: 1...16)
-    }
-
-    @ViewBuilder private var bandControls: some View {
-        let ring = $model.settings.ring
-        let r = model.settings.ring
-        SliderRow(title: "Top band", value: ring.topBand, range: 0.1...max(0.11, 0.9 - r.bottomBand), step: 0.05, format: SliderRow.percent)
-        SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
     }
 }
 

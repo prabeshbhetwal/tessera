@@ -37,7 +37,7 @@ struct GeneralPane: View {
             } header: {
                 Text("Appearance")
             } footer: {
-                Footer("Light or dark for Tessera's windows. Match System follows macOS. The on-screen ring has its own colours in Overlay.")
+                Footer("Light or dark for Tessera's windows. Match System follows macOS. The on-screen ring has its own colours, set in Ring › Colours and Overlay › Colours.")
             }
 
             Section {
@@ -52,8 +52,6 @@ struct GeneralPane: View {
             } header: {
                 Text("App")
             }
-
-            UpdatesSection(model: model)
 
             Section {
                 Toggle("Show the menu bar icon", isOn: $model.settings.showMenuBarIcon)
@@ -103,6 +101,8 @@ struct GeneralPane: View {
             } footer: {
                 Footer("Shortcut confirmations and short results such as \u{201C}5 columns\u{201D}, shown on the screen under the mouse.")
             }
+
+            UpdatesSection(model: model)
 
             Section {
                 HStack {
@@ -167,7 +167,6 @@ struct GeneralPane: View {
                 model.settings.menuBarIcon = .grid
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
-                model.settings.snapSeconds = SnapSpeed.instant.seconds
                 model.settings.updates = UpdateSettings()
                 if model.settings.launchAtLogin { setLaunchAtLogin(false) }
             }

@@ -31,7 +31,7 @@ struct CyclesEditor: View {
         Section {
             Button("Add Cycle", action: addCycle)
         } footer: {
-            Footer("Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle doesn't update hotkeys that run it.")
+            Footer("Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle doesn't update the hotkeys that run it (Shortcuts › Hotkeys).")
         }
     }
 

@@ -96,28 +96,25 @@ struct RingPane: View {
 
             Section {
                 let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
-                SliderRow(title: "Point threshold", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
-                    .disabled(!(r.directions && r.pointing))
-            } header: {
-                Text("Zones")
-            } footer: {
-                Footer("Nothing is picked in the ring's empty middle (\(Int(r.cancelRadius)) pt), so releasing there cancels. Past the point threshold the grid takes over; raise it if you slip into pointing by accident.")
-            }
-
-            Section("Size") {
                 SliderRow(title: "Radius", value: ring.radius, range: 20...max(21, min(150, r.flickDistance - r.thickness / 2)))
+                    .disabled(!r.showRing)
                 SliderRow(title: "Thickness", value: ring.thickness,
                           range: 4...max(5, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2)))
-                Caption("The ring always stays inside the point threshold; its empty middle is the cancel area.")
+                    .disabled(!r.showRing)
+                SliderRow(title: "Point threshold", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
+                    .disabled(!(r.directions && r.pointing))
+                SliderRow(title: "Top band", value: ring.topBand, range: 0.1...max(0.11, 0.9 - r.bottomBand), step: 0.05, format: SliderRow.percent)
+                    .disabled(!r.pointing)
+                SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
+                    .disabled(!r.pointing)
+            } header: {
+                Text("Size and zones")
+            } footer: {
+                Footer("Releasing in the ring's empty middle (\(Int(r.cancelRadius)) pt) cancels. The ring always stays inside the point threshold; past it the grid takes over, so raise it if you slip into pointing by accident. While pointing, the top and bottom bands of the screen snap a window to half height; the middle is full height.")
             }
-            .disabled(!r.showRing)
 
-            ResetSection {
-                // Bands belong to the Displays pane and keep their values.
-                var d = RingSettings.default
-                d.topBand = r.topBand
-                d.bottomBand = r.bottomBand
-                model.settings.ring = d
+            ResetSection(keeps: "Keeps your theme colours.") {
+                model.settings.ring = .default
             }
         }
         .formStyle(.grouped)
@@ -129,8 +126,8 @@ struct RingPane: View {
         case (true, true): "Move a little for a wedge's layout; keep going further out to point at a column."
         case (true, false): "Every move picks a wedge, however far you go. The grid is off."
         case (false, true): "Any move points straight at a column of the grid. The wedges are off."
-        case (false, false) where keys: "Mouse gestures are off. Use the arrow keys and Return while holding the trigger, or the hotkeys."
-        case (false, false): "Mouse gestures and ring keys are both off, so holding the trigger does nothing. Turn one on, or use the hotkeys."
+        case (false, false) where keys: "Mouse gestures are off. Use the arrow keys and Return while holding the trigger, or the hotkeys. The ring keys are listed in Shortcuts › Ring keyboard."
+        case (false, false): "Mouse gestures and ring keys (Shortcuts › Ring keyboard) are both off, so holding the trigger does nothing. Turn one on, or use the hotkeys."
         }
     }
 }
