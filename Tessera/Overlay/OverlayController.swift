@@ -23,6 +23,7 @@ final class OverlayController {
         var numbers: [CATextLayer] = []
         let preview = PreviewLayer()
         let ring = RingLayer()
+        let caption = RingCaptionLayer()
         var gridKey: GridKey?
 
         init(frame: CGRect) {
@@ -43,6 +44,7 @@ final class OverlayController {
             root?.addSublayer(preview.root)
             root?.addSublayer(gridActive)
             root?.addSublayer(ring.root)
+            root?.addSublayer(caption.root)
             // A dark halo under every light stroke keeps the grid legible on light wallpapers.
             gridHalo.strokeColor = CGColor(gray: 0, alpha: 0.3)
             gridHalo.fillColor = nil
@@ -131,6 +133,7 @@ final class OverlayController {
             scene.preview.clear()
             let center = CGPoint(x: origin.x - scene.origin.x, y: origin.y - scene.origin.y)
             scene.ring.configure(bounds: bounds, center: center, ring: ring, theme: theme, scale: scale)
+            scene.caption.configure(bounds: bounds, center: center, ring: ring, theme: theme, scale: scale)
             Self.layoutMaterial(scene.material, center: center, ring: ring, theme: theme)
             // Cells outside the pointed span stay faint; the picked ones are outlined in the accent colour.
             scene.grid.strokeColor = HexColor.cgColor(theme.ring.gridHex, alpha: 0.28)
@@ -145,7 +148,8 @@ final class OverlayController {
     /// Hot path: called on every mouse move while the menu is open.
     func update(
         selection: Selection, layers: PreviewLayers?, image: CGImage?,
-        displays: [DisplayContext], pointMode: Bool, cancelling: Bool
+        displays: [DisplayContext], pointMode: Bool, cancelling: Bool,
+        keyboard: Bool = false, keyboardEnabled: Bool = true, tapToTile: Bool = false, hasMoved: Bool = false
     ) {
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let activeWedge: Int? = switch selection {
@@ -162,9 +166,14 @@ final class OverlayController {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for (id, scene) in scenes {
-            scene.ring.setActive(activeWedge)
+            if case let .span(displayID, span) = selection, let display = displays.first(where: { $0.id == displayID }) {
+                scene.ring.setSpan(span, columns: display.profile.columns, portrait: display.range.isPortrait)
+            } else { scene.ring.setActive(activeWedge) }
             scene.ring.setCancelling(cancelling)
             scene.ring.setPointMode(pointMode)
+            scene.caption.render(RingFeedback.make(selection: selection, ring: ring, keyboard: keyboard,
+                                                  keyboardEnabled: keyboardEnabled, tapToTile: tapToTile,
+                                                  cancelling: cancelling && hasMoved))
             scene.material.alphaValue = pointMode ? 0.35 : 1
             updateGrid(scene, key: gridKey?.display.id == id ? gridKey : nil)
             // Only the display the preview is on draws it; the others just keep theirs cleared.
@@ -257,15 +266,15 @@ final class OverlayController {
     private static var maskCache: (key: CGSize, image: NSImage)?
 
     private static func layoutMaterial(_ view: NSVisualEffectView, center: CGPoint, ring: RingSettings, theme: Theme) {
-        let radii = RingLayer.radii(ring)
-        let box = CGRect(x: center.x - radii.outer, y: center.y - radii.outer, width: radii.outer * 2, height: radii.outer * 2)
+        let extent = RingGeometry.extent(ring)
+        let box = CGRect(x: center.x - extent, y: center.y - extent, width: extent * 2, height: extent * 2)
         view.frame = box
         view.alphaValue = 1  // a session that ended in point mode left it dimmed
         view.appearance = NSAppearance(named: HexColor.isLight(theme.ring.fillHex) ? .aqua : .darkAqua)
         // The mask only depends on the ring's size, so it is drawn once and reused on every open.
-        let key = CGSize(width: radii.inner, height: radii.outer)
+        let key = CGSize(width: ring.radius, height: ring.thickness)
         if maskCache?.key != key {
-            let path = RingLayer.ringPath(center: CGPoint(x: radii.outer, y: radii.outer), inner: radii.inner, outer: radii.outer)
+            let path = RingGeometry.path(center: CGPoint(x: extent, y: extent), ring: ring)
             let image = NSImage(size: box.size, flipped: false) { _ in
                 NSColor.black.setFill()
                 NSBezierPath(cgPath: path).fill()
@@ -274,7 +283,7 @@ final class OverlayController {
             maskCache = (key, image)
         }
         if view.maskImage !== maskCache?.image { view.maskImage = maskCache?.image }
-        view.isHidden = !(ring.showRing && ring.frosted)
+        view.isHidden = !(ring.showRing && ring.showGlyphs && ring.iconStyle == .layouts && ring.frosted)
     }
 
     private static func capsuleMask(size: CGSize) -> NSImage {

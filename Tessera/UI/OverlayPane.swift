@@ -26,12 +26,16 @@ struct OverlayPane: View {
                     .frame(height: 190)
                 HStack {
                     Spacer()
+                    Button("Preview Shortcut") {
+                        NotificationCenter.default.post(name: .tesseraPreviewOverlay, object: nil,
+                                                        userInfo: ["shortcut": true])
+                    }
                     Button("Show on Screen") {
                         NotificationCenter.default.post(name: .tesseraPreviewOverlay, object: nil)
                     }
                 }
             } footer: {
-                Footer("Show on Screen draws the real ring and preview on this display for three seconds.")
+                Footer("Show on Screen previews the ring for three seconds. Preview Shortcut shows the confirmation; neither moves a window.")
             }
 
             Section {
@@ -76,7 +80,7 @@ struct OverlayPane: View {
                     get: { theme.ring.opacity }, set: { v in edit { $0.ring.opacity = v } }
                 ), range: 0...1, step: 0.05, format: SliderRow.percent)
                 ColorPicker("Lines and icons", selection: colorBinding(\.ring.strokeHex), supportsOpacity: false)
-                ColorPicker("Highlighted wedge", selection: colorBinding(\.accentHex), supportsOpacity: false)
+                ColorPicker("Selected layout", selection: colorBinding(\.accentHex), supportsOpacity: false)
                 ColorPicker("Snap preview", selection: colorBinding(\.previewHex), supportsOpacity: false)
                 ColorPicker("Grid", selection: colorBinding(\.ring.gridHex), supportsOpacity: false)
                 ColorPicker("Label", selection: colorBinding(\.labelHex), supportsOpacity: false)

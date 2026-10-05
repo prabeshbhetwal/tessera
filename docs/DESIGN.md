@@ -65,4 +65,15 @@ A new setting only needs a default value in `TesseraSettings` (or a nested struc
 
 ## Motion
 
-Follows Reduce Motion. The only animations are the onboarding flick demo (paused under Reduce Motion), permission symbol replacement and the overlay's own morph. No page transitions.
+Follows Reduce Motion. Animations are the onboarding flick demo (paused under Reduce Motion), permission symbol replacement, the overlay's own morph and brief Ring selection/shortcut confirmation fades. No page transitions.
+
+## Ring feedback
+
+The icon-only direction palette was approved on 5 October 2026. Preserve this visual direction in follow-up work unless a new design is requested.
+
+- The Ring is an icon-only direction palette. Window-layout glyphs share one optical aspect ratio and stroke treatment, without an outer band, tile backgrounds, repeated labels or a centre card. `RingGeometry` shares the icon silhouettes between the live overlay, material mask and Settings diagram; configured gesture angles and thresholds stay unchanged.
+- Inactive destination fills are subdued; the selected destination gains the accent and a stronger outline. The centre is a tiny origin marker. During grid selection, the other icons recede and one unframed display glyph shows the span or portrait rows.
+- A stationary two-line caption names the selected action or columns and explains release, Return and Escape. It stays readable while the dial recedes in grid mode and remains within the originating display's bounds.
+- Initial state invites selection; returning to the centre after moving explains cancellation. A stationary tap advertises tiling only when that behaviour is enabled and the gesture is still eligible.
+- Successful hotkeys show a compact material receipt with a single layout glyph (or checkmark) and the completed action. Failures use the existing message path. Rapid hotkeys cannot display an older completion over a newer command; opening the interactive Ring clears the receipt.
+- `Ring → Action name and input hints` controls the caption. `General → Show messages`, position and duration control shortcut receipts. `Overlay → Preview Shortcut` previews the receipt without moving a window.

@@ -57,6 +57,8 @@ public struct RingSettings: Codable, Equatable, Sendable {
 
     // Appearance. Hiding the ring keeps every gesture working; only the drawing goes.
     public var showRing = true
+    /// Plain-language selection and input guidance beside the direction dial.
+    public var showActionLabels = true
     /// The small picture inside each wedge; `iconStyle` picks which picture.
     public var showGlyphs = true
     public var iconStyle: RingIconStyle = .layouts
