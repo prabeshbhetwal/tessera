@@ -123,7 +123,8 @@ public enum SplitLearner {
     }
 }
 
-private struct Interval {
+/// A span on one axis. Shared with `SplitApplier`, which asks the same "same row?" question of learned slots.
+struct Interval {
     var lo: Double
     var hi: Double
 
