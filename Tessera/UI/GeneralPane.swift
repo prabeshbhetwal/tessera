@@ -167,7 +167,6 @@ struct GeneralPane: View {
                 model.settings.menuBarIcon = .grid
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
-                model.settings.snapSeconds = SnapSpeed.instant.seconds
                 model.settings.updates = UpdateSettings()
                 if model.settings.launchAtLogin { setLaunchAtLogin(false) }
             }
