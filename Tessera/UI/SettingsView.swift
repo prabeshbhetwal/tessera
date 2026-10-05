@@ -63,7 +63,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .cycles: "Named sequences a hotkey steps through on repeated presses."
         case .splits: "Window arrangements Tessera learned from your adjustments."
         case .displays: "Column count, gap and padding for each connected display."
-        case .ring: "What each direction does, where pointing begins, and how big the ring is."
+        case .ring: "What each direction does, where pointing begins, how tall the top and bottom bands are, and how big the ring is."
         case .overlay: "How the ring and the snap preview look on screen."
         case .motion: "How fast windows glide into place and the preview animates."
         case .about: ""

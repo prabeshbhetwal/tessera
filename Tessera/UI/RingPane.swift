@@ -111,7 +111,7 @@ struct RingPane: View {
                 Footer("Releasing in the ring's empty middle (\(Int(r.cancelRadius)) pt) cancels. The ring always stays inside the point threshold; past it the grid takes over, so raise it if you slip into pointing by accident. While pointing, the top and bottom bands of the screen snap a window to half height; the middle is full height.")
             }
 
-            ResetSection(keeps: "Keeps colours; they belong to the theme in Overlay.") {
+            ResetSection(keeps: "Keeps your theme colours.") {
                 model.settings.ring = .default
             }
         }
@@ -124,7 +124,7 @@ struct RingPane: View {
         case (true, true): "Move a little for a wedge's layout; keep going further out to point at a column."
         case (true, false): "Every move picks a wedge, however far you go. The grid is off."
         case (false, true): "Any move points straight at a column of the grid. The wedges are off."
-        case (false, false) where keys: "Mouse gestures are off. Use the arrow keys and Return while holding the trigger (see Shortcuts › Ring keyboard), or the hotkeys."
+        case (false, false) where keys: "Mouse gestures are off. Use the arrow keys and Return while holding the trigger, or the hotkeys. The ring keys are listed in Shortcuts › Ring keyboard."
         case (false, false): "Mouse gestures and ring keys (Shortcuts › Ring keyboard) are both off, so holding the trigger does nothing. Turn one on, or use the hotkeys."
         }
     }
