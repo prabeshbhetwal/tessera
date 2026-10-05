@@ -71,7 +71,7 @@ struct OverlayPane: View {
             } header: {
                 Text("Theme")
             } footer: {
-                Footer("A theme is a snapshot of everything on this page: colours and preview settings.")
+                Footer("A theme is a snapshot of everything on this page: colours and preview settings, including the ring colours you can also set in Ring › Colours.")
             }
 
             Section {

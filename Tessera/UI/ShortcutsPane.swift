@@ -32,7 +32,7 @@ struct ShortcutsPane: View {
             } footer: {
                 Footer(model.settings.hotkeysEnabled
                     ? "Click a shortcut, or select it and press Space, then type the new one. Esc cancels, Delete clears. A warning doesn't stop a hotkey from working."
-                    : "All hotkeys are off; each keeps its own setting for when you turn them back on. The ring still works.")
+                    : "All hotkeys are off; each keeps its own setting for when you turn them back on. The ring still works; its trigger is set in General › Trigger.")
             }
 
             Section("Ring keyboard") {

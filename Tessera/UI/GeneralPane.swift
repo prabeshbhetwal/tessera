@@ -37,7 +37,7 @@ struct GeneralPane: View {
             } header: {
                 Text("Appearance")
             } footer: {
-                Footer("Light or dark for Tessera's windows. Match System follows macOS. The on-screen ring has its own colours in Overlay.")
+                Footer("Light or dark for Tessera's windows. Match System follows macOS. The on-screen ring has its own colours, set in Ring › Colours and Overlay › Colours.")
             }
 
             Section {
