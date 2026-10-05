@@ -122,7 +122,3 @@ Hold **Left Control + Left Option + Left Command**. You can change it in Setting
   - `Services/`: event tap, displays, Accessibility, thumbnails
   - `Overlay/`: ring, grid and preview panels
   - `UI/`: settings and onboarding
-
-## Credits
-
-Tessera is inspired by [Loop](https://github.com/MrKai77/Loop) by MrKai77. It is an independent implementation: no Loop source code is used.
