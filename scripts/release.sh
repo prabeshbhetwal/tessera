@@ -3,7 +3,7 @@
 #
 #   scripts/release.sh <version> --notes <file> [--beta] [--dry-run]
 #
-# <version> is SemVer (betas are X.Y.Z-beta.N and need --beta) and must be newer than every version already in
+# <version> is SemVer (betas are X.Y.Z-beta.N and need --beta; --beta needs one) and must be newer than every version in
 # appcast.xml. <file> holds the release notes as Markdown; it feeds both the appcast item and the GitHub Release.
 # --dry-run builds, zips and signs, then prints the new appcast item. It skips the branch and sync checks and every
 # publish step (gh release, commit, push), and leaves appcast.xml and git untouched. The zip stays in dist/.
@@ -49,6 +49,9 @@ if (( ! DRY )); then
   [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || die "local main differs from origin/main; push or pull first"
   command -v gh >/dev/null || die "gh (GitHub CLI) is not installed"
   gh auth status >/dev/null 2>&1 || die "gh is not authenticated; run 'gh auth login'"
+  # gh release create would reuse an existing tag wherever it points. ls-remote exits 2 when no ref matches.
+  rc=0; git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null || rc=$?
+  (( rc == 2 )) || die "tag v$VERSION already exists on origin (or origin is unreachable); pick a new version"
 fi
 
 step "Checking version $VERSION"
@@ -56,6 +59,9 @@ step "Checking version $VERSION"
 python3 scripts/appcast_add_item.py --appcast appcast.xml --version "$VERSION" --check-newer
 if [[ "$VERSION" == *-* ]] && (( ! BETA )); then
   die "pre-release $VERSION needs --beta, otherwise it would reach every user"
+fi
+if [[ "$VERSION" != *-* ]] && (( BETA )); then
+  die "--beta needs a pre-release version such as $VERSION-beta.1; stable $VERSION would reach only beta users"
 fi
 
 step "Building Tessera $VERSION (Release)"
@@ -71,6 +77,12 @@ plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$APP/Contents/Info.plist"; }
   || die "built app reports version $(plist CFBundleShortVersionString), expected $VERSION"
 BUILD="$(plist CFBundleVersion)"
 MIN_SYSTEM="$(plist LSMinimumSystemVersion)"
+# build-app.sh falls back to ad-hoc signing without a word, and Sparkle would still install that build: everyone
+# who updated would lose Tessera's Accessibility grant. (No grep -q: exiting early could SIGPIPE codesign.)
+IDENTITY="${TESSERA_SIGN_IDENTITY:-Tessera Local Signing}"
+codesign -dvv "$APP" 2>&1 | grep -x "Authority=$IDENTITY" >/dev/null \
+  || die "the build is not signed by \"$IDENTITY\" (ad-hoc fallback?), so updating would cost every user the" \
+    "Accessibility grant; run this in a logged-in session whose login keychain has that identity"
 
 step "Archiving $APP"
 mkdir -p dist
@@ -107,13 +119,16 @@ if (( DRY )); then
 fi
 
 step "Publishing GitHub release v$VERSION"
-RELEASE_ARGS=(--repo "$REPO" --title "Tessera $VERSION" --notes-file "$NOTES")
+# --target: the tag lands on the commit that was built, not on whatever main is when GitHub creates it.
+RELEASE_ARGS=(--repo "$REPO" --target "$(git rev-parse HEAD)" --title "Tessera $VERSION" --notes-file "$NOTES")
 if (( BETA )); then RELEASE_ARGS+=(--prerelease); fi
 gh release create "v$VERSION" "$ZIP" "${RELEASE_ARGS[@]}"
 
 step "Committing and pushing appcast.xml"
 cp "$WORK/appcast.xml" appcast.xml
-git commit -m "chore(release): Tessera $VERSION appcast" appcast.xml
-git push origin main || die "release v$VERSION is live but pushing appcast.xml failed; fix it, then run: git push origin main"
+RECOVER="release v$VERSION is live, but appcast.xml has not reached origin/main, so no one is offered it yet."
+RECOVER+=" To finish: commit appcast.xml (if git status shows it modified), then run: git push origin main"
+git commit -m "chore(release): Tessera $VERSION appcast" appcast.xml || die "$RECOVER"
+git push origin main || die "$RECOVER"
 
 step "Released Tessera $VERSION: https://github.com/$REPO/releases/tag/v$VERSION"
