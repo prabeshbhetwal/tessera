@@ -79,21 +79,45 @@ public enum SplitLearner {
         }
     }
 
-    /// Resets the space between two windows that sit one after the other along `axis` and share a band `across` it
-    /// to exactly `gap`, moving each edge half the difference. Only spaces from 0 up to `gap + snapSlack` change;
-    /// small overlaps are left as they are. Measured on the input, so pair order cannot matter.
+    /// Resets the space between windows that sit one after the other along `axis` and share a band `across` it
+    /// (only spaces from 0 up to `gap + snapSlack`; small overlaps are left as they are). Edges that face each other,
+    /// directly or through a neighbour, form a group. The group's edges are put `gap` apart around the middle of the
+    /// group's extent, so every window across the same seam gets exactly `gap` and input order cannot matter.
     private static func settleGaps(_ boxes: [Box], along axis: WritableKeyPath<Box, Interval>,
                                    across: KeyPath<Box, Interval>, gap: Double) -> [Box] {
-        var result = boxes
+        // Edge ids: 2i is the low edge of box i, 2i + 1 its high edge. `parent` is a union-find over facing edges.
+        var parent = Array(0..<(2 * boxes.count))
+        func root(_ edge: Int) -> Int {
+            var edge = edge
+            while parent[edge] != edge { edge = parent[edge] }
+            return edge
+        }
+        func position(_ edge: Int) -> Double {
+            edge.isMultiple(of: 2) ? boxes[edge / 2][keyPath: axis].lo : boxes[edge / 2][keyPath: axis].hi
+        }
+        var facing = Set<Int>()
         for i in boxes.indices {
             for j in boxes.indices where i != j {
-                let (a, b) = (boxes[i][keyPath: axis], boxes[j][keyPath: axis])
-                let space = b.lo - a.hi
+                let space = boxes[j][keyPath: axis].lo - boxes[i][keyPath: axis].hi
                 guard space >= 0, space <= gap + snapSlack,
                       boxes[i][keyPath: across].sharesBand(with: boxes[j][keyPath: across]) else { continue }
-                let middle = (a.hi + b.lo) / 2
-                result[i][keyPath: axis].hi = middle - gap / 2
-                result[j][keyPath: axis].lo = middle + gap / 2
+                parent[root(2 * i + 1)] = root(2 * j)
+                facing.formUnion([2 * i + 1, 2 * j])
+            }
+        }
+        var extent: [Int: (lo: Double, hi: Double)] = [:]
+        for edge in facing {
+            let (group, at) = (root(edge), position(edge))
+            extent[group] = (min(extent[group]?.lo ?? at, at), max(extent[group]?.hi ?? at, at))
+        }
+        var result = boxes
+        for edge in facing {
+            guard let seam = extent[root(edge)] else { continue }
+            let middle = (seam.lo + seam.hi) / 2
+            if edge.isMultiple(of: 2) {
+                result[edge / 2][keyPath: axis].lo = middle + gap / 2
+            } else {
+                result[edge / 2][keyPath: axis].hi = middle - gap / 2
             }
         }
         return result

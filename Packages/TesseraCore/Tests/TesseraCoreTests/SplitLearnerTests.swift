@@ -73,6 +73,28 @@ import Testing
         #expect(slots.count == 2)
     }
 
+    @Test func settlingIgnoresInputOrder() throws {
+        // A tall window beside two stacked windows whose left edges differ by 3 pt (gaps of 10 and 13).
+        let windows: [(bundleID: String?, frame: CGRect)] = [
+            ("tall", CGRect(x: 0, y: 0, width: 496, height: 500)),
+            ("top", CGRect(x: 506, y: 254, width: 494, height: 246)),
+            ("bottom", CGRect(x: 509, y: 0, width: 491, height: 246)),
+        ]
+        let orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
+        let results = try orders.map { order in
+            try SplitLearner.learn(order.map { windows[$0] }, usable: Self.usable, gap: 8).get()
+        }
+        for result in results { #expect(result == results[0]) }
+
+        let byApp = Dictionary(uniqueKeysWithValues: results[0].map { ($0.bundleID, $0.rect) })
+        let tall = try #require(byApp["tall"])
+        for name in ["top", "bottom"] {
+            let neighbour = try #require(byApp[name])
+            let gap = (neighbour.x - (tall.x + tall.width)) * Self.usable.width
+            #expect(abs(gap - 8) < 1e-9, "\(name) gap \(gap)")
+        }
+    }
+
     @Test func sliverBetweenNeighboursNeverCollapses() throws {
         // Settling both 0 pt spaces to 8 pt would leave the 4 pt sliver with negative width, so no gap is touched.
         let slots = try Self.learn([
