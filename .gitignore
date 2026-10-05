@@ -5,6 +5,7 @@ loop/
 .build/
 DerivedData/
 build/
+dist/
 *.xcuserstate
 xcuserdata/
 

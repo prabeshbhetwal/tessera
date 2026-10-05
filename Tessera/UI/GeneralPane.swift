@@ -53,6 +53,8 @@ struct GeneralPane: View {
                 Text("App")
             }
 
+            UpdatesSection(model: model)
+
             Section {
                 Toggle("Show the menu bar icon", isOn: $model.settings.showMenuBarIcon)
                 Group {
@@ -74,6 +76,7 @@ struct GeneralPane: View {
                     Toggle("Columns submenu", isOn: $model.settings.menuBarItems.columnsSubmenu)
                     Toggle("Shortcuts…", isOn: $model.settings.menuBarItems.shortcuts)
                     Toggle("Undo Last Move", isOn: $model.settings.menuBarItems.undo)
+                    Toggle("Check for Updates…", isOn: $model.settings.menuBarItems.checkForUpdates)
                 }
                 .disabled(!model.settings.showMenuBarIcon)
             } header: {
@@ -165,6 +168,7 @@ struct GeneralPane: View {
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
                 model.settings.snapSeconds = SnapSpeed.instant.seconds
+                model.settings.updates = UpdateSettings()
                 if model.settings.launchAtLogin { setLaunchAtLogin(false) }
             }
         }
@@ -226,62 +230,6 @@ enum Outcome: Equatable {
 private enum CLIOutcome: Equatable {
     case installed(folder: String)
     case failed(String)
-}
-
-
-/// Records a modifier chord: hold the keys, then release them all.
-struct ChordRecorder: View {
-    @Binding var chord: TriggerChord
-    /// Owned by the pane so its footer can explain what to do while recording.
-    @Binding var recording: Bool
-    @State private var peak: Set<UInt16> = []
-    @State private var monitor: Any?
-
-    var body: some View {
-        Group {
-            LabeledContent("Chord") {
-                RecorderField(
-                    title: "Trigger chord",
-                    text: recording ? (peak.isEmpty ? "Hold keys…" : ModifierKey.describe(peak)) : ModifierKey.describe(chord.keyCodes),
-                    recording: recording,
-                    start: start,
-                    clear: { chord = .default }
-                )
-            }
-        }
-        .onDisappear { stop() }
-        // Recording pauses Tessera's trigger and hotkeys system-wide; never leave it on when focus goes elsewhere.
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in stop() }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in stop() }
-    }
-
-    private func start() {
-        peak = []
-        recording = true
-        NotificationCenter.default.post(name: .tesseraRecorderActive, object: nil, userInfo: ["active": true])
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
-            if event.type == .keyDown {
-                if event.keyCode == 53 { stop() }
-                return nil
-            }
-            let held = ModifierKey.pressed(in: event.modifierFlags)
-            peak.formUnion(held)
-            if held.isEmpty, !peak.isEmpty {
-                chord = TriggerChord(keyCodes: peak)
-                stop()
-            }
-            return event
-        }
-    }
-
-    private func stop() {
-        if let monitor { NSEvent.removeMonitor(monitor) }
-        if recording {
-            NotificationCenter.default.post(name: .tesseraRecorderActive, object: nil, userInfo: ["active": false])
-        }
-        monitor = nil
-        recording = false
-    }
 }
 
 /// JSON file wrapper for `fileExporter`, plus validated import.

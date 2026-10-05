@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AboutPane: View {
     @State private var copied = false
+    @ObservedObject private var updates = UpdateService.shared
 
     private var info: [String: Any] { Bundle.main.infoDictionary ?? [:] }
     private var version: String {
@@ -35,6 +36,10 @@ struct AboutPane: View {
             }
             .controlSize(.small)
             .help("Copies the version for bug reports")
+
+            Button("Check for Updates…") { updates.checkForUpdates() }
+                .controlSize(.small)
+                .disabled(!updates.canCheckForUpdates)
 
             Divider().frame(width: 240)
 
