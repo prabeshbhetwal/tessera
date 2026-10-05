@@ -95,7 +95,7 @@ struct OverlayPane: View {
                     : "Changes are saved to \u{201C}\(theme.name)\u{201D} as you make them.")
             }
 
-            Section("Preview style") {
+            Section("Preview") {
                 Picker("Fill the preview with", selection: preview(\.style)) {
                     ForEach(PreviewStyle.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
@@ -109,6 +109,11 @@ struct OverlayPane: View {
                         }
                     }
                 }
+                SliderRow(title: "Fill opacity", value: preview(\.opacity), range: 0...1, step: 0.05, format: SliderRow.percent)
+                SliderRow(title: "Border width", value: preview(\.borderWidth), range: 0...10, step: 0.5)
+                Toggle("Match the window's corner radius", isOn: preview(\.useWindowCornerRadius))
+                SliderRow(title: "Corner radius", value: preview(\.cornerRadius), range: 0...30)
+                    .disabled(s.useWindowCornerRadius)
             }
 
             Section("Label") {
@@ -132,14 +137,6 @@ struct OverlayPane: View {
                 SliderRow(title: "Dim strength", value: preview(\.dimStrength), range: 0...1, step: 0.05, format: SliderRow.percent)
                     .disabled(!s.showNeighbours)
                 Toggle("Outline where the window is now (dashed)", isOn: preview(\.showCurrentOutline))
-            }
-
-            Section("Preview frame") {
-                SliderRow(title: "Fill opacity", value: preview(\.opacity), range: 0...1, step: 0.05, format: SliderRow.percent)
-                SliderRow(title: "Border width", value: preview(\.borderWidth), range: 0...10, step: 0.5)
-                Toggle("Match the window's corner radius", isOn: preview(\.useWindowCornerRadius))
-                SliderRow(title: "Corner radius", value: preview(\.cornerRadius), range: 0...30)
-                    .disabled(s.useWindowCornerRadius)
             }
 
             ResetSection(keeps: "Keeps your custom themes.") {

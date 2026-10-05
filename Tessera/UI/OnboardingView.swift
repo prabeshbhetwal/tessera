@@ -154,7 +154,7 @@ struct OnboardingView: View {
                 Permissions.requestScreenCapture()
                 screenAllowed = Permissions.isScreenCaptureAllowed
             }
-            Caption("Allowing it doesn't change the preview by itself: pick Window snapshot in Settings › Overlay › Preview style. After you allow it, macOS asks to quit and reopen Tessera; setup continues here.")
+            Caption("Allowing it doesn't change the preview by itself: pick Window snapshot in Settings › Overlay › Preview. After you allow it, macOS asks to quit and reopen Tessera; setup continues here.")
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
         }
