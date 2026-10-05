@@ -5,6 +5,8 @@ import TesseraCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = SettingsModel()
+    /// Sparkle starts when this is first touched, i.e. as the delegate is created at launch.
+    let updates = UpdateService.shared
     private(set) var coordinator: Coordinator?
     private var statusItem: StatusItemController?
     private var permissionObserver: NSObjectProtocol?
@@ -109,9 +111,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// App-level settings that live outside the coordinator: the menu bar item and the windows' appearance.
+    /// App-level settings that live outside the coordinator: the menu bar item, the windows' appearance and updates.
     private func applyAppSettings(_ settings: TesseraSettings) {
         statusItem?.apply(settings)
+        updates.apply(settings.updates)
         let appearance: NSAppearance? = switch settings.appearance {
         case .system: nil
         case .light: NSAppearance(named: .aqua)

@@ -6,6 +6,9 @@ options:
 packages:
   TesseraCore:
     path: Packages/TesseraCore
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -23,6 +26,7 @@ targets:
     sources: [Tessera]
     dependencies:
       - package: TesseraCore
+      - package: Sparkle
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.prabeshbhetwal.Tessera
@@ -69,6 +73,9 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.prabeshbhetwal.Tessera
             CFBundleURLSchemes: [tessera]
+        SUFeedURL: https://raw.githubusercontent.com/prabeshbhetwal/tessera/main/appcast.xml
+        SUPublicEDKey: J1+WnkXMOEmTWcGGT+hKa4HWcHbbGehiUy5Q5v49Iag=
+        SUEnableAutomaticChecks: true
 schemes:
   Tessera:
     build:
