@@ -2,6 +2,7 @@
 
 - Native macOS 15 app: AppKit services and Core Animation overlays in `Tessera/`; pure Swift geometry, settings and input reducers in `Packages/TesseraCore/`.
 - Product and visual conventions: `docs/PRODUCT.md` and `docs/DESIGN.md`. Use Australian English in visible copy; preserve command identifiers.
+- Tessera is a clean-room implementation. `loop/` (main checkout only, gitignored) is upstream Loop under GPL-3.0: never read, search or copy its source. Behaviour notes live in `docs/loop-*.md`.
 - Test: `swift test --package-path Packages/TesseraCore --scratch-path ~/Library/Caches/tessera-build/core-main`.
 - Render Ring states and verify edge placement: `bash scripts/verify-ring-rendering.sh /tmp/tessera-ring-preview.png`. Choose a fresh output filename; this checks production layers without moving desktop windows.
 - Build: `scripts/build-app.sh`. Set `TESSERA_DERIVED_DATA` to an isolated cache directory when verifying a change. XcodeGen generates the project from `project.yml`.
