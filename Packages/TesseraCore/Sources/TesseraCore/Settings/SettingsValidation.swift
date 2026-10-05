@@ -69,8 +69,9 @@ public enum SettingsValidation {
         )
 
         // Only corrupt numbers and the cap are rejected. A split whose slots don't match its key, or whose
-        // slots overlap, is harmless: the applier returns nil for it at Tile time, and rejecting it here
-        // would quarantine the user's whole settings file.
+        // slots overlap, is harmless: at Tile time the applier returns nil when the apps don't match (Tile
+        // then uses equal shares) and lays overlapping slots out as learned. Rejecting either here would
+        // quarantine the user's whole settings file.
         try require(s.learnedSplits.count <= SplitMemory.capacity,
                     "Too many learned splits (at most \(SplitMemory.capacity)).")
         for split in s.learnedSplits {

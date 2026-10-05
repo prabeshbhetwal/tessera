@@ -92,7 +92,7 @@ Accessibility notifications, chosen over polling (wasteful, misses later adjustm
 | `SplitApplier` | Learned split + current windows (bundle ID, frame) + settings in, target frame per window out. Implements app matching, the off / on order modes, both empty-space rules, the grid fallback, and the usable-frame scaling. |
 | `SplitMemory` | Lookup by key, upsert (moves to newest), forget, forget all, cap at 50 (oldest dropped). |
 | `SplitEditor` (1b) | Pure resize of one slot inside a split, applying the "when a window grows" rule; keeps every slot inside the frame and non-overlapping. |
-| Settings | `learnSplits`, `splitRestoresOrder`, `splitGapPlacement`, `splitGapWhenGrowing`, `learnedSplits`. Missing keys are filled by `SettingsMigration`; no schema bump. Validation rejects non-finite or out-of-range rectangles and overlapping slots. |
+| Settings | `learnSplits`, `splitRestoresOrder`, `splitGapPlacement`, `splitGapWhenGrowing`, `learnedSplits`. Missing keys are filled by `SettingsMigration`; no schema bump. Validation rejects non-finite or out-of-range rectangles and more than 50 splits; mismatched or overlapping slots are tolerated (the applier falls back to equal shares on a mismatch) so a stale split can never quarantine the whole settings file. |
 | Command | `.rememberSplit(display: DisplaySelector)`; `CommandParser` grammar `remember [--display D]`; Shortcuts-pane summary. |
 
 ### App (`Tessera/`)
