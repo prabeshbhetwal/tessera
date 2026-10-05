@@ -22,7 +22,7 @@ public enum CommandParser {
           tessera cycle <name>
           tessera columns (--set N | --delta N) [--display D]
           tessera move <next|previous|N>
-          tessera tile [--display D]               (every visible window, side by side in equal columns)
+          tessera tile [--display D]               (every visible window side by side: the learned split, else equal shares)
           tessera remember [--display D]           (save how the windows are arranged now; Tile reuses it)
           tessera undo
           tessera displays [--json]

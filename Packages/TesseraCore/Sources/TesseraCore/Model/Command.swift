@@ -33,7 +33,8 @@ public enum Command: Codable, Equatable, Sendable {
     case cycle(name: String)
     case columns(ColumnChange, display: DisplaySelector)
     case moveToDisplay(DisplayStep)
-    /// Every visible window on the display, side by side in equal columns (rows on a portrait display).
+    /// Every visible window on the display, side by side (top to bottom on a portrait display): in the display's
+    /// learned split for those apps when there is one, otherwise in equal shares.
     case tileWindows(display: DisplaySelector)
     /// Saves how the windows on the display are arranged now, so Tile reuses it.
     case rememberSplit(display: DisplaySelector)

@@ -24,7 +24,8 @@ struct RingPane: View {
                 Text("Gestures")
             } footer: {
                 Footer(gestureSummary(r, keys: model.settings.ringKeyNavigation) + (r.tapTilesWindows
-                    ? " Pressing and releasing in place puts every window on that display side by side: 3 windows get a third each."
+                    ? " Pressing and releasing in place puts every window on that display side by side, in your learned split"
+                        + " for those apps or in equal shares."
                     : " Pressing and releasing in place does nothing.")
                     + " To cancel, release in the ring's empty middle (\u{2715}), press Esc or right-click.")
             }

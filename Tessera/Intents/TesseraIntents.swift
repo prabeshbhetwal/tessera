@@ -132,7 +132,8 @@ struct MoveToDisplayIntent: AppIntent {
 
 struct TileWindowsIntent: AppIntent {
     static let title: LocalizedStringResource = "Tile All Windows"
-    static let description = IntentDescription("Puts every visible window on a display side by side in equal columns.")
+    static let description = IntentDescription(
+        "Puts every visible window on a display side by side, in your learned split for those apps or in equal shares.")
     static let openAppWhenRun = false
 
     @Parameter(title: "Display") var display: DisplayEntity?
