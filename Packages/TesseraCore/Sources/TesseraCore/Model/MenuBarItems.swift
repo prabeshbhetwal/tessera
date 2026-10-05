@@ -8,6 +8,8 @@ public struct MenuBarItems: Codable, Equatable, Sendable {
     public var columnsSubmenu = true
     public var shortcuts = true
     public var undo = true
+    /// "Check for Updates…". It still shows while an update waits, so the person can reach it.
+    public var checkForUpdates = true
 
     public init() {}
 }

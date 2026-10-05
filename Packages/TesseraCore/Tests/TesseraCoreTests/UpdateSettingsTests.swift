@@ -38,6 +38,19 @@ import Testing
         #expect(throws: Never.self) { try SettingsValidation.validate(decoded) }
     }
 
+    /// A file written before the menu bar's Check for Updates item could be hidden must show it, not be quarantined.
+    @Test func oldFileShowsCheckForUpdatesItem() throws {
+        var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(TesseraSettings.defaults)) as! [String: Any]
+        var items = object["menuBarItems"] as! [String: Any]
+        items["checkForUpdates"] = nil
+        object["menuBarItems"] = items
+        let migrated = try SettingsMigration.migrate(JSONSerialization.data(withJSONObject: object))
+        let decoded = try JSONDecoder().decode(TesseraSettings.self, from: migrated.data)
+        #expect(decoded.menuBarItems.checkForUpdates)
+        #expect(decoded == TesseraSettings.defaults)
+        #expect(throws: Never.self) { try SettingsValidation.validate(decoded) }
+    }
+
     @Test func roundTrips() throws {
         var s = TesseraSettings.defaults
         s.updates.checkAutomatically = false
