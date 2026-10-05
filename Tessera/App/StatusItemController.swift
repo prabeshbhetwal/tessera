@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import TesseraCore
 
 /// The menu bar item, in AppKit.
@@ -14,6 +15,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     var accessibilityGranted = Permissions.isAccessibilityTrusted {
         didSet { if accessibilityGranted != oldValue { updateIcon() } }
     }
+
+    /// Mirrors `UpdateService.updateWaiting`, so the badge appears without the menu being opened.
+    private var updateWaiting = false {
+        didSet { if updateWaiting != oldValue { updateIcon() } }
+    }
+    private var waitingSubscription: AnyCancellable?
 
     private let model: SettingsModel
     private let presenter: () -> WindowPresenter?
@@ -60,6 +67,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         item.menu = menu
         item.autosaveName = "TesseraStatusItem"
         updateIcon()
+        // `@Published` emits before the property changes, so take the emitted value rather than reading it back.
+        waitingSubscription = updates.$updateWaiting.sink { [weak self] in self?.updateWaiting = $0 }
     }
 
     /// One-way from settings: AppKit's own hiding (crowded or notched menu bars) is never written back.
@@ -89,6 +98,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         shortcutsItem.isHidden = !items.shortcuts
         undoItem.isHidden = !items.undo
         for entry in [snapItem, columnsItem, shortcutsItem, undoItem] { entry.isEnabled = granted }
+        // A waiting update shows its item even when hidden in settings, so the cue can reach the person;
+        // clicking it brings Sparkle's alert forward.
+        checkItem.title = updateWaiting ? "Update Available…" : "Check for Updates…"
+        checkItem.isHidden = !items.checkForUpdates && !updateWaiting
         // Not gated on Accessibility: updating is how a broken build gets fixed. Greyed only while a check runs.
         checkItem.isEnabled = updates.canCheckForUpdates
     }
@@ -96,13 +109,35 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func updateIcon() {
         let image: NSImage?
         if accessibilityGranted {
-            image = NSImage(systemSymbolName: icon.rawValue, accessibilityDescription: "Tessera")
+            image = updateWaiting
+                ? Self.badged(symbol: icon.rawValue)
+                : NSImage(systemSymbolName: icon.rawValue, accessibilityDescription: "Tessera")
             image?.isTemplate = true
         } else {
             image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "Tessera needs permission")?
                 .withSymbolConfiguration(.init(paletteColors: [.systemOrange]))
         }
         item.button?.image = image
+    }
+
+    /// The menu bar symbol with a dot at its top-right corner, cut out of the symbol so it reads on its own.
+    /// Drawn in one colour, so it stays a template image that follows light and dark menu bars.
+    private static func badged(symbol: String) -> NSImage? {
+        guard let size = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.size else { return nil }
+        // AppKit may run the handler on any thread, so it captures only the symbol name.
+        let image = NSImage(size: size, flipped: false) { @Sendable rect in
+            NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.draw(in: rect)
+            let diameter = rect.height * 0.45
+            let dot = NSRect(x: rect.maxX - diameter, y: rect.maxY - diameter, width: diameter, height: diameter)
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(ovalIn: dot.insetBy(dx: -1.5, dy: -1.5)).fill()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            NSColor.black.setFill()
+            NSBezierPath(ovalIn: dot).fill()
+            return true
+        }
+        image.accessibilityDescription = "Tessera — update available"
+        return image
     }
 
     /// A submenu whose items run commands. Each item carries its command; `separatorAfter` splits the list.

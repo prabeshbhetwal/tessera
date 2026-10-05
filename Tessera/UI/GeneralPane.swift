@@ -76,6 +76,7 @@ struct GeneralPane: View {
                     Toggle("Columns submenu", isOn: $model.settings.menuBarItems.columnsSubmenu)
                     Toggle("Shortcuts…", isOn: $model.settings.menuBarItems.shortcuts)
                     Toggle("Undo Last Move", isOn: $model.settings.menuBarItems.undo)
+                    Toggle("Check for Updates…", isOn: $model.settings.menuBarItems.checkForUpdates)
                 }
                 .disabled(!model.settings.showMenuBarIcon)
             } header: {

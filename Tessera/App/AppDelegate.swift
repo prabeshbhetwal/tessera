@@ -5,7 +5,7 @@ import TesseraCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = SettingsModel()
-    /// Sparkle starts when this is first touched, i.e. as the delegate is created at launch.
+    /// Sparkle starts once the loaded settings are first applied to it.
     let updates = UpdateService.shared
     private(set) var coordinator: Coordinator?
     private var statusItem: StatusItemController?
@@ -42,6 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let store = SettingsStore(fileURL: fileURL)
+        // Sparkle's alert can change "install automatically"; the write saves like a Settings edit, and the
+        // re-apply that follows matches what Sparkle already holds, so it never echoes back.
+        updates.onInstallAutomaticallyChange = { [weak self] in self?.model.settings.updates.installAutomatically = $0 }
         Task {
             let loaded = await store.load()
             model.settings = loaded.settings

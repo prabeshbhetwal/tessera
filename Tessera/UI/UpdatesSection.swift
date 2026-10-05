@@ -13,10 +13,15 @@ struct UpdatesSection: View {
                 ForEach(UpdateInterval.allCases, id: \.self) { Text($0.displayName).tag($0) }
             }
             .disabled(!model.settings.updates.checkAutomatically)
+            // Sparkle ignores it while checks are off.
             Toggle("Download and install automatically", isOn: $model.settings.updates.installAutomatically)
+                .disabled(!model.settings.updates.checkAutomatically)
             Toggle("Include beta versions", isOn: $model.settings.updates.includeBetas)
-            LabeledContent("Last checked",
-                           value: updates.lastUpdateCheckDate?.formatted(.relative(presentation: .named)) ?? "Never")
+            // Re-rendered each minute so "5 minutes ago" stays true while the settings window stays open.
+            TimelineView(.everyMinute) { _ in
+                LabeledContent("Last checked",
+                               value: updates.lastUpdateCheckDate?.formatted(.relative(presentation: .named)) ?? "Never")
+            }
             HStack {
                 Button("Check Now") { updates.checkForUpdates() }
                     .disabled(!updates.canCheckForUpdates)
