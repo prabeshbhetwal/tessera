@@ -2,9 +2,12 @@ import Observation
 import SwiftUI
 import TesseraCore
 
-/// Settings panes in sidebar order; ⌘1–8 selects them.
+/// Settings panes in sidebar order; ⌘1–9 select them and ⌘0 selects About.
 enum SettingsPane: Int, CaseIterable, Hashable {
-    case general, excludedApps, shortcuts, cycles, displays, ring, overlay, motion, about
+    case general, excludedApps, shortcuts, cycles, splits, displays, ring, overlay, motion, about
+
+    /// The ⌘-digit that selects this pane: its position counting from 1, with About (the tenth) on 0.
+    var shortcutKey: Character { self == .about ? "0" : Character("\(rawValue + 1)") }
 
     var title: String {
         switch self {
@@ -12,6 +15,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .excludedApps: "Excluded Apps"
         case .shortcuts: "Shortcuts"
         case .cycles: "Cycles"
+        case .splits: "Splits"
         case .displays: "Displays"
         case .ring: "Ring"
         case .overlay: "Overlay"
@@ -26,6 +30,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .excludedApps: "hand.raised.fill"
         case .shortcuts: "command"
         case .cycles: "arrow.triangle.2.circlepath"
+        case .splits: "rectangle.split.3x1"
         case .displays: "display"
         case .ring: "smallcircle.filled.circle"
         case .overlay: "circle.lefthalf.filled"
@@ -40,6 +45,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .excludedApps: .red
         case .shortcuts: .orange
         case .cycles: .green
+        case .splits: .purple
         case .displays: .blue
         case .ring: .indigo
         case .overlay: .teal
@@ -55,6 +61,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .excludedApps: "Apps in front of which the trigger and hotkeys stay off."
         case .shortcuts: "Global hotkeys and keyboard control of the open ring."
         case .cycles: "Named sequences a hotkey steps through on repeated presses."
+        case .splits: "Window arrangements Tessera learned from your adjustments."
         case .displays: "Column count, gap and padding for each connected display."
         case .ring: "What each direction does, where pointing begins, and how big the ring is."
         case .overlay: "How the ring and the snap preview look on screen."
@@ -80,7 +87,7 @@ enum SettingsGroup: CaseIterable {
     var panes: [SettingsPane] {
         switch self {
         case .setup: [.general, .excludedApps]
-        case .control: [.shortcuts, .cycles]
+        case .control: [.shortcuts, .cycles, .splits]
         case .snapping: [.displays, .ring, .overlay, .motion]
         case .about: [.about]
         }
@@ -138,7 +145,7 @@ struct SettingsView: View {
         }
         .background {
             ForEach(SettingsPane.allCases, id: \.self) { pane in
-                KeyCommand(KeyEquivalent(Character("\(pane.rawValue + 1)"))) { navigation.pane = pane }
+                KeyCommand(KeyEquivalent(pane.shortcutKey)) { navigation.pane = pane }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -150,6 +157,7 @@ struct SettingsView: View {
         case .excludedApps: ExcludedAppsPane(model: model)
         case .shortcuts: ShortcutsPane(model: model)
         case .cycles: CyclesPane(model: model)
+        case .splits: SplitsPane(model: model, displays: displays)
         case .displays: DisplaysPane(model: model, displays: displays)
         case .ring: RingPane(model: model)
         case .overlay: OverlayPane(model: model)
