@@ -42,7 +42,7 @@
 	<key>NSAppleScriptEnabled</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Tessera — inspired by Loop, contains no Loop code.</string>
+	<string>© 2026 Prabesh Bhetwal</string>
 	<key>OSAScriptingDefinition</key>
 	<string>Tessera.sdef</string>
 	<key>SUEnableAutomaticChecks</key>
