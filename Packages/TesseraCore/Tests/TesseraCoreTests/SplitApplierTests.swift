@@ -151,6 +151,19 @@ import Testing
         Self.expectFrame(swapped[1], 0, 0, 300, 500)
     }
 
+    @Test func packedDuplicatesPairLeftToRight() throws {
+        // Learned Chrome 30 | Chrome 70. Now one Chrome is top-right and the other bottom-left: reading order puts
+        // the top-right one first, but packing goes left to right, so the left one must take the left 30 %.
+        let split = Self.split([Self.slot("Chrome", 0, 0.3), Self.slot("Chrome", 0.3, 0.7)])
+        let windows: [Window] = [("Chrome", CGRect(x: 600, y: 250, width: 400, height: 250)),
+                                 ("Chrome", CGRect(x: 0, y: 0, width: 400, height: 250))]
+        for placement in SplitGapPlacement.allCases {
+            let f = try Self.frames(split, windows, gapPlacement: placement)
+            Self.expectFrame(f[0], 300, 0, 700, 500)
+            Self.expectFrame(f[1], 0, 0, 300, 500)
+        }
+    }
+
     @Test func missingBundleIDPairsWithPlaceholderSlot() throws {
         let split = Self.split([Self.slot(SplitKey.unknownApp, 0, 0.4), Self.slot("X", 0.4, 0.6)])
         let f = try Self.frames(split, [Self.window("X", at: 0), Self.window(nil, at: 500)])

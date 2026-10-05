@@ -5,17 +5,19 @@ public enum SplitApplier {
     /// One frame per window, in input order; nil when the windows' apps are not the split's apps (the caller then
     /// falls back to equal tiles).
     ///
-    /// Each window takes the slot of its app (duplicates pair in reading order). A split that is one row, or one
-    /// column on `portrait`, is packed along that axis: windows go in their current order, each taking its slot's size,
-    /// and the learned gaps are laid between them as `gapPlacement` says; a window that would end up past either end
-    /// of the usable frame slides back inside. Any other split, or `restoresOrder`, puts every window in its own slot.
+    /// Each window takes a slot of its app. A split that is one row, or one column on `portrait`, is packed along that
+    /// axis: windows go in their current order, each taking its slot's size, and the learned gaps are laid between them
+    /// as `gapPlacement` says; a window that would end up past either end of the usable frame slides back inside.
+    /// Duplicates then pair along the axis too (the leftmost Chrome takes the leftmost Chrome slot). Any other split,
+    /// or `restoresOrder`, puts every window in its own slot, duplicates pairing in reading order.
     public static func frames(for split: LearnedSplit, windows: [(bundleID: String?, frame: CGRect)], usable: CGRect,
                               portrait: Bool, restoresOrder: Bool, gapPlacement: SplitGapPlacement) -> [CGRect]? {
-        guard let slotOf = pair(windows, with: split.slots) else { return nil }
         let axis = Axis(portrait: portrait)
         let slots = split.slots.map(\.rect)
+        let current = windows.map(\.frame)
         guard !restoresOrder, axis.isSingleLine(slots) else {
-            return slotOf.map { slots[$0].absolute(in: usable) }
+            let slotOf = pair(windows, in: SplitLearner.readingOrder(current), with: split.slots, in: Array(slots.indices))
+            return slotOf?.map { slots[$0].absolute(in: usable) }
         }
 
         // Learned gaps along the axis: before the first slot, between neighbours, and after the last (index slots.count).
@@ -23,6 +25,8 @@ public enum SplitApplier {
             let (p, q) = (axis.along(slots[a]).lo, axis.along(slots[b]).lo)
             return p != q ? p < q : a < b
         }
+        let order = axis.currentOrder(current)
+        guard let slotOf = pair(windows, in: order, with: split.slots, in: learned) else { return nil }
         var rank = [Int](repeating: 0, count: slots.count)
         var gaps: [Double] = []
         var edge = 0.0
@@ -35,7 +39,7 @@ public enum SplitApplier {
 
         var frames = [CGRect](repeating: .zero, count: windows.count)
         var cursor = 0.0
-        for (index, window) in axis.currentOrder(windows.map(\.frame)).enumerated() {
+        for (index, window) in order.enumerated() {
             let slot = slotOf[window]
             let (lead, trail) = switch gapPlacement {
             case .staysInPlace: (gaps[index], 0.0)
@@ -51,12 +55,14 @@ public enum SplitApplier {
         return frames
     }
 
-    /// For each window, the index of the slot it takes. Windows of one app take that app's slots in reading order.
-    private static func pair(_ windows: [(bundleID: String?, frame: CGRect)], with slots: [Slot]) -> [Int]? {
+    /// For each window, the index of the slot it takes; nil when the apps differ. Taking windows in `windowOrder`,
+    /// each takes the first of its app's slots still open in `slotOrder`.
+    private static func pair(_ windows: [(bundleID: String?, frame: CGRect)], in windowOrder: [Int],
+                             with slots: [Slot], in slotOrder: [Int]) -> [Int]? {
         guard windows.count == slots.count else { return nil }
-        var open = Dictionary(grouping: slots.indices, by: { slots[$0].bundleID })
+        var open = Dictionary(grouping: slotOrder, by: { slots[$0].bundleID })
         var slotOf = [Int](repeating: 0, count: windows.count)
-        for window in SplitLearner.readingOrder(windows.map(\.frame)) {
+        for window in windowOrder {
             let app = windows[window].bundleID ?? SplitKey.unknownApp
             guard var queue = open[app], !queue.isEmpty else { return nil }
             slotOf[window] = queue.removeFirst()
