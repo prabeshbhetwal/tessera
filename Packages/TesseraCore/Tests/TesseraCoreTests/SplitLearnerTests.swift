@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Testing
 @testable import TesseraCore
 
@@ -134,6 +135,46 @@ import Testing
         ]
         // The tall window shares a row with both right-hand windows, so it leads and the right column follows top-down.
         #expect(SplitLearner.readingOrder(rects) == [1, 2, 0])
+    }
+
+    /// Whatever the learner keeps must load again: a split that failed validation would quarantine the settings file.
+    @Test func learnedSlotsPassSettingsValidation() throws {
+        let displays = [
+            CGRect(x: 0, y: 0, width: 3840, height: 1055),         // ultrawide at the origin
+            CGRect(x: -1512, y: 0, width: 1512, height: 944),      // laptop left of the main display
+            CGRect(x: 3840, y: -840, width: 1080, height: 1895),   // portrait, reaching below the main display
+        ]
+        // One window, halves, 30 | 70, thirds, a 2 × 2 grid, and a wide window beside two stacked ones.
+        let layouts: [[UnitRect]] = [
+            [UnitRect(x: 0, y: 0, width: 1, height: 1)],
+            [UnitRect(x: 0, y: 0, width: 0.5, height: 1), UnitRect(x: 0.5, y: 0, width: 0.5, height: 1)],
+            [UnitRect(x: 0, y: 0, width: 0.3, height: 1), UnitRect(x: 0.3, y: 0, width: 0.7, height: 1)],
+            [0.0, 1 / 3, 2 / 3].map { UnitRect(x: $0, y: 0, width: 1 / 3, height: 1) },
+            [(0.0, 0.5), (0.5, 0.5), (0.0, 0.0), (0.5, 0.0)].map { UnitRect(x: $0.0, y: $0.1, width: 0.5, height: 0.5) },
+            [UnitRect(x: 0, y: 0, width: 0.6, height: 1), UnitRect(x: 0.6, y: 0.5, width: 0.4, height: 0.5),
+             UnitRect(x: 0.6, y: 0, width: 0.4, height: 0.5)],
+        ]
+        for usable in displays {
+            for layout in layouts {
+                // Sloppy hands: edges a few points in or out, and the whole layout shifted, hanging past two sides of
+                // the frame (by 40 pt, beyond what edge snapping reaches).
+                for (inset, shift) in [(-10.0, 0.0), (-3, 10), (0, 0), (4, -6), (10, 0), (0, 40), (0, -40)] {
+                    let windows = layout.enumerated().map { i, unit -> (bundleID: String?, frame: CGRect) in
+                        let frame = unit.absolute(in: usable)
+                            .insetBy(dx: i.isMultiple(of: 2) ? inset / 2 : -inset / 2, dy: inset / 2)
+                            .offsetBy(dx: shift, dy: -shift)
+                        return (i == 0 ? nil : "app\(i % 2)", frame)
+                    }
+                    let slots = try SplitLearner.learn(windows, usable: usable, gap: 8).get()
+                    var settings = TesseraSettings.defaults
+                    settings.learnedSplits = [LearnedSplit(key: SplitKey(display: "d", bundleIDs: windows.map(\.bundleID)),
+                                                           slots: slots, updated: Date(timeIntervalSince1970: 0))]
+                    do { try SettingsValidation.validate(settings) } catch {
+                        Issue.record("\(error): \(layout) on \(usable), inset \(inset), shift \(shift)")
+                    }
+                }
+            }
+        }
     }
 
     @Test func rejectionMessages() {
