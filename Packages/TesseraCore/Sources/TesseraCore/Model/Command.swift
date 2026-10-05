@@ -35,6 +35,8 @@ public enum Command: Codable, Equatable, Sendable {
     case moveToDisplay(DisplayStep)
     /// Every visible window on the display, side by side in equal columns (rows on a portrait display).
     case tileWindows(display: DisplaySelector)
+    /// Saves how the windows on the display are arranged now, so Tile reuses it.
+    case rememberSplit(display: DisplaySelector)
     case undo
     case openSettings
     case listDisplays

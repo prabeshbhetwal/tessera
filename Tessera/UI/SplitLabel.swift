@@ -30,6 +30,7 @@ enum SplitLabel {
     private static func appName(_ bundleID: String) -> String {
         guard bundleID != SplitKey.unknownApp else { return "Unknown app" }
         let name = ExcludedAppsPane.name(for: bundleID)
-        return name.hasSuffix(".app") ? String(name.dropLast(4)) : name
+        // `name` equals the bundle ID when no application was found; that fallback is never trimmed.
+        return name != bundleID && name.hasSuffix(".app") ? String(name.dropLast(4)) : name
     }
 }

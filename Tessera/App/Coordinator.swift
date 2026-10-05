@@ -92,6 +92,7 @@ final class Coordinator {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.showOverlaySample() }
         }
+        executor.splitWatcher.onLearned = { [weak self] in self?.showHUD($0) }
     }
 
     private var recorderObserver: NSObjectProtocol?
@@ -446,6 +447,7 @@ final class Coordinator {
     // MARK: - Changes
 
     private func displaysChanged() {
+        executor.splitWatcher.stop()
         input?.updatePrimaryHeight(DisplayService.primaryHeight)
         presenter.updateDisplays(displays.displays)
         cancelSession() // spec §7: display unplugged mid-session
@@ -453,6 +455,7 @@ final class Coordinator {
 
     private func settingsChanged(_ settings: TesseraSettings) {
         engine = SelectionEngine(ring: settings.ring)
+        if !settings.learnSplits { executor.splitWatcher.stop() }
         applyInputConfig()
         displays.refresh()
         presenter.updateDisplays(displays.displays)
