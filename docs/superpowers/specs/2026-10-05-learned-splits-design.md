@@ -42,7 +42,7 @@ Rectangles are stored exactly (no snapping); the pane rounds for display.
 Tile looks up the group's key.
 
 - **Nothing learned:** equal shares, exactly as today.
-- **Learned:** each window takes **its app's learned size**. Several windows of the same app pair with that app's learned rectangles in reading order. Tile's message adds "· your split".
+- **Learned:** each window takes **its app's learned size**. Several windows of the same app pair with that app's learned rectangles: along the row (or column) when packing in current order, in reading order when restoring exact rectangles. Tile's message adds "· your split".
 
 Where windows go depends on the **Restore last order** setting (default **off**):
 
@@ -136,7 +136,7 @@ Core (Swift Testing):
   - small gaps treated as none, large gaps kept
   - normalisation to the usable frame; portrait
 - `SplitApplier`:
-  - app matching, including duplicates in reading order
+  - app matching, including duplicates (along the axis when packing, reading order when restoring)
   - order off: stays-in-place and follows-neighbour gap rules on rows
   - order on: exact restore
   - grid fallback
