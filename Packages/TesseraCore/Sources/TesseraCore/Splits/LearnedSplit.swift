@@ -61,6 +61,15 @@ public struct SplitKey: Codable, Hashable, Sendable {
         self.display = display
         self.apps = bundleIDs.map { $0 ?? "?" }.sorted()
     }
+
+    /// Re-runs the sorting init so a hand-edited or unsorted payload still equals a freshly built key.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            display: try container.decode(String.self, forKey: .display),
+            bundleIDs: try container.decode([String].self, forKey: .apps)
+        )
+    }
 }
 
 public struct LearnedSplit: Codable, Equatable, Sendable {

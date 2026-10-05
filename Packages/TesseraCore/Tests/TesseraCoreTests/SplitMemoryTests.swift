@@ -30,6 +30,13 @@ import Testing
         #expect(SplitKey(display: "d", bundleIDs: [nil, "a"]).apps == ["?", "a"])
     }
 
+    @Test func keyDecodesSorted() throws {
+        let json = Data(#"{"display":"d","apps":["b","a","a"]}"#.utf8)
+        let decoded = try JSONDecoder().decode(SplitKey.self, from: json)
+        #expect(decoded.apps == ["a", "a", "b"])
+        #expect(decoded == SplitKey(display: "d", bundleIDs: ["a", "b", "a"]))
+    }
+
     // MARK: UnitRect
 
     @Test func unitRectRoundTrips() {
