@@ -104,7 +104,9 @@ struct RingPane: View {
                 SliderRow(title: "Point threshold", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
                     .disabled(!(r.directions && r.pointing))
                 SliderRow(title: "Top band", value: ring.topBand, range: 0.1...max(0.11, 0.9 - r.bottomBand), step: 0.05, format: SliderRow.percent)
+                    .disabled(!r.pointing)
                 SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
+                    .disabled(!r.pointing)
             } header: {
                 Text("Size and zones")
             } footer: {
