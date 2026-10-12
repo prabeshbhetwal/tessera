@@ -7,7 +7,7 @@ xcrun swift build --target TesseraCore --jobs 2 --package-path Packages/TesseraC
 PRODUCTS="$(xcrun swift build --show-bin-path --package-path Packages/TesseraCore --scratch-path "$SCRATCH")"
 MODULES="$PRODUCTS"
 if [[ -d "$PRODUCTS/Modules" ]]; then MODULES="$PRODUCTS/Modules"; fi
-OBJECT="$(rg --files --hidden --no-ignore "$SCRATCH" | rg '/RingFeedback\.swift\.o$|/RingFeedback\.o$' | head -1)"
+OBJECT="$(find "$SCRATCH" -type f \( -name 'RingFeedback.swift.o' -o -name 'RingFeedback.o' \) -print -quit)"
 OBJECTS="$(dirname "$OBJECT")"
 xcrun swiftc -parse-as-library -swift-version 6 -I "$MODULES" \
   Tessera/App/CommandBridge.swift Tessera/Automation/SocketServer.swift \
