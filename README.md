@@ -115,9 +115,11 @@ Complete Accessibility setup, focus a window in another app, then hold the defau
 ```bash
 bash scripts/verify-automation.sh
 bash scripts/verify-ring-rendering.sh /tmp/tessera-ring-preview-new.png
+bash scripts/verify-app-packaging.sh "$app"
 ```
 
 Choose a fresh Ring output filename. The automation check uses a temporary owner-only socket and a test executor; it does not load personal settings or run window commands.
+The packaging check verifies bundle resources, signature and embedded CLI help/usage without launching Tessera. CI also runs the production Ring checks and retains their synthetic preview for seven days.
 
 ## Permissions
 
