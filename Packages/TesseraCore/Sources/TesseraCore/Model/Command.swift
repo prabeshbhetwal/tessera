@@ -19,6 +19,18 @@ public enum DisplayStep: Codable, Equatable, Sendable {
 public enum ColumnChange: Codable, Equatable, Sendable {
     case set(Int)
     case delta(Int)
+
+    /// Automation accepts any Int; clamp overflow before it can trap the app.
+    public func resolved(from current: Int, within range: ClosedRange<Int>) -> Int {
+        let wanted: Int
+        switch self {
+        case .set(let value): wanted = value
+        case .delta(let value):
+            let (sum, overflow) = current.addingReportingOverflow(value)
+            wanted = overflow ? (value > 0 ? range.upperBound : range.lowerBound) : sum
+        }
+        return min(max(wanted, range.lowerBound), range.upperBound)
+    }
 }
 
 /// Where a window should go. Span columns are 1-based; negatives count from the right (-1 = last).

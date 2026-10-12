@@ -60,11 +60,8 @@ final class CommandExecutor: CommandExecuting {
     /// Returns the new count, or nil when nothing changed.
     @discardableResult
     func setColumns(_ change: ColumnChange, on display: DisplayContext) -> Int? {
-        let wanted = switch change {
-        case let .set(n): n
-        case let .delta(d): display.profile.columns + d
-        }
-        let columns = min(max(wanted, display.range.minCols), display.range.maxCols)
+        let columns = change.resolved(from: display.profile.columns,
+                                      within: display.range.minCols...display.range.maxCols)
         guard columns != display.profile.columns else { return nil }
         var profile = display.profile
         profile.columns = columns

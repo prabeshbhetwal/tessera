@@ -17,5 +17,7 @@ jobs:
         run: brew install xcodegen
       - name: Core unit tests
         run: swift test --package-path Packages/TesseraCore
+      - name: CLI socket regression checks
+        run: TESSERA_AUTOMATION_SCRATCH="$PWD/Packages/TesseraCore/.build" bash scripts/verify-automation.sh
       - name: Build app
         run: scripts/build-app.sh

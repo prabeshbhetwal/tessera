@@ -138,6 +138,7 @@ final class SocketServer {
             guard n > 0 else { break }
             data.append(contentsOf: buffer[0..<n])
             if let newline = data.firstIndex(of: UInt8(ascii: "\n")) {
+                guard newline <= maxRequestBytes else { return nil }
                 return data[data.startIndex..<newline]
             }
         }

@@ -158,13 +158,13 @@ struct ColumnStepper: View {
                 .monospacedDigit()
                 .accessibilityHidden(true)
             Stepper(title) {
-                value = value == -1 ? 1 : min(16, value + 1)
+                value = value == -1 ? 1 : ColumnChange.delta(1).resolved(from: value, within: -16...16)
             } onDecrement: {
-                value = value == 1 ? -1 : max(-16, value - 1)
+                value = value == 1 ? -1 : ColumnChange.delta(-1).resolved(from: value, within: -16...16)
             }
             .labelsHidden()
             .accessibilityLabel("\(title) column")
-            .accessibilityValue(value < 0 ? "\(-value) from the right" : "\(value)")
+            .accessibilityValue(value < 0 ? "\(value.magnitude) from the right" : "\(value)")
         }
         .fixedSize()
     }
@@ -230,7 +230,7 @@ extension Target {
         case .action(let action):
             return action.displayName
         case .span(let columns, let band):
-            let cols = columns.count == 1 ? "Column \(columns.lowerBound)" : "Columns \(columns.lowerBound)…\(columns.upperBound)"
+            let cols = columns.lowerBound == columns.upperBound ? "Column \(columns.lowerBound)" : "Columns \(columns.lowerBound)…\(columns.upperBound)"
             return band == .full ? cols : "\(cols), \(band.rawValue)"
         }
     }
