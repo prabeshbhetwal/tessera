@@ -51,7 +51,7 @@ Everything works without a mouse.
 
 ## Automation
 
-Every surface below runs the same commands.
+Each surface below runs its supported commands through the same executor.
 
 ```bash
 tessera apply --cols 2-4 --band top     # columns 2–4, top half
