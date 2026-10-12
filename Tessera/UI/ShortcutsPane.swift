@@ -259,7 +259,7 @@ extension Command {
         case .cycle(let name): return "Cycle “\(name)”"
         case .columns(.set(let n), let display): return "Set \(n) columns" + on(display)
         case .columns(.delta(let d), let display):
-            return "\(abs(d)) \(d >= 0 ? "more" : "fewer") column\(abs(d) == 1 ? "" : "s")" + on(display)
+            return "\(d.magnitude) \(d >= 0 ? "more" : "fewer") column\(d.magnitude == 1 ? "" : "s")" + on(display)
         case .moveToDisplay(.next): return "Move to next display"
         case .moveToDisplay(.previous): return "Move to previous display"
         case .moveToDisplay(.index(let n)): return "Move to display \(n)"

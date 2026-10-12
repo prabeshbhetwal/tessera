@@ -28,7 +28,7 @@ public enum DisplayResolver {
             return displays.display(at: cursor)
         case .index(let n):
             let list = ordered(displays)
-            return list.indices.contains(n - 1) ? list[n - 1] : nil
+            return n > 0 && n <= list.count ? list[n - 1] : nil
         case .id(let key):
             return displays.first { $0.id.storageKey == key }
         }
@@ -41,7 +41,7 @@ public enum DisplayResolver {
         switch s {
         case .next: return list[(i + 1) % list.count]
         case .previous: return list[(i - 1 + list.count) % list.count]
-        case .index(let n): return list.indices.contains(n - 1) ? list[n - 1] : nil
+        case .index(let n): return n > 0 && n <= list.count ? list[n - 1] : nil
         }
     }
 

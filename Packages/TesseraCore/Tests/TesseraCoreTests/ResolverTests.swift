@@ -38,6 +38,8 @@ import Testing
     }
 
     @Test func indexOutOfRangeIsNil() {
+        #expect(DisplayResolver.resolve(.index(Int.min), displays: Self.all, windowFrame: nil, cursor: .zero) == nil)
+        #expect(DisplayResolver.resolve(.index(Int.max), displays: Self.all, windowFrame: nil, cursor: .zero) == nil)
         #expect(DisplayResolver.resolve(.index(0), displays: Self.all, windowFrame: nil, cursor: .zero) == nil)
         #expect(DisplayResolver.resolve(.index(4), displays: Self.all, windowFrame: nil, cursor: .zero) == nil)
         #expect(DisplayResolver.resolve(.index(-1), displays: Self.all, windowFrame: nil, cursor: .zero) == nil)
@@ -89,6 +91,8 @@ import Testing
     }
 
     @Test func stepIndexIsOneBasedAndBoundsChecked() {
+        #expect(DisplayResolver.step(.index(Int.min), from: Self.a, displays: Self.all) == nil)
+        #expect(DisplayResolver.step(.index(Int.max), from: Self.a, displays: Self.all) == nil)
         #expect(DisplayResolver.step(.index(2), from: Self.a, displays: Self.all)?.id == Self.b.id)
         #expect(DisplayResolver.step(.index(9), from: Self.a, displays: Self.all) == nil)
     }

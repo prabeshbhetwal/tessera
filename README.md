@@ -101,9 +101,27 @@ scripts/build-app.sh
 
 The script prints the path to `Tessera.app`. Build output goes to `~/Library/Caches/tessera-build/`, because codesign fails inside iCloud-synced folders.
 
+**Run.** Open the app path printed by the build script:
+
+```bash
+app="$(scripts/build-app.sh)"
+open "$app"
+```
+
+Complete Accessibility setup, focus a window in another app, then hold the default trigger and flick towards a Ring glyph. Choose **Quit Tessera** in its menu bar menu to stop the event tap and CLI socket.
+
+**Checks without moving desktop windows:**
+
+```bash
+bash scripts/verify-automation.sh
+bash scripts/verify-ring-rendering.sh /tmp/tessera-ring-preview-new.png
+```
+
+Choose a fresh Ring output filename. The automation check uses a temporary owner-only socket and a test executor; it does not load personal settings or run window commands.
+
 ## Permissions
 
-- **Accessibility (required):** used to move and resize other apps' windows. Builds are ad-hoc signed, so macOS asks for this again after each rebuild.
+- **Accessibility (required):** used to move and resize other apps' windows. The build script uses **Tessera Local Signing** when that identity is available, preserving the grant across rebuilds. Other machines fall back to ad-hoc signing and may need a fresh grant after rebuilding. This local signature does not establish Developer ID signing or notarisation.
 - **Screen Recording (optional):** only used for the live window thumbnail in the preview. Without it, Tessera shows a plain rectangle.
 
 ## Default trigger
