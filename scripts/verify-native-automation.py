@@ -2,6 +2,7 @@
 """Real app/CLI settings and permission-boundary smoke on a disposable GitHub runner."""
 import json
 import math
+import difflib
 import os
 from pathlib import Path
 import subprocess
@@ -33,6 +34,13 @@ def export(name):
     path = fixture / name
     assert request("settings", "export", str(path))["ok"]
     return json.loads(path.read_text())
+
+def equal_settings(actual, expected):
+    difference = "\n".join(difflib.unified_diff(
+        json.dumps(expected, indent=2, sort_keys=True).splitlines(),
+        json.dumps(actual, indent=2, sort_keys=True).splitlines(),
+        fromfile="expected fixture settings", tofile="actual exported settings"))
+    assert actual == expected, difference
 
 with (fixture / "app.log").open("x") as log:
     process = subprocess.Popen([str(app / "Contents/MacOS/Tessera")], stdout=log, stderr=subprocess.STDOUT)
@@ -74,11 +82,11 @@ with (fixture / "app.log").open("x") as log:
         original = export("original.json")
         edited = dict(original, hudSeconds=2.0)
         assert request("settings", "import", str(write("edited.json", edited)))["ok"]
-        assert export("after-import.json") == edited
+        equal_settings(export("after-import.json"), edited)
         invalid = dict(edited, schemaVersion=999)
         rejected = request("settings", "import", str(write("invalid.json", invalid)), expected=1)
         assert not rejected["ok"]
-        assert export("after-rejection.json") == edited
+        equal_settings(export("after-rejection.json"), edited)
         deadline = time.monotonic() + 3
         saved = support / "settings.json"
         while time.monotonic() < deadline:
