@@ -16,7 +16,7 @@ import TesseraCore
     @MainActor static func main() async {
         do {
             try await verify()
-            print("PASS: CLI socket valid, 64 KiB boundary, oversized, malformed and empty requests; bridge isolation.")
+            print("PASS: CLI socket framing, 64 KiB boundary, invalid requests and timeout recovery; bridge isolation.")
         } catch {
             FileHandle.standardError.write(Data("FAIL: \(error)\n".utf8))
             exit(1)
@@ -33,31 +33,34 @@ import TesseraCore
 
         let command = try JSONEncoder().encode(Command.listDisplays)
         let limit = 64 * 1024
-        let cases: [(String, Data, Bool)] = [
-            ("valid", command + Data([10]), true),
-            ("at limit", command + Data(repeating: 32, count: limit - command.count) + Data([10]), true),
-            ("over limit with newline", command + Data(repeating: 32, count: limit + 1 - command.count) + Data([10]), false),
-            ("malformed", Data("not JSON\n".utf8), false),
-            ("empty", Data(), false)
+        let cases: [(String, Data, Bool, Bool)] = [
+            ("valid", command + Data([10]), true, true),
+            ("at limit", command + Data(repeating: 32, count: limit - command.count) + Data([10]), true, true),
+            ("over limit with newline", command + Data(repeating: 32, count: limit + 1 - command.count) + Data([10]), false, true),
+            ("malformed", Data("not JSON\n".utf8), false, true),
+            ("empty", Data(), false, true),
+            ("valid EOF", command, true, true),
+            ("unterminated timeout", command, false, false)
         ]
-        for (name, payload, expected) in cases {
-            let result = try await Task.detached { try request(payload, path: url.path) }.value
+        for (name, payload, expected, endRequest) in cases {
+            let result = try await Task.detached { try request(payload, path: url.path, endRequest: endRequest) }.value
             guard result.ok == expected else { throw Failure(message: "\(name): expected ok=\(expected), got \(result.ok)") }
             print("PASS: \(name)")
         }
-        guard executor.calls == 2 else { throw Failure(message: "Invalid requests reached CommandBridge") }
+        guard executor.calls == 3 else { throw Failure(message: "Invalid requests reached CommandBridge") }
         var mode = stat()
         guard lstat(url.path, &mode) == 0, mode.st_mode & 0o777 == 0o600 else {
             throw Failure(message: "Socket is not owner-only")
         }
     }
 
-    private static func request(_ payload: Data, path: String) throws -> CommandResult {
+    private static func request(_ payload: Data, path: String, endRequest: Bool) throws -> CommandResult {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { throw Failure(message: "socket failed") }
         defer { close(fd) }
         var noSigPipe: Int32 = 1
-        var timeout = timeval(tv_sec: 5, tv_usec: 0)
+        // Let the server's five-second read deadline expire before the fixture client gives up.
+        var timeout = timeval(tv_sec: 8, tv_usec: 0)
         setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
         setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
@@ -80,7 +83,7 @@ import TesseraCore
                 offset += n
             }
         }
-        shutdown(fd, SHUT_WR)
+        if endRequest { shutdown(fd, SHUT_WR) }
         var response = Data()
         var buffer = [UInt8](repeating: 0, count: 4096)
         while response.count < 64 * 1024 {

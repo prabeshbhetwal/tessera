@@ -109,7 +109,7 @@ final class SocketServer {
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
 
         guard let line = readLine(fd) else {
-            reply(.failure("Empty or oversized request."), to: fd)
+            reply(.failure("Empty, incomplete or oversized request."), to: fd)
             return
         }
         guard let command = try? JSONDecoder().decode(Command.self, from: line) else {
@@ -135,6 +135,7 @@ final class SocketServer {
         while data.count <= maxRequestBytes {
             let n = buffer.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
             if n < 0, errno == EINTR { continue }
+            guard n >= 0 else { return nil }
             guard n > 0 else { break }
             data.append(contentsOf: buffer[0..<n])
             if let newline = data.firstIndex(of: UInt8(ascii: "\n")) {

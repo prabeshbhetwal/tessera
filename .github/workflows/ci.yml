@@ -7,6 +7,7 @@ on:
 jobs:
   test-and-build:
     runs-on: macos-15
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - name: Select newest Xcode
@@ -16,8 +17,20 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Core unit tests
-        run: swift test --package-path Packages/TesseraCore
+        run: swift test --package-path Packages/TesseraCore --scratch-path "$RUNNER_TEMP/tessera-core" --jobs 2
       - name: CLI socket regression checks
-        run: TESSERA_AUTOMATION_SCRATCH="$PWD/Packages/TesseraCore/.build" bash scripts/verify-automation.sh
-      - name: Build app
-        run: scripts/build-app.sh
+        run: TESSERA_AUTOMATION_SCRATCH="$RUNNER_TEMP/tessera-core" bash scripts/verify-automation.sh
+      - name: Production Ring rendering and geometry checks
+        run: TESSERA_RING_SCRATCH="$RUNNER_TEMP/tessera-core" bash scripts/verify-ring-rendering.sh "$RUNNER_TEMP/tessera-ring-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.png"
+      - name: Build and verify app package
+        run: |
+          APP="$(scripts/build-app.sh)"
+          bash scripts/verify-app-packaging.sh "$APP"
+          python3 scripts/verify-native-automation.py "$APP"
+      - name: Upload production Ring fixture
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: tessera-ring-${{ github.sha }}
+          path: ${{ runner.temp }}/tessera-ring-${{ github.run_id }}-${{ github.run_attempt }}.png
+          retention-days: 7
+          if-no-files-found: error

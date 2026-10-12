@@ -42,6 +42,23 @@ import Testing
         #expect(back == s)
     }
 
+    @Test func triggerChordExportsSortedKeysAndAcceptsLegacyOrder() throws {
+        let legacy = Data(#"{"keyCodes":[59,55,58]}"#.utf8)
+        let chord = try JSONDecoder().decode(TriggerChord.self, from: legacy)
+        #expect(chord == .default)
+        let encoded = try JSONEncoder().encode(chord)
+        let object = try JSONSerialization.jsonObject(with: encoded) as? [String: [Int]]
+        #expect(object?["keyCodes"] == [55, 58, 59])
+    }
+
+    @Test func settingsBytesStayStableAfterImport() throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let before = try encoder.encode(TesseraSettings.defaults)
+        let imported = try SettingsStore.decode(before).settings
+        #expect(try encoder.encode(imported) == before)
+    }
+
     @Test func builtInThemes() {
         #expect(Theme.builtIn.map(\.name) == ["Default", "Minimal", "Glass"])
         #expect(Theme.minimal.preview.style == .tint)

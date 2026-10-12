@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Generate the Xcode project, build Tessera, sign it, print the .app path.
 # Build output lives outside the repo: the repo may sit in iCloud Drive, which breaks codesign.
+# Diagnostics go to stderr; stdout is only the built app path.
 #
 # Signing: uses the local "Tessera Local Signing" identity when the login keychain has it, so macOS
 # keeps the Accessibility grant across rebuilds (stable designated requirement). Falls back to
@@ -23,18 +24,18 @@ else
   SIGN_ID="-"
 fi
 
-xcodegen generate --quiet
+xcodegen generate --quiet >&2
 # A build number that always increases, so macOS launches this build rather than an older copy with the
 # same bundle ID (it picks the highest CFBundleVersion).
 BUILD_NUMBER="$(date -u +%Y%m%d.%H%M%S)"
 BUILD_SETTINGS=(CURRENT_PROJECT_VERSION="$BUILD_NUMBER")
 if [[ -n "${TESSERA_VERSION:-}" ]]; then BUILD_SETTINGS+=(MARKETING_VERSION="$TESSERA_VERSION"); fi
 xcodebuild -project Tessera.xcodeproj -scheme Tessera -configuration "$CONFIG" \
-  -derivedDataPath "$DERIVED" build -quiet "${BUILD_SETTINGS[@]}"
+  -derivedDataPath "$DERIVED" build -quiet "${BUILD_SETTINGS[@]}" >&2
 
 APP="$DERIVED/Build/Products/$CONFIG/Tessera.app"
 # --deep: re-signs nested code (embedded CLI, debug dylib) with the same identity.
-codesign --force --deep -s "$SIGN_ID" "$APP"
+codesign --force --deep -s "$SIGN_ID" "$APP" >&2
 # Tell LaunchServices about this copy now, so a launch by bundle ID finds it straight away.
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" >&2
 echo "$APP"
