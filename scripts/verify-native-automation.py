@@ -3,6 +3,7 @@
 import json
 import math
 import difflib
+import copy
 import os
 from pathlib import Path
 import subprocess
@@ -35,12 +36,42 @@ def export(name):
     assert request("settings", "export", str(path))["ok"]
     return json.loads(path.read_text())
 
+def canonical_settings(settings):
+    result = copy.deepcopy(settings)
+    # Only this schema field is a Set; all other arrays retain order and all keys retain multiplicity.
+    trigger = result.get("trigger", {})
+    if "keyCodes" in trigger:
+        trigger["keyCodes"] = sorted(trigger["keyCodes"])
+    return result
+
 def equal_settings(actual, expected):
+    actual, expected = canonical_settings(actual), canonical_settings(expected)
     difference = "\n".join(difflib.unified_diff(
         json.dumps(expected, indent=2, sort_keys=True).splitlines(),
         json.dumps(actual, indent=2, sort_keys=True).splitlines(),
         fromfile="expected fixture settings", tofile="actual exported settings"))
     assert actual == expected, difference
+
+def check_comparison():
+    expected = {"trigger": {"keyCodes": [55, 59, 58]}, "cycles": [{"steps": ["left", "right"]}], "hudSeconds": 2}
+    reordered = copy.deepcopy(expected)
+    reordered["trigger"]["keyCodes"] = [58, 55, 59]
+    assert canonical_settings(reordered) == canonical_settings(expected)
+    for keys in ([55, 58], [55, 58, 60], [55, 58, 59, 59]):
+        changed = copy.deepcopy(expected)
+        changed["trigger"]["keyCodes"] = keys
+        assert canonical_settings(changed) != canonical_settings(expected)
+    missing = copy.deepcopy(expected)
+    del missing["trigger"]["keyCodes"]
+    assert canonical_settings(missing) != canonical_settings(expected)
+    changed = copy.deepcopy(expected)
+    changed["cycles"][0]["steps"].reverse()
+    assert canonical_settings(changed) != canonical_settings(expected)
+    changed["hudSeconds"] = 3
+    assert canonical_settings(changed) != canonical_settings(expected)
+    print("PASS: Settings comparison preserves changed/missing/duplicate keys, ordered cycles and HUD values")
+
+check_comparison()
 
 with (fixture / "app.log").open("x") as log:
     process = subprocess.Popen([str(app / "Contents/MacOS/Tessera")], stdout=log, stderr=subprocess.STDOUT)
@@ -90,10 +121,11 @@ with (fixture / "app.log").open("x") as log:
         deadline = time.monotonic() + 3
         saved = support / "settings.json"
         while time.monotonic() < deadline:
-            if saved.exists() and json.loads(saved.read_text()) == edited:
+            if saved.exists() and canonical_settings(json.loads(saved.read_text())) == canonical_settings(edited):
                 break
             time.sleep(0.1)
-        assert saved.exists() and json.loads(saved.read_text()) == edited
+        assert saved.exists()
+        equal_settings(json.loads(saved.read_text()), edited)
         print("PASS: Real settings export/import, invalid-import recovery and atomic persistence on fixture data")
 
     finally:
