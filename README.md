@@ -120,6 +120,7 @@ bash scripts/verify-app-packaging.sh "$app"
 
 Choose a fresh Ring output filename. The automation check uses a temporary owner-only socket and a test executor; it does not load personal settings or run window commands.
 The packaging check verifies bundle resources, signature and embedded CLI help/usage without launching Tessera. CI also runs the production Ring checks and retains their synthetic preview for seven days.
+CI's native automation smoke launches only its disposable runner app, checks the real CLI/settings path and missing-permission response, and refuses existing app data. It does not grant Accessibility or move desktop windows.
 
 ## Permissions
 
