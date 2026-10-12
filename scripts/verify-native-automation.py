@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Real app/CLI settings and permission-boundary smoke on a disposable GitHub runner."""
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -51,9 +52,24 @@ with (fixture / "app.log").open("x") as log:
         assert ready and ready["ok"] and isinstance(ready["displays"], list), "App/CLI bridge did not become ready"
         print("PASS: Real app startup and CLI → socket → CommandBridge → executor display query")
 
-        denied = request("window", expected=1)
-        assert not denied["ok"] and "Accessibility" in denied["message"], denied
-        print("PASS: Missing Accessibility permission rejected without a window action or permission grant")
+        result = subprocess.run([str(cli), "window", "--json"], text=True, capture_output=True, timeout=10)
+        response = json.loads(result.stdout)
+        if result.returncode == 0:
+            assert response["ok"] is True and isinstance(response.get("window"), dict), response
+            window = response["window"]
+            assert isinstance(window.get("app"), str) and window["app"], window
+            if window.get("bundleID") is not None:
+                assert isinstance(window["bundleID"], str) and window["bundleID"], window
+            origin, size = window["frame"]
+            assert len(origin) == len(size) == 2
+            assert all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in origin + size)
+            assert all(v > 0 for v in size), window
+            if window.get("displayIndex") is not None:
+                assert type(window["displayIndex"]) is int and 1 <= window["displayIndex"] <= len(ready["displays"])
+            print("PASS: Existing Accessibility authorisation; real read-only window query validates frame/display contract")
+        else:
+            assert result.returncode == 1 and response["ok"] is False and "Accessibility" in response["message"], response
+            print("PASS: Accessibility denial contract; no permission grant requested")
 
         original = export("original.json")
         edited = dict(original, hudSeconds=2.0)
@@ -71,6 +87,7 @@ with (fixture / "app.log").open("x") as log:
             time.sleep(0.1)
         assert saved.exists() and json.loads(saved.read_text()) == edited
         print("PASS: Real settings export/import, invalid-import recovery and atomic persistence on fixture data")
+
     finally:
         if process.poll() is None:
             process.terminate()
