@@ -148,6 +148,24 @@ struct TileWindowsIntent: AppIntent {
     }
 }
 
+struct TileEvenlyIntent: AppIntent {
+    static let title: LocalizedStringResource = "Tile Windows Evenly"
+    static let description = IntentDescription(
+        "Puts every visible window on a display side by side in equal shares. Your learned split is kept for the next Tile.")
+    static let openAppWhenRun = false
+
+    @Parameter(title: "Display") var display: DisplayEntity?
+
+    static var parameterSummary: some ParameterSummary { Summary("Tile windows evenly") { \.$display } }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let command = Command.tileEvenly(display: display.selector)
+        let result = try await IntentRunner.run(command)
+        return .result(dialog: "\(result.message ?? command.summary)")
+    }
+}
+
 struct UndoIntent: AppIntent {
     static let title: LocalizedStringResource = "Undo Move"
     static let description = IntentDescription("Puts the last window Tessera moved back where it was.")

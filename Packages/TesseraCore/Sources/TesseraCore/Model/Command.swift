@@ -48,6 +48,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// Every visible window on the display, side by side (top to bottom on a portrait display): in the display's
     /// learned split for those apps when there is one, otherwise in equal shares.
     case tileWindows(display: DisplaySelector)
+    /// Like `tileWindows`, but always in equal shares. Any learned split is kept for the next Tile, and adjusting
+    /// the windows afterwards does not teach a new one.
+    case tileEvenly(display: DisplaySelector)
     /// Saves how the windows on the display are arranged now, so Tile reuses it.
     case rememberSplit(display: DisplaySelector)
     case undo

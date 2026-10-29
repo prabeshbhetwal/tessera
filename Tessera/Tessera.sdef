@@ -68,6 +68,13 @@
             </parameter>
         </command>
 
+        <command name="tile evenly" code="TessTevn" description="Put every visible window on a display side by side in equal shares; your learned split is kept for the next Tile.">
+            <cocoa class="TesseraTileEvenlyCommand"/>
+            <parameter name="display" code="TDsp" type="text" optional="yes" description="&quot;current&quot; (default), &quot;cursor&quot;, a number, or &quot;id:…&quot;.">
+                <cocoa key="display"/>
+            </parameter>
+        </command>
+
         <command name="change columns" code="TessCcol" description="Add or remove columns on the current display.">
             <cocoa class="TesseraChangeColumnsCommand"/>
             <parameter name="by" code="by  " type="integer" description="For example 1 or -1.">

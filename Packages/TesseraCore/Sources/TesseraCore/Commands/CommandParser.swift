@@ -23,6 +23,7 @@ public enum CommandParser {
           tessera columns (--set N | --delta N) [--display D]
           tessera move <next|previous|N>
           tessera tile [--display D]               (every visible window side by side: the learned split, else equal shares)
+          tessera tile evenly [--display D]        (every visible window in equal shares, ignoring the learned split but keeping it)
           tessera remember [--display D]           (save how the windows are arranged now; Tile reuses it)
           tessera undo
           tessera displays [--json]
@@ -158,9 +159,11 @@ public enum CommandParser {
             return .moveToDisplay(try parseStep(target))
 
         case "tile":
+            let evenly = pos.first?.lowercased() == "evenly"
+            if evenly { pos.removeFirst() }
             let selector = try display()
             try finish()
-            return .tileWindows(display: selector)
+            return evenly ? .tileEvenly(display: selector) : .tileWindows(display: selector)
 
         case "remember":
             let selector = try display()

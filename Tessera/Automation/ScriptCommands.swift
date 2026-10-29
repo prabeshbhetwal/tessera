@@ -123,6 +123,16 @@ final class RememberSplitScriptCommand: TesseraScriptCommand {
     }
 }
 
+/// `tile evenly display "2"`
+@objc(TesseraTileEvenlyCommand)
+final class TileEvenlyScriptCommand: TesseraScriptCommand {
+    override func makeCommand() throws(InvalidInput) -> Command {
+        var args = ["tile", "evenly"]
+        if let display = text(evaluatedArguments?["display"]) { args += ["--display", display] }
+        return try parse(args)
+    }
+}
+
 /// `change columns by -1`
 @objc(TesseraChangeColumnsCommand)
 final class ChangeColumnsScriptCommand: TesseraScriptCommand {
