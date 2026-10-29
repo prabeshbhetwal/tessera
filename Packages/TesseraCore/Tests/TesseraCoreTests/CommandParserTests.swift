@@ -38,6 +38,13 @@ import Testing
         Self.expectInvalid("unexpected argument") { try Self.cli("tile now") }
     }
 
+    @Test func tileEvenlyCommand() throws {
+        #expect(try Self.cli("tile evenly") == .tileEvenly(display: .current))
+        #expect(try Self.cli("tile Evenly --display 2") == .tileEvenly(display: .index(2)))
+        #expect(try Self.url("tessera://tile/evenly?display=cursor") == .tileEvenly(display: .cursor))
+        Self.expectInvalid("unexpected argument") { try Self.cli("tile evenly now") }
+    }
+
     @Test func rememberCommand() throws {
         #expect(try Self.cli("remember") == .rememberSplit(display: .current))
         #expect(try Self.cli("remember --display 2") == .rememberSplit(display: .index(2)))

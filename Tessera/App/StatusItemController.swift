@@ -51,9 +51,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         status.isEnabled = false
         for entry in [settingsItem, shortcutsItem, undoItem, checkItem] { entry.target = self }
         snapItem.submenu = Self.submenu(
-            [("Tile All Windows", .tileWindows(display: .current)), ("Remember Split", .rememberSplit(display: .current))]
+            [("Tile All Windows", .tileWindows(display: .current)), ("Remember Split", .rememberSplit(display: .current)),
+             ("Tile Evenly", .tileEvenly(display: .current))]
                 + WindowAction.allCases.map { action in (action.displayName, .apply(.action(action), display: .current)) },
-            target: self, separatorAfter: 1)
+            target: self, separatorAfter: 2)
         columnsItem.submenu = Self.submenu(
             [("One More Column", .columns(.delta(1), display: .current)),
              ("One Fewer Column", .columns(.delta(-1), display: .current))]
