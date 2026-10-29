@@ -3,6 +3,16 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.2</title>
+            <pubDate>Thu, 29 Oct 2026 04:51:31 +0000</pubDate>
+            <sparkle:version>20261029.044943</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.2</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- New: Tile Evenly. Tiles every window on a display in equal shares, ignoring your learned split without forgetting it. Find it in the menu bar under Snap, in Shortcuts, App Intents, AppleScript, `tessera tile evenly` and `tessera://tile/evenly`.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.2/Tessera-0.2.0-beta.2.zip" length="3952200" type="application/octet-stream" sparkle:edSignature="W8Kh4oRLlzmBF2uEYH5JZZRhw8OtVOMn2sU3sApEEjCSci8JLB6Tc/0xMFRn0LfuLt9wSjQMHOCTxpsmJ8eWDA==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.1</title>
             <pubDate>Mon, 05 Oct 2026 09:58:34 +0000</pubDate>
             <sparkle:version>20261005.095705</sparkle:version>
