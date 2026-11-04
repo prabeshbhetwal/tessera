@@ -3,8 +3,9 @@ import ApplicationServices
 import TesseraCore
 
 /// After a Tile or Remember, watches the group's windows for hand adjustments. About a second after the person stops
-/// moving or resizing them, it re-reads the display and remembers the arrangement as a learned split. Tessera's own
-/// moves are ignored (see `beginOwnMove`); they never end the watch.
+/// moving or resizing them, it re-reads the display; when one window changed, the windows beside it follow its new
+/// edges (`splitReflowsNeighbours`), and the arrangement is then remembered as a learned split. Tessera's own moves are
+/// ignored (see `beginOwnMove`); they never end the watch.
 ///
 /// Observers hold `self` unretained (see `watch`). That is safe because the watcher lives for the app's lifetime
 /// (CommandExecutor owns it) and `stop()` removes every registration before a new watch begins.
@@ -32,6 +33,10 @@ final class SplitWatcher {
     private var pending: Task<Void, Never>?
     /// Bumped by every `stop()`, so a debounce or learn begun under an earlier watch never writes.
     private var generation = 0
+    /// The group as it last settled, to tell which window the person changed (see `reflow`).
+    private var baseline: [(window: WindowRef, frame: CGRect)] = []
+    /// The last pass moved neighbours; the next one only learns, so a window that refuses its size can't loop.
+    private var reflowed = false
 
     init(windows: WindowService, displays: DisplayService, model: SettingsModel) {
         self.windows = windows
@@ -59,6 +64,18 @@ final class SplitWatcher {
             CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
             observers.append((observer, elements))
         }
+        // The frames Tile just set, read once its moves have settled.
+        let generation = self.generation
+        Task { [weak self] in
+            repeat {
+                do { try await Task.sleep(for: Self.settle) } catch { return }
+            } while self?.quiet == false
+            guard let self else { return }
+            let group = await self.currentGroup()
+            // A learn that already ran set a newer baseline.
+            guard generation == self.generation, self.baseline.isEmpty, let group else { return }
+            self.baseline = group.visible
+        }
     }
 
     /// Stops watching: removes every notification and run-loop source and drops any pending learn.
@@ -78,6 +95,8 @@ final class SplitWatcher {
         }
         observers = []
         key = nil
+        baseline = []
+        reflowed = false
     }
 
     /// Brackets each of Tessera's own moves (`CommandExecutor.place`; balance every begin with an end). Moves and
@@ -134,9 +153,7 @@ final class SplitWatcher {
 
     private func learnNow(_ generation: Int) async {
         guard generation == self.generation, let key else { return }
-        // The display as it is now, so a gap or padding edited since the watch began counts; gone ends the watch.
-        guard model.settings.learnSplits,
-              let display = displays.displays.first(where: { $0.id.storageKey == key.display }) else {
+        guard model.settings.learnSplits else {
             stop()
             return
         }
@@ -145,23 +162,74 @@ final class SplitWatcher {
             schedule()
             return
         }
-        let visible = await windows.visibleWindows(on: display.frame, primaryHeight: DisplayService.primaryHeight,
-                                                   excluding: Set(model.settings.excludedBundleIDs))
+        let group = await currentGroup()
         // A newer move (which cancels this task), a stop or a new watch while reading: the newer state wins.
         guard generation == self.generation, !Task.isCancelled else { return }
         guard quiet else {
             schedule()
             return
         }
-        // A window joined, left or moved to another display: this is no longer the arrangement that was tiled.
-        guard SplitKey(visible, on: display) == key else {
+        // The display is gone, or a window joined, left or moved to another display: this is no longer the
+        // arrangement that was tiled.
+        guard let group else {
             stop()
             return
         }
+        let (display, visible) = group
+        if await reflow(visible, display: display) {
+            // Learn once the neighbours have settled, from where they actually ended up.
+            if generation == self.generation { schedule() }
+            return
+        }
+        baseline = visible
         // An arrangement that can't be learned (say, windows overlapping) is skipped, and so is one that only repeats
         // the stored split (a slow app's late notification); the next adjustment tries again.
         guard case .success((_, true)) = save(visible, display: display, onlyIfChanged: true) else { return }
         onLearned?("Learned split · \(SplitLabel.apps(key)) · \(SplitLabel.display(key, displays: [display]))")
+    }
+
+    /// The watched display as it is now (so a gap or padding edited since the watch began counts) and the windows on
+    /// it; nil when the display is gone or its windows are no longer the watched group.
+    private func currentGroup() async -> (display: DisplayContext, visible: [(window: WindowRef, frame: CGRect)])? {
+        guard let key, let display = displays.displays.first(where: { $0.id.storageKey == key.display }) else { return nil }
+        let visible = await windows.visibleWindows(on: display.frame, primaryHeight: DisplayService.primaryHeight,
+                                                   excluding: Set(model.settings.excludedBundleIDs))
+        guard SplitKey(visible, on: display) == key else { return nil }
+        return (display: display, visible: visible)
+    }
+
+    /// When the person has changed exactly one window since `baseline`, moves the windows beside it to follow its new
+    /// edges (`SplitReflow`) as one undo step. True when it moved them, or when a mouse button is still down (a drag
+    /// held still); either way the caller tries again later rather than learn now.
+    private func reflow(_ visible: [(window: WindowRef, frame: CGRect)], display: DisplayContext) async -> Bool {
+        guard !reflowed else {
+            reflowed = false
+            return false
+        }
+        let before = visible.compactMap { entry in baseline.first { $0.window == entry.window }?.frame }
+        let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
+        guard model.settings.splitReflowsNeighbours, baseline.count == visible.count, before.count == visible.count,
+              let goals = SplitReflow.frames(before: before, after: visible.map(\.frame), usable: usable,
+                                             gap: display.profile.gap) else { return false }
+        // Mid-drag: following an edge that is still moving would leave the neighbours behind the final one.
+        guard NSEvent.pressedMouseButtons == 0 else { return true }
+        let moves = zip(visible, goals).filter { $0.0.frame != $0.1 }.map { (window: $0.0.window, goal: $0.1) }
+        let (windows, generation, primaryHeight) = (self.windows, self.generation, DisplayService.primaryHeight)
+        let duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : model.settings.snapSeconds
+        beginOwnMove()
+        defer { endOwnMove() }
+        let batch = await windows.newBatch()
+        await withDiscardingTaskGroup { group in
+            for move in moves {
+                group.addTask {
+                    _ = await windows.apply(move.goal, to: move.window, primaryHeight: primaryHeight,
+                                            crossingDisplays: false, duration: duration, batch: batch)
+                }
+            }
+        }
+        await windows.mergeMoves(batch)  // one ⌃⌥Z puts the neighbours back
+        if generation == self.generation { reflowed = true }
+        return true
     }
 }
 

@@ -22,3 +22,11 @@ public enum SnapSpeed: String, CaseIterable, Sendable {
         self = match
     }
 }
+
+extension TesseraSettings {
+    /// `snapDuration` clamped to `0...SnapSpeed.maxSeconds`.
+    public var snapSeconds: Double {
+        get { snapDuration.isFinite ? min(max(snapDuration, 0), SnapSpeed.maxSeconds) : 0 }
+        set { snapDuration = newValue }
+    }
+}

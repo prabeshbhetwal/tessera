@@ -17,23 +17,13 @@ enum ApplyResult: Sendable, Equatable {
 
 /// Serial actor that owns every Accessibility call (spec §5.4). All AX messaging uses a 0.3 s timeout.
 actor WindowService {
-    private enum UndoKey: Hashable {
-        case window(CGWindowID)
-        case element(Int)
-    }
-
-    /// Frames are stored in AX coordinates so undo needs no display geometry.
-    private struct UndoStack {
-        var ref: WindowRef
-        var frames: [CGRect]
-    }
+    private typealias UndoKey = WindowUndoHistory.Key
 
     private static let timeout: Float = 0.3
-    private static let undoDepth = 20
     private static let enhancedUI = "AXEnhancedUserInterface"
     private static let frameInterval: Duration = .milliseconds(16)
 
-    private var stacks: [UndoKey: UndoStack] = [:]
+    private var undo = WindowUndoHistory()
     /// The generation of each window's latest move, so a glide still running gives way to the newer
     /// move. Generations come from one monotonic counter, so a value never repeats after a reset.
     private var generations: [UndoKey: Int] = [:]
@@ -41,9 +31,6 @@ actor WindowService {
     /// Where each gliding window started, so a move that takes over mid-glide records undo from
     /// the real starting frame, not from mid-air.
     private var glideStart: [UndoKey: CGRect] = [:]
-    /// Chronological move history. Each entry is one undo step: usually one window, several after a tile.
-    /// Windows whose stack has run dry are skipped on undo.
-    private var history: [[UndoKey]] = []
 
     func frontmostWindow() -> WindowRef? {
         // Never our own windows: AX calls on our own pid run in-process on this (non-main) thread and
@@ -71,10 +58,10 @@ actor WindowService {
         return AX.frame(window.element).map { CoordinateSpace.fromAX($0, primaryHeight: primaryHeight) }
     }
 
-    /// `duration` > 0 glides the window there first (time-based, so a slow app just gets fewer frames).
-    func apply(
-        _ target: CGRect, to window: WindowRef, primaryHeight: CGFloat, crossingDisplays: Bool, duration: Double = 0
-    ) async -> ApplyResult {
+    /// `duration` > 0 glides the window there first (time-based, so a slow app just gets fewer frames). The undo step
+    /// is tagged `batch` (see `newBatch`).
+    func apply(_ target: CGRect, to window: WindowRef, primaryHeight: CGFloat, crossingDisplays: Bool,
+               duration: Double = 0, batch: Int? = nil) async -> ApplyResult {
         let element = window.element
         AXUIElementSetMessagingTimeout(element, Self.timeout)
         guard let now = AX.frame(element) else { return .failed("Can't read the window's frame") }
@@ -109,36 +96,32 @@ actor WindowService {
             }
         }
 
-        push(before, for: window)
+        undo.push(before, for: window, key: key, batch: batch)
         return .applied(CoordinateSpace.fromAX(actual, primaryHeight: primaryHeight))
     }
 
     /// Undoes the most recent step: one move, or every window of a tile. False when there is nothing to undo.
     func undoLast() -> Bool {
-        while let step = history.popLast() {
+        while let step = undo.popStep() {
             var restored = false
-            for key in step {
-                guard var stack = stacks[key], let frame = stack.frames.popLast() else { continue }
-                stacks[key] = stack.frames.isEmpty ? nil : stack
+            for (key, ref, frame) in step {
                 // A glide of this window still in flight would overwrite the restored frame on its next
                 // tick; dropping its generation makes it stop (see `glide`).
                 generations[key] = nil
                 glideStart[key] = nil
                 // Origin display unknown here, so use the cross-display order (safe on one display too).
-                if setFrame(frame, on: stack.ref, crossingDisplays: true) { restored = true }
+                if setFrame(frame, on: ref, crossingDisplays: true) { restored = true }
             }
             if restored { return true }
         }
         return false
     }
 
-    /// Joins the last `count` moves into one undo step (a tile of `count` windows undoes in one press).
-    func mergeLastMoves(_ count: Int) {
-        guard count > 1, history.count >= count else { return }
-        let merged = history.suffix(count).flatMap { $0 }
-        history.removeLast(count)
-        history.append(merged)
-    }
+    /// A tag for moves that undo in one press (a Tile): pass it to `apply`, then `mergeMoves` when they are done.
+    func newBatch() -> Int { undo.newBatch() }
+
+    /// Joins the moves tagged `batch` into one undo step; moves made meanwhile by anything else stay their own steps.
+    func mergeMoves(_ batch: Int) { undo.merge(batch: batch) }
 
     /// On-screen normal-layer windows of other apps, in AppKit coordinates.
     func neighbourFrames(excluding window: WindowRef, primaryHeight: CGFloat) -> [CGRect] {
@@ -238,24 +221,13 @@ actor WindowService {
                 width: start.width + (goal.width - start.width) * e, height: start.height + (goal.height - start.height) * e)
             _ = AX.setPosition(window.element, frame.origin)
             _ = AX.setSize(window.element, frame.size)
-            try? await Task.sleep(for: Self.frameInterval)
-            guard generations[key] == generation else { return false }
+            let slept = (try? await Task.sleep(for: Self.frameInterval)) != nil  // cancelled: stop, don't spin
+            guard generations[key] == generation, slept else { return generations[key] == generation }
         }
     }
 
     private static func key(for window: WindowRef) -> UndoKey {
         window.windowID.map { .window($0) } ?? .element(Int(bitPattern: CFHash(window.element)))
-    }
-
-    private func push(_ axFrame: CGRect, for window: WindowRef) {
-        let key = Self.key(for: window)
-        var stack = stacks[key] ?? UndoStack(ref: window, frames: [])
-        stack.ref = window
-        stack.frames.append(axFrame)
-        if stack.frames.count > Self.undoDepth { stack.frames.removeFirst() }
-        stacks[key] = stack
-        history.append([key])
-        if history.count > 500 { history.removeFirst(history.count - 500) }
     }
 
     private static func frontmostPID() -> pid_t? {

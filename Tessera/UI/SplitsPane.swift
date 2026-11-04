@@ -11,6 +11,8 @@ struct SplitsPane: View {
         Form {
             Section {
                 Toggle("Learn from my adjustments", isOn: $model.settings.learnSplits)
+                Toggle("Resize neighbours to fill the display", isOn: $model.settings.splitReflowsNeighbours)
+                    .disabled(!model.settings.learnSplits)
                 Toggle("Restore last order", isOn: $model.settings.splitRestoresOrder)
                 Picker("Empty space when order changes", selection: $model.settings.splitGapPlacement) {
                     Text("Stays in place").tag(SplitGapPlacement.staysInPlace)
@@ -44,6 +46,7 @@ struct SplitsPane: View {
             ResetSection(keeps: "Keeps your learned splits.") {
                 let defaults = TesseraSettings.defaults
                 model.settings.learnSplits = defaults.learnSplits
+                model.settings.splitReflowsNeighbours = defaults.splitReflowsNeighbours
                 model.settings.splitRestoresOrder = defaults.splitRestoresOrder
                 model.settings.splitGapPlacement = defaults.splitGapPlacement
             }
