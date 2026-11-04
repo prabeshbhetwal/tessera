@@ -1,28 +1,23 @@
 import CoreGraphics
 
-/// `WindowService`'s undo state: a stack of earlier frames per window, and the chronological steps that say which
-/// windows one ⌃⌥Z restores. Frames are AX coordinates, so undo needs no display geometry.
+/// `WindowService`'s undo state: chronological steps, each holding the windows one ⌃⌥Z restores and the frame each
+/// had before its move. Frames are AX coordinates, so undo needs no display geometry.
 struct WindowUndoHistory {
     enum Key: Hashable {
         case window(CGWindowID)
         case element(Int)
     }
 
-    private struct Stack {
-        var ref: WindowRef
-        var frames: [CGRect]
-    }
+    typealias Move = (key: Key, ref: WindowRef, frame: CGRect)
 
     /// One undo step: usually one window, several for a batch (a Tile, or neighbours following a resize).
     private struct Step {
-        var keys: [Key]
+        var moves: [Move]
         let batch: Int?
     }
 
-    private static let depth = 20
     private static let maxSteps = 500
 
-    private var stacks: [Key: Stack] = [:]
     private var steps: [Step] = []
     private var nextBatch = 0
 
@@ -34,32 +29,30 @@ struct WindowUndoHistory {
 
     /// Records `frame` as where `ref` was before a move, as its own step tagged `batch`.
     mutating func push(_ frame: CGRect, for ref: WindowRef, key: Key, batch: Int?) {
-        var stack = stacks[key] ?? Stack(ref: ref, frames: [])
-        stack.ref = ref
-        stack.frames.append(frame)
-        if stack.frames.count > Self.depth { stack.frames.removeFirst() }
-        stacks[key] = stack
-        steps.append(Step(keys: [key], batch: batch))
+        steps.append(Step(moves: [(key, ref, frame)], batch: batch))
         if steps.count > Self.maxSteps { steps.removeFirst(steps.count - Self.maxSteps) }
     }
 
-    /// Joins every step tagged `batch` into one, where the latest of them sits. Only moves that recorded undo carry
-    /// the tag, so other moves made meanwhile (a hotkey during a glide) stay steps of their own.
+    /// Joins the steps tagged `batch` into the first of them. A tagged step for a window that another step moved in
+    /// the meantime (a hotkey during a glide) stays separate, so every window still undoes in the order it moved.
     mutating func merge(batch: Int) {
-        let tagged = steps.indices.filter { steps[$0].batch == batch }
-        guard let last = tagged.last, tagged.count > 1 else { return }
-        steps[last].keys = tagged.flatMap { steps[$0].keys }
-        for index in tagged.dropLast().reversed() { steps.remove(at: index) }
+        guard let first = steps.firstIndex(where: { $0.batch == batch }) else { return }
+        var movedSince = Set<Key>()
+        var joined: [Int] = []
+        for index in steps.indices.dropFirst(first + 1) {
+            let keys = Set(steps[index].moves.map(\.key))
+            if steps[index].batch == batch, movedSince.isDisjoint(with: keys) {
+                joined.append(index)
+            } else {
+                movedSince.formUnion(keys)
+            }
+        }
+        steps[first].moves += joined.flatMap { steps[$0].moves }
+        for index in joined.reversed() { steps.remove(at: index) }
     }
 
-    /// Takes the most recent step: each of its windows with the frame to restore. Windows whose stack has run dry are
-    /// left out, so a step can come back empty. Nil when there are no steps left.
-    mutating func popStep() -> [(key: Key, ref: WindowRef, frame: CGRect)]? {
-        guard let step = steps.popLast() else { return nil }
-        return step.keys.compactMap { key in
-            guard var stack = stacks[key], let frame = stack.frames.popLast() else { return nil }
-            stacks[key] = stack.frames.isEmpty ? nil : stack
-            return (key, stack.ref, frame)
-        }
+    /// Takes the most recent step: each of its windows with the frame to restore. Nil when there are no steps left.
+    mutating func popStep() -> [Move]? {
+        steps.popLast()?.moves
     }
 }

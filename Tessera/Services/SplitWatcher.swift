@@ -35,8 +35,8 @@ final class SplitWatcher {
     private var generation = 0
     /// The group as it last settled, to tell which window the person changed (see `reflow`).
     private var baseline: [(window: WindowRef, frame: CGRect)] = []
-    /// The last pass moved neighbours; the next one only learns, so a window that refuses its size can't loop.
-    private var reflowed = false
+    /// A hand adjustment is waiting for its debounce; a baseline read now would absorb it.
+    private var adjusting = false
 
     init(windows: WindowService, displays: DisplayService, model: SettingsModel) {
         self.windows = windows
@@ -64,16 +64,21 @@ final class SplitWatcher {
             CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
             observers.append((observer, elements))
         }
-        // The frames Tile just set, read once its moves have settled.
+        refreshBaseline()  // the frames Tile just set
+    }
+
+    /// Re-reads the group once Tessera's moves have settled, so the next hand adjustment is compared with where the
+    /// windows are now. Skipped while a hand adjustment waits to be learned: that pass compares with the old baseline.
+    private func refreshBaseline() {
+        guard key != nil else { return }
         let generation = self.generation
         Task { [weak self] in
             repeat {
                 do { try await Task.sleep(for: Self.settle) } catch { return }
             } while self?.quiet == false
-            guard let self else { return }
+            guard let self, generation == self.generation, !self.adjusting else { return }
             let group = await self.currentGroup()
-            // A learn that already ran set a newer baseline.
-            guard generation == self.generation, self.baseline.isEmpty, let group else { return }
+            guard generation == self.generation, !self.adjusting, self.quiet, let group else { return }
             self.baseline = group.visible
         }
     }
@@ -96,18 +101,21 @@ final class SplitWatcher {
         observers = []
         key = nil
         baseline = []
-        reflowed = false
+        adjusting = false
     }
 
     /// Brackets each of Tessera's own moves (`CommandExecutor.place`; balance every begin with an end). Moves and
-    /// resizes while any is in flight, and for `settle` after the last one ends, are Tessera's and are ignored.
+    /// resizes while any is in flight, and for `settle` after the last one ends, are Tessera's and are ignored; the
+    /// baseline is then re-read, so a command's move never counts as the person's.
     func beginOwnMove() {
         ownMoves += 1
     }
 
     func endOwnMove() {
         ownMoves -= 1
-        if ownMoves == 0 { ignoreUntil = .now + Self.settle }
+        guard ownMoves == 0 else { return }
+        ignoreUntil = .now + Self.settle
+        refreshBaseline()
     }
 
     /// Learns how `found` sit on `display` and saves that as the split for these apps there. With `onlyIfChanged`, a
@@ -135,7 +143,10 @@ final class SplitWatcher {
             stop()
             return
         }
-        if quiet { schedule() }
+        if quiet {
+            adjusting = true
+            schedule()
+        }
     }
 
     /// No Tessera move is in flight or still settling.
@@ -162,6 +173,7 @@ final class SplitWatcher {
             schedule()
             return
         }
+        adjusting = false  // this pass handles it
         let group = await currentGroup()
         // A newer move (which cancels this task), a stop or a new watch while reading: the newer state wins.
         guard generation == self.generation, !Task.isCancelled else { return }
@@ -199,13 +211,10 @@ final class SplitWatcher {
     }
 
     /// When the person has changed exactly one window since `baseline`, moves the windows beside it to follow its new
-    /// edges (`SplitReflow`) as one undo step. True when it moved them, or when a mouse button is still down (a drag
-    /// held still); either way the caller tries again later rather than learn now.
+    /// edges (`SplitReflow`) as one undo step, and makes where they landed the baseline: the next pass then sees no
+    /// change (so it learns, even if an app refused its size) unless the person adjusts again. True when it moved them,
+    /// or when a mouse button is still down (a drag held still); either way the caller tries again later.
     private func reflow(_ visible: [(window: WindowRef, frame: CGRect)], display: DisplayContext) async -> Bool {
-        guard !reflowed else {
-            reflowed = false
-            return false
-        }
         let before = visible.compactMap { entry in baseline.first { $0.window == entry.window }?.frame }
         let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
         guard model.settings.splitReflowsNeighbours, baseline.count == visible.count, before.count == visible.count,
@@ -213,22 +222,29 @@ final class SplitWatcher {
                                              gap: display.profile.gap) else { return false }
         // Mid-drag: following an edge that is still moving would leave the neighbours behind the final one.
         guard NSEvent.pressedMouseButtons == 0 else { return true }
-        let moves = zip(visible, goals).filter { $0.0.frame != $0.1 }.map { (window: $0.0.window, goal: $0.1) }
+        let moves = visible.indices.filter { visible[$0].frame != goals[$0] }.map { (index: $0, window: visible[$0].window) }
         let (windows, generation, primaryHeight) = (self.windows, self.generation, DisplayService.primaryHeight)
         let duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : model.settings.snapSeconds
         beginOwnMove()
         defer { endOwnMove() }
         let batch = await windows.newBatch()
-        await withDiscardingTaskGroup { group in
+        let landed = await withTaskGroup(of: (Int, CGRect?).self) { group in
             for move in moves {
                 group.addTask {
-                    _ = await windows.apply(move.goal, to: move.window, primaryHeight: primaryHeight,
-                                            crossingDisplays: false, duration: duration, batch: batch)
+                    let result = await windows.apply(goals[move.index], to: move.window, primaryHeight: primaryHeight,
+                                                     crossingDisplays: false, duration: duration, batch: batch)
+                    if case let .applied(frame) = result { return (move.index, frame) }
+                    return (move.index, nil)
                 }
             }
+            var frames: [Int: CGRect] = [:]
+            for await (index, frame) in group { frames[index] = frame }
+            return frames
         }
         await windows.mergeMoves(batch)  // one ⌃⌥Z puts the neighbours back
-        if generation == self.generation { reflowed = true }
+        if generation == self.generation {
+            baseline = visible.indices.map { (window: visible[$0].window, frame: landed[$0] ?? visible[$0].frame) }
+        }
         return true
     }
 }
