@@ -303,18 +303,15 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     /// Read and write it through `snapSeconds`, which clamps.
     public var snapDuration: Double = 0
 
-    /// `snapDuration` clamped to `0...SnapSpeed.maxSeconds`.
-    public var snapSeconds: Double {
-        get { snapDuration.isFinite ? min(max(snapDuration, 0), SnapSpeed.maxSeconds) : 0 }
-        set { snapDuration = newValue }
-    }
-
     /// Remember how windows were arranged by hand and reapply it the next time the same apps are tiled.
     public var learnSplits = true
     /// Put each app back in the slot it had, rather than keep the current window order with the learned sizes.
     public var splitRestoresOrder = false
     public var splitGapPlacement: SplitGapPlacement = .staysInPlace
     public var splitGapWhenGrowing: SplitGapWhenGrowing = .fixed
+    /// After a Tile, resizing or moving one window makes the windows beside it follow its edges, so nothing is left
+    /// uncovered or stacked. Needs `learnSplits`, whose watch notices the change.
+    public var splitReflowsNeighbours = true
     /// Oldest first, at most `SplitMemory.capacity`.
     public var learnedSplits: [LearnedSplit] = []
     public var updates = UpdateSettings()

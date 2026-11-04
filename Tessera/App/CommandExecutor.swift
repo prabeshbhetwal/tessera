@@ -45,8 +45,9 @@ final class CommandExecutor: CommandExecuting {
 
     // MARK: - Shared with Coordinator
 
-    /// Moves `window` to `goal`, using the cross-display write order when the window changes display.
-    func place(_ window: WindowRef, current: CGRect?, goal: CGRect) async -> ApplyResult {
+    /// Moves `window` to `goal`, using the cross-display write order when the window changes display. `batch` tags the
+    /// undo step (`WindowService.newBatch`).
+    func place(_ window: WindowRef, current: CGRect?, goal: CGRect, batch: Int? = nil) async -> ApplyResult {
         // Tessera's own moves must not teach a split: the watcher ignores them until they settle, and keeps watching.
         splitWatcher.beginOwnMove()
         defer { splitWatcher.endOwnMove() }
@@ -55,7 +56,7 @@ final class CommandExecutor: CommandExecuting {
         let to = list.first { $0.visibleFrame.intersects(goal) }?.id
         let duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : model.settings.snapSeconds
         return await windows.apply(goal, to: window, primaryHeight: DisplayService.primaryHeight,
-                                   crossingDisplays: from != to, duration: duration)
+                                   crossingDisplays: from != to, duration: duration, batch: batch)
     }
 
     /// Changes `display`'s column count, clamped to its range, and saves it as an override.
@@ -158,10 +159,12 @@ final class CommandExecutor: CommandExecuting {
             ? (GridGeometry.tiles(ordered.count, display: display), false)
             : splitFrames(for: ordered, display: display)
         // All at once, so with a snap speed set the windows glide together instead of one after another.
+        let batch = await windows.newBatch()
         let moved = await withTaskGroup(of: Bool.self) { group in
             for (entry, slot) in zip(ordered, slots) {
                 group.addTask {
-                    if case .applied = await self.place(entry.window, current: entry.frame, goal: slot) { return true }
+                    let result = await self.place(entry.window, current: entry.frame, goal: slot, batch: batch)
+                    if case .applied = result { return true }
                     return false
                 }
             }
@@ -169,7 +172,7 @@ final class CommandExecutor: CommandExecuting {
             for await ok in group where ok { count += 1 }
             return count
         }
-        await windows.mergeLastMoves(moved)  // one ⌃⌥Z puts every tiled window back
+        await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
         // After the moves, so their settling is already ignored.
         if !evenly { splitWatcher.watch(ordered, display: display) }
         let n = ordered.count
