@@ -3,6 +3,17 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.3</title>
+            <pubDate>Wed, 04 Nov 2026 04:30:33 +0000</pubDate>
+            <sparkle:version>20261104.042915</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.3</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- New: neighbours fill the space. After a Tile, resize or move one window and the windows beside it follow its new edges, so no part of the display is left empty. The new arrangement is remembered as your split. Turn it off in Settings › Splits › "Resize neighbours to fill the display".
+- Fixed: one ⌃⌥Z after a Tile now undoes only the Tile's own moves, and every window undoes in the order it moved, even if you moved a window with a shortcut while the Tile was still gliding.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.3/Tessera-0.2.0-beta.3.zip" length="3996931" type="application/octet-stream" sparkle:edSignature="LmxEHG0D1NiafDDoGr2y8zUHtZltJy/ag3n3BaLtaEdTn9y0NeyuPf0wQMQuzFaHKzL6p3nrvLPY0BhiQRhgBw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.2</title>
             <pubDate>Thu, 29 Oct 2026 04:51:31 +0000</pubDate>
             <sparkle:version>20261029.044943</sparkle:version>
