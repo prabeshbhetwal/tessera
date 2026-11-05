@@ -79,8 +79,8 @@ final class SplitWatchers {
             guard !Task.isCancelled, ownMoves == 0 else { return }
             let current = watchers[display.id.storageKey]
             let key = SplitKey(found, on: display)
-            // Same group, or a hand adjustment mid-way (a drag can overlap windows for a moment): leave it be.
-            if current?.key == key || current?.isBusy == true { continue }
+            // Same windows, or a hand adjustment mid-way (a drag can overlap windows for a moment): leave it be.
+            if current?.watches(found) == true || current?.isBusy == true { continue }
             let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
             let frames = found.map { (bundleID: $0.window.bundleID, frame: $0.frame) }
             guard found.count > 1, case .success = SplitLearner.learn(frames, usable: usable, gap: display.profile.gap)

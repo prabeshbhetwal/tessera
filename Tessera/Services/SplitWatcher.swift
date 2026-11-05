@@ -29,6 +29,8 @@ final class SplitWatcher {
     /// One observer per app, with the window elements registered on it.
     private var observers: [(observer: AXObserver, elements: [AXUIElement])] = []
     private(set) var key: SplitKey?
+    /// The windows themselves: another Space can hold the same apps (the same `key`) in different windows.
+    private var watched: [WindowRef] = []
     /// False for Tile Evenly: neighbours still follow a hand adjustment, but the arrangement is never saved.
     private var learns = true
     /// Tessera moves in flight, and when the notifications of the last one to end stop counting as Tessera's.
@@ -54,6 +56,7 @@ final class SplitWatcher {
         guard model.settings.learnSplits else { return }
         key = SplitKey(group, on: display)
         self.learns = learns
+        watched = group.map(\.window)
 
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         for (pid, refs) in Dictionary(grouping: group.map(\.window), by: \.pid) {
@@ -105,6 +108,7 @@ final class SplitWatcher {
         }
         observers = []
         key = nil
+        watched = []
         baseline = []
         adjusting = false
     }
@@ -158,6 +162,11 @@ final class SplitWatcher {
     /// A hand adjustment waits to be handled, or a move (Tessera's or this watcher's reflow) is settling: re-arming now
     /// would drop it.
     var isBusy: Bool { adjusting || !quiet }
+
+    /// Watching exactly these windows.
+    func watches(_ group: [(window: WindowRef, frame: CGRect)]) -> Bool {
+        group.count == watched.count && group.allSatisfy { entry in watched.contains(entry.window) }
+    }
 
     /// No Tessera move is in flight or still settling.
     private var quiet: Bool { ownMoves == 0 && ContinuousClock.now >= ignoreUntil }
