@@ -3,6 +3,16 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.4</title>
+            <pubDate>Thu, 05 Nov 2026 13:47:39 +0000</pubDate>
+            <sparkle:version>20261105.133800</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.4</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- Fixed: neighbours now fill the space without a Tile first. Snap windows side by side any way you like (Ring, shortcuts, menu) and resizing one makes the windows beside it follow, from launch onwards. It keeps working after Undo, a display change, sleep and wake, and Tile Evenly. Tile Evenly still never overwrites your learned split.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.4/Tessera-0.2.0-beta.4.zip" length="4015620" type="application/octet-stream" sparkle:edSignature="ZCfuvsx1j5ol1IC02HCjJdjAkZ/c2ZS0SWK45mrcL3r49cfzlE9J0qDcLZKV7Tpr3mQaq4G7VZgfAjv7nu5ABQ==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.3</title>
             <pubDate>Wed, 04 Nov 2026 04:30:33 +0000</pubDate>
             <sparkle:version>20261104.042915</sparkle:version>
