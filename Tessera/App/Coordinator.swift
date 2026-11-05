@@ -87,7 +87,10 @@ final class Coordinator {
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.updateFrontmostExcluded() }
+            MainActor.assumeIsolated {
+                self?.updateFrontmostExcluded()
+                self?.executor.splitWatcher.armSoon()  // catches windows the person lined up by hand
+            }
         }
         previewObserver = NotificationCenter.default.addObserver(
             forName: .tesseraPreviewOverlay, object: nil, queue: .main
@@ -171,6 +174,7 @@ final class Coordinator {
         }
         input = service
         updateFrontmostExcluded()
+        executor.splitWatcher.armSoon()  // reflow works from launch, not only after a Tile
         // One consumer keeps outputs strictly ordered even across awaits.
         Task { [weak self] in
             for await output in stream { await self?.handle(output) }
@@ -472,6 +476,7 @@ final class Coordinator {
 
     private func displaysChanged() {
         executor.splitWatcher.stop()
+        executor.splitWatcher.armSoon(after: .seconds(1))  // windows settle onto the new layout first
         input?.updatePrimaryHeight(DisplayService.primaryHeight)
         presenter.updateDisplays(displays.displays)
         cancelSession() // spec §7: display unplugged mid-session
@@ -479,7 +484,7 @@ final class Coordinator {
 
     private func settingsChanged(_ settings: TesseraSettings) {
         engine = SelectionEngine(ring: settings.ring)
-        if !settings.learnSplits { executor.splitWatcher.stop() }
+        if settings.learnSplits { executor.splitWatcher.armSoon() } else { executor.splitWatcher.stop() }
         applyInputConfig()
         displays.refresh()
         presenter.updateDisplays(displays.displays)

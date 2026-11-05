@@ -2,13 +2,13 @@ import AppKit
 import ApplicationServices
 import TesseraCore
 
-/// After a Tile or Remember, watches the group's windows for hand adjustments. About a second after the person stops
+/// Watches one display's tiled windows (see `SplitWatchers`) for hand adjustments. About a second after the person stops
 /// moving or resizing them, it re-reads the display; when one window changed, the windows beside it follow its new
 /// edges (`splitReflowsNeighbours`), and the arrangement is then remembered as a learned split. Tessera's own moves are
 /// ignored (see `beginOwnMove`); they never end the watch.
 ///
 /// Observers hold `self` unretained (see `watch`). That is safe because the watcher lives for the app's lifetime
-/// (CommandExecutor owns it) and `stop()` removes every registration before a new watch begins.
+/// (SplitWatchers keeps one per display) and `stop()` removes every registration before a new watch begins.
 @MainActor
 final class SplitWatcher {
     /// Quiet time after the last move or resize before the arrangement is learned.
@@ -17,6 +17,8 @@ final class SplitWatcher {
     static let settle: Duration = .milliseconds(300)
 
     var onLearned: ((String) -> Void)?
+    /// The watched group changed (a window joined, left or closed) and the watch ended; `SplitWatchers` re-arms.
+    var onEnded: (() -> Void)?
 
     private static let notifications = [kAXMovedNotification, kAXResizedNotification, kAXUIElementDestroyedNotification]
     private static let timeout: Float = 0.3
@@ -26,7 +28,11 @@ final class SplitWatcher {
     private let model: SettingsModel
     /// One observer per app, with the window elements registered on it.
     private var observers: [(observer: AXObserver, elements: [AXUIElement])] = []
-    private var key: SplitKey?
+    private(set) var key: SplitKey?
+    /// The windows themselves: another Space can hold the same apps (the same `key`) in different windows.
+    private var watched: [WindowRef] = []
+    /// False for Tile Evenly: neighbours still follow a hand adjustment, but the arrangement is never saved.
+    private var learns = true
     /// Tessera moves in flight, and when the notifications of the last one to end stop counting as Tessera's.
     private var ownMoves = 0
     private var ignoreUntil: ContinuousClock.Instant = .now
@@ -44,11 +50,13 @@ final class SplitWatcher {
         self.model = model
     }
 
-    /// Starts watching `group`, the windows just tiled or remembered on `display`. Replaces any earlier watch.
-    func watch(_ group: [(window: WindowRef, frame: CGRect)], display: DisplayContext) {
+    /// Starts watching `group`, the windows on `display`. Replaces any earlier watch.
+    func watch(_ group: [(window: WindowRef, frame: CGRect)], display: DisplayContext, learns: Bool = true) {
         stop()
         guard model.settings.learnSplits else { return }
         key = SplitKey(group, on: display)
+        self.learns = learns
+        watched = group.map(\.window)
 
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         for (pid, refs) in Dictionary(grouping: group.map(\.window), by: \.pid) {
@@ -100,6 +108,7 @@ final class SplitWatcher {
         }
         observers = []
         key = nil
+        watched = []
         baseline = []
         adjusting = false
     }
@@ -141,12 +150,22 @@ final class SplitWatcher {
         guard key != nil else { return }  // queued before stop()
         if notification == kAXUIElementDestroyedNotification {
             stop()
+            onEnded?()
             return
         }
         if quiet {
             adjusting = true
             schedule()
         }
+    }
+
+    /// A hand adjustment waits to be handled, or a move (Tessera's or this watcher's reflow) is settling: re-arming now
+    /// would drop it.
+    var isBusy: Bool { adjusting || !quiet }
+
+    /// Watching exactly these windows.
+    func watches(_ group: [(window: WindowRef, frame: CGRect)]) -> Bool {
+        group.count == watched.count && group.allSatisfy { entry in watched.contains(entry.window) }
     }
 
     /// No Tessera move is in flight or still settling.
@@ -185,6 +204,7 @@ final class SplitWatcher {
         // arrangement that was tiled.
         guard let group else {
             stop()
+            onEnded?()
             return
         }
         let (display, visible) = group
@@ -196,7 +216,7 @@ final class SplitWatcher {
         baseline = visible
         // An arrangement that can't be learned (say, windows overlapping) is skipped, and so is one that only repeats
         // the stored split (a slow app's late notification); the next adjustment tries again.
-        guard case .success((_, true)) = save(visible, display: display, onlyIfChanged: true) else { return }
+        guard learns, case .success((_, true)) = save(visible, display: display, onlyIfChanged: true) else { return }
         onLearned?("Learned split · \(SplitLabel.apps(key)) · \(SplitLabel.display(key, displays: [display]))")
     }
 
