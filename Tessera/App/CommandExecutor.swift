@@ -20,7 +20,7 @@ final class CommandExecutor: CommandExecuting {
     let windows: WindowService
     private let presenter: WindowPresenter
     private let store: SettingsStore
-    let splitWatcher: SplitWatcher
+    let splitWatcher: SplitWatchers
     private var cycles = CycleTracker()
     /// A Tile is in flight. Two at once would fold unrelated moves into one undo step.
     private var tiling = false
@@ -32,7 +32,7 @@ final class CommandExecutor: CommandExecuting {
         self.windows = windows
         self.presenter = presenter
         self.store = store
-        self.splitWatcher = SplitWatcher(windows: windows, displays: displays, model: model)
+        self.splitWatcher = SplitWatchers(windows: windows, displays: displays, model: model)
     }
 
     func execute(_ command: Command) async -> CommandResult {
@@ -100,7 +100,11 @@ final class CommandExecutor: CommandExecuting {
             return try await rememberSplit(selector)
         case .undo:
             splitWatcher.stop()
-            guard await windows.undoLast() else { throw Failure(message: "Nothing to undo") }
+            // Bracketed so the restore is never read as a hand adjustment; its end re-arms the watchers.
+            splitWatcher.beginOwnMove()
+            let undone = await windows.undoLast()
+            splitWatcher.endOwnMove()
+            guard undone else { throw Failure(message: "Nothing to undo") }
             return .success
         case .openSettings:
             presenter.showSettings()
@@ -144,7 +148,7 @@ final class CommandExecutor: CommandExecuting {
     /// Every visible window on the display, side by side: in the display's learned split for those apps when there is
     /// one, otherwise in equal shares (3 windows get a third each). Windows keep their left-to-right order
     /// (top-to-bottom on a portrait display) unless the split restores its own. One ⌃⌥Z undoes the lot.
-    /// `evenly` always uses equal shares and stops watching, so the learned split survives for the next Tile.
+    /// `evenly` always uses equal shares and its watch never learns, so the learned split survives for the next Tile.
     private func tile(_ selector: DisplaySelector, evenly: Bool = false) async throws(Failure) -> CommandResult {
         guard !tiling else { throw Failure(message: "Already tiling") }
         tiling = true
@@ -174,7 +178,7 @@ final class CommandExecutor: CommandExecuting {
         }
         await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
         // After the moves, so their settling is already ignored.
-        if !evenly { splitWatcher.watch(ordered, display: display) }
+        splitWatcher.watch(ordered, display: display, learns: !evenly)
         let n = ordered.count
         let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
         return CommandResult(ok: moved > 0, message: message + (learned ? " · your split" : evenly ? " evenly" : ""))
