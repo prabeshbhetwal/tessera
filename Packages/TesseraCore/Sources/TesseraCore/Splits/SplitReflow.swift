@@ -38,14 +38,17 @@ public enum SplitReflow {
             let facing = push.side.opposite
             // The nearest windows beyond the edge, however far: a hole (windows restored at login, or an earlier
             // adjustment nobody followed) would otherwise leave the seam dead for good, and the hole gets learned.
-            let ahead = before.indices.filter { !placed.contains($0 * 4 + facing.rawValue) }.compactMap { j -> (Int, Double)? in
+            // Every window beyond the edge counts as a blocker, placed ones (the anchor) included, so a push never
+            // jumps over one; the seam keeps its tolerated-overlap width even when the nearest edge overlaps.
+            let ahead = before.indices.filter { $0 != push.window }.compactMap { j -> (Int, Double)? in
                 let space = push.side.isHigh ? facing.value(before[j]) - push.from : push.from - facing.value(before[j])
                 guard space >= -SplitLearner.overlapTolerance,
                       push.side.across(before[push.window]).sharesBand(with: push.side.across(before[j])) else { return nil }
                 return (j, space)
             }
             guard let nearest = ahead.map(\.1).min() else { continue }
-            for (j, space) in ahead where space <= nearest + gap + slack {
+            let cutoff = max(nearest, 0) + gap + slack
+            for (j, space) in ahead where space <= cutoff && !placed.contains(j * 4 + facing.rawValue) {
                 let edge = facing.value(before[j])
                 let to = push.side.isHigh ? push.to + gap : push.to - gap
                 guard facing.set(&result[j], to: to) >= minimumSide else { return nil }
