@@ -11,9 +11,9 @@ public enum SplitReflow {
     private static let slack: Double = 8
 
     /// Every window's frame, in input order, once the one window that changed between `before` and `after` has pulled
-    /// its neighbours along. An edge that moved drags the facing edge of each window beside it (sharing a band across
-    /// the axis), keeping `gap` between them, and that edge in turn drags the windows beside it, so a column seam
-    /// moves as one. The changed window itself is never moved.
+    /// its neighbours along. An edge that moved drags the facing edge of the nearest windows beside it (sharing a band
+    /// across the axis, however wide the space between), keeping `gap` between them, and that edge in turn drags the
+    /// windows beside it, so a column seam moves as one. The changed window itself is never moved.
     ///
     /// Nil when not exactly one window changed, nothing faces the edges that moved, or a neighbour would end up smaller
     /// than `minimumSide` or stacked on another window: the arrangement is then left as the person made it.
@@ -36,11 +36,17 @@ public enum SplitReflow {
         while !queue.isEmpty {
             let push = queue.removeFirst()
             let facing = push.side.opposite
-            for j in before.indices where !placed.contains(j * 4 + facing.rawValue) {
+            // The nearest windows beyond the edge, however far: a hole (windows restored at login, or an earlier
+            // adjustment nobody followed) would otherwise leave the seam dead for good, and the hole gets learned.
+            let ahead = before.indices.filter { !placed.contains($0 * 4 + facing.rawValue) }.compactMap { j -> (Int, Double)? in
+                let space = push.side.isHigh ? facing.value(before[j]) - push.from : push.from - facing.value(before[j])
+                guard space >= -SplitLearner.overlapTolerance,
+                      push.side.across(before[push.window]).sharesBand(with: push.side.across(before[j])) else { return nil }
+                return (j, space)
+            }
+            guard let nearest = ahead.map(\.1).min() else { continue }
+            for (j, space) in ahead where space <= nearest + gap + slack {
                 let edge = facing.value(before[j])
-                let space = push.side.isHigh ? edge - push.from : push.from - edge
-                guard space >= -SplitLearner.overlapTolerance, space <= gap + slack,
-                      push.side.across(before[push.window]).sharesBand(with: push.side.across(before[j])) else { continue }
                 let to = push.side.isHigh ? push.to + gap : push.to - gap
                 guard facing.set(&result[j], to: to) >= minimumSide else { return nil }
                 placed.insert(j * 4 + facing.rawValue)
