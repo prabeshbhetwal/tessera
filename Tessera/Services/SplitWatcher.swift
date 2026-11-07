@@ -200,17 +200,18 @@ final class SplitWatcher {
         // the stored split (a slow app's late notification); the next adjustment tries again.
         guard learns else { return }
         let previous = SplitMemory.lookup(key, in: model.settings.learnedSplits)
-        let ordered = onScreenOrder(visible, portrait: display.range.isPortrait)
         switch save(visible, display: display, onlyIfChanged: true) {
         case .failure(let rejection):
             onHelpEvent?(.make(kind: .splitNotLearned(reason: rejection.message), source: .hand, display: display,
-                               group: ordered, split: nil, previous: nil))
+                               group: onScreenOrder(visible, portrait: display.range.isPortrait),
+                               split: nil, previous: nil))
         case .success((_, false)):
             return
         case .success((_, true)):
-            onLearned?("Learned split · \(SplitLabel.apps(key)) · \(SplitLabel.display(key, displays: [display]))")
             let split = SplitMemory.lookup(key, in: model.settings.learnedSplits)
-            onHelpEvent?(.make(kind: .splitLearned, source: .hand, display: display, group: ordered, split: split,
+            onLearned?("Learned split · \(SplitLabel.apps(key)) · \(SplitLabel.display(key, displays: [display]))")
+            onHelpEvent?(.make(kind: .splitLearned, source: .hand, display: display,
+                               group: onScreenOrder(visible, portrait: display.range.isPortrait), split: split,
                                previous: previous))
         }
     }
@@ -261,9 +262,10 @@ final class SplitWatcher {
             let finals = visible.indices.map { (window: visible[$0].window, frame: landed[$0] ?? visible[$0].frame) }
             baseline = finals
             let moved = Set(moves.map(\.index))
-            let changedIndex = visible.indices.first { !moved.contains($0) && visible[$0].frame != before[$0] }
-                ?? visible.indices.first { !moved.contains($0) }
-            if let changedIndex {
+            let changedIndex = visible.indices.first {
+                !moved.contains($0) && !CommandExecutor.sameFrame(visible[$0].frame, before[$0])
+            }
+            if !moves.isEmpty, let changedIndex {
                 let kind = HelpEventKind.neighboursFollowed(
                     changed: HelpEvent.appName(visible[changedIndex].window),
                     followers: moves.map { HelpEvent.appName($0.window) })
