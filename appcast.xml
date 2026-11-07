@@ -3,6 +3,17 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.7</title>
+            <pubDate>Sat, 07 Nov 2026 14:50:06 +0000</pubDate>
+            <sparkle:version>20261107.144733</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.7</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- New: the menu bar menu shows each item's hotkey at the right edge, such as ⌃⌥T for Tile All Windows and ⌃⌥Z for Undo Last Move, so you can learn them from the menu. A hotkey you change shows the next time the menu opens.
+- New: Settings › General › Menu bar › Show each item's shortcut (on by default) hides them.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.7/Tessera-0.2.0-beta.7.zip" length="4373470" type="application/octet-stream" sparkle:edSignature="rZF5c8toPyt47JVxC9Gotdj1FhD5iSDvF85a+R31FSax4TaPFxfq5Nw1/XW8Tq5mroS5j9DhSoOua6btn92eCw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.6</title>
             <pubDate>Sat, 07 Nov 2026 14:34:50 +0000</pubDate>
             <sparkle:version>20261107.143334</sparkle:version>
