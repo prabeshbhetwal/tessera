@@ -341,7 +341,7 @@ See [Learned splits](#7-learned-splits).
 ### Ring
 - **Gestures:** turn Directions (flick), Pointing, Click to span, Scroll to change columns, and Tap to tile on or off. With both Directions and Pointing off, use the arrow keys and Return while holding the trigger, or the hotkeys.
 - **Directions:** click a wedge, or use ← →, then choose its layout.
-- **Appearance:** show or hide the ring (the gestures keep working), action names and input hints, layout icons (layout pictures, arrows or none), the dashed circle where pointing begins, the frosted background, grid lines, column numbers, and the "click to add columns" hint.
+- **Appearance:** show or hide the ring (the gestures keep working), action names and input hints, layout icons (layout pictures or arrows), the dashed circle where pointing begins, the frosted background, grid lines, column numbers, and the "click to add columns" hint.
 - **Colours:** ring tint, lines and icons, the selected layout, and the grid.
 - **Size and zones:** radius, thickness, point threshold, and the top and bottom bands. If you slip into pointing by accident, raise the point threshold.
 

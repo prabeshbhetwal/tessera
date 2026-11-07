@@ -56,7 +56,7 @@ System font (SF Pro) throughout. One family.
 
 Every behaviour the user can see has its own switch, and switches never change each other.
 - Ring pane, Gestures: directions, pointing, click to span, scroll to change columns. A caption says what the current combination does.
-- Ring pane, Appearance: show the ring, wedge icons (Layout pictures, Arrows, None), dashed boundary, frosted background, grid lines while picking a column. Hiding the ring keeps every gesture working.
+- Ring pane, Appearance: show the ring, wedge icons (Layout pictures or Arrows; always shown), dashed boundary, frosted background, grid lines while picking a column. Hiding the ring keeps every gesture working.
 - Ring pane, Colours: ring, tint, lines and icons, highlighted wedge, grid. A setting lives where the user looks for it: ring colours are in the Ring pane, and also in Overlay with the rest of the theme. Restore Defaults keeps them.
 - Ring pane, Size and zones: radius, thickness, point threshold, and the top and bottom bands (while pointing, they decide where a window snaps to half height). Bands are ring settings, not display settings, so Restore Defaults resets them with the rest of the pane.
 - Overlay pane: theme, every colour (ring, lines and icons, highlight, snap preview, grid, label, label text, outline, dimming); Preview (fill style, opacity, border, corners) as one section; label parts (size, slot); dimming and the "from" outline as two switches.
