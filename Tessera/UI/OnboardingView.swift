@@ -1,9 +1,9 @@
 import SwiftUI
 import TesseraCore
 
-/// Four-step first-run flow (spec §6.2): welcome, Accessibility, optional Screen Recording, try it.
+/// Five-step first-run flow (spec §6.2): welcome, Accessibility, optional Screen Recording, tiling, try it.
 struct OnboardingView: View {
-    static let stepCount = 4
+    static let stepCount = 5
 
     let chord: TriggerChord
     let onFinish: () -> Void
@@ -28,6 +28,7 @@ struct OnboardingView: View {
                 case 0: welcome
                 case 1: accessibility
                 case 2: screenRecording
+                case 3: OnboardingTilingStep()
                 default: tryIt
                 }
             }
@@ -210,36 +211,6 @@ struct OnboardingView: View {
 
 // MARK: - Building blocks
 
-/// Centred step layout: icon tile, title, body, then the step's controls.
-private struct StepPage<Extra: View>: View {
-    let symbol: String
-    let tint: Color
-    let title: String
-    let text: String
-    @ViewBuilder let extra: Extra
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: symbol)
-                .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(.white)
-                .frame(width: 64, height: 64)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(tint))
-                .accessibilityHidden(true)
-            VStack(spacing: 8) {
-                Text(title).font(.title.weight(.bold))
-                Text(text)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 440)
-            }
-            extra
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
 /// One permission: symbol, name, granted or not, and the button that asks for it.
 private struct PermissionRow: View {
     let title: String
@@ -267,32 +238,6 @@ private struct PermissionRow: View {
         .padding(14)
         .frame(width: 440)
         .background(.quinary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
-/// Symbol in a tinted circle next to one gesture description.
-private struct GestureHint: View {
-    let symbol: String
-    let text: String
-
-    init(_ symbol: String, _ text: String) {
-        self.symbol = symbol
-        self.text = text
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.tint)
-                .frame(width: 26, height: 26)
-                .background(Circle().fill(.tint.opacity(0.12)))
-                .accessibilityHidden(true)
-            Text(text)
-                .font(.callout)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 }
 

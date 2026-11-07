@@ -2,10 +2,14 @@ import AppKit
 import TesseraCore
 
 extension HelpEvent {
-    /// "Safari", falling back to the bundle identifier, then "Untitled".
+    /// "Safari": the running app's name, else (an app that just quit) the installed app's, then the bundle identifier,
+    /// then "Untitled".
     @MainActor
     static func appName(_ window: WindowRef) -> String {
-        NSRunningApplication(processIdentifier: window.pid)?.localizedName ?? window.bundleID ?? "Untitled"
+        if let name = NSRunningApplication(processIdentifier: window.pid)?.localizedName { return name }
+        guard let id = window.bundleID else { return "Untitled" }
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return id }
+        return FileManager.default.displayName(atPath: url.path)
     }
 
     /// Builds an event for `group` on `display`. `group` must already be in on-screen order (`onScreenOrder`); it is

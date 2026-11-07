@@ -14,13 +14,15 @@ final class SplitWatchers {
         didSet { for watcher in watchers.values { watcher.onHelpEvent = onHelpEvent } }
     }
 
-    private let windows: WindowService
-    private let displays: DisplayService
-    private let model: SettingsModel
+    let windows: WindowService
+    let displays: DisplayService
+    let model: SettingsModel
     /// Keyed by `DisplayID.storageKey`.
     private var watchers: [String: SplitWatcher] = [:]
-    private var ownMoves = 0
+    private(set) var ownMoves = 0
     private var pendingArm: Task<Void, Never>?
+    /// Covering the space a closed window left (see `fillSoon`), keyed by `DisplayID.storageKey`.
+    var pendingFills: [String: Task<Void, Never>] = [:]
     /// Groups last arranged by Tile Evenly: a re-arm keeps them from learning, so the stored split survives.
     private var noLearn: Set<SplitKey> = []
 
@@ -28,6 +30,16 @@ final class SplitWatchers {
         self.windows = windows
         self.displays = displays
         self.model = model
+        // An app that quits may take its windows without a destroyed notification: treat it as closing them.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main) { [weak self] note in
+            guard let pid = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.processIdentifier
+            else { return }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                for watcher in self.watchers.values where watcher.watches(pid: pid) { watcher.closed() }
+            }
+        }
     }
 
     /// Watches `group` on `display`, replacing that display's watch. `learns` false reflows neighbours but never saves
@@ -47,6 +59,8 @@ final class SplitWatchers {
     func stop() {
         pendingArm?.cancel()
         pendingArm = nil
+        for task in pendingFills.values { task.cancel() }
+        pendingFills = [:]
         for watcher in watchers.values { watcher.stop() }
     }
 
@@ -103,6 +117,7 @@ final class SplitWatchers {
         watcher.onHelpEvent = onHelpEvent
         // A window joined, left or closed: watch whatever the display holds now.
         watcher.onEnded = { [weak self] in self?.armSoon() }
+        watcher.onWindowClosed = { [weak self] group, displayKey in self?.fillSoon(group, displayKey: displayKey) }
         // Moves already in flight count for the new watcher too; `endOwnMove` balances them.
         for _ in 0..<ownMoves { watcher.beginOwnMove() }
         // Created after the moves that called for it: their late notifications still count as Tessera's.

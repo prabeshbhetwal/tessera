@@ -74,6 +74,7 @@ import Testing
             (.tiledEvenly(hasSplit: false), .tiledEvenly),
             (.tilePartial(moved: 1, total: 2, stuck: ["Notes"]), .tilePartial),
             (.neighboursFollowed(changed: "Safari", followers: ["Notes"]), .neighboursFollowed),
+            (.gapFilled(closed: ["WhatsApp"], filled: ["Notes"], usedSplit: false), .gapFilled),
             (.splitLearned, .splitLearned),
             (.splitNotLearned(reason: "overlap"), .splitNotLearned),
             (.splitForgotten, .splitForgotten),

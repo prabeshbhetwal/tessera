@@ -26,13 +26,14 @@ This guide covers every feature, with examples. Jump to the part you need:
 
 ### First launch
 
-A short setup window walks you through four steps:
+A short setup window walks you through five steps:
 
 | Step | What it does |
 |---|---|
 | Snap windows with the ring | An animation of the gesture. |
 | Allow Accessibility | **Required.** Tessera moves and resizes other apps' windows through macOS Accessibility. Nothing works until you allow it. Choose **Grant…** and turn Tessera on in System Settings. |
 | Live window thumbnails | **Optional.** Screen Recording, used only for the *Window snapshot* preview style. Tessera takes one still picture per gesture and never records or saves anything. |
+| Tiling that remembers | How Tile All Windows learns your layout, and how closing a window fills its space (see [Splits](#7-learned-splits)). |
 | Try it | Practise the gesture on a real window. |
 
 > **Accessibility still shows "Not granted"?** An older Tessera build may have left a stale entry. Choose **Fix permission** on that step to reset it, then grant again.
@@ -214,6 +215,14 @@ Tessera learns how you like windows arranged, separately for each set of apps on
 
 When two or more windows sit side by side on a display, Tessera watches them. Drag one window's edge and its neighbours move to fill the space, keeping the configured gap. Nothing is left uncovered and nothing overlaps. This works from launch; you don't need to tile first. It needs both **Learn from my adjustments** and **Resize neighbours to fill the display** on (both are on by default).
 
+### Closing a window leaves no gap
+
+Close a window (or quit its app) while it sits side by side with others and the rest cover its space straight away:
+- **Your split first.** If you've taught Tessera a split for the apps that are left on that display, they go back to it.
+- **Otherwise the window you used last grows.** Of the windows beside the empty space, the one you used most recently stretches across it. A column of windows beside a closed column widens together.
+
+Press **⌃⌥Z** to put the windows back. It needs **Learn from my adjustments** and **Fill the space when a window closes** on (both are on by default). Minimising or hiding an app doesn't count as closing.
+
 ### How a split is learned
 
 About **1 second** after you stop adjusting, Tessera saves the arrangement as a **split**. A split is keyed by:
@@ -228,6 +237,7 @@ The next **Tile All Windows** with the same apps on the same display reuses it. 
 |---|---|---|
 | Learn from my adjustments | On | Off: Tessera stops watching windows, so it learns nothing new and neighbours no longer follow your edits. Splits you already saved (or save with Remember Split) are still used by Tile. To get equal shares, forget them or use Tile Evenly. |
 | Resize neighbours to fill the display | On | Neighbours follow a resized window's edges. Needs **Learn from my adjustments** on. |
+| Fill the space when a window closes | On | The apps left go back to their split, or the window beside the space you used last grows into it. Needs **Learn from my adjustments** on. |
 | Restore last order | Off | Off: windows keep their current order and take their app's learned **size**. On: each app goes back to its exact learned **position**. |
 | Empty space when order changes | Stays in place | When windows are in a new order, a learned gap either stays where it was or follows the window it sat beside. |
 
@@ -242,6 +252,7 @@ The list below the settings shows every learned split. **Forget** removes one; *
 One step can cover several windows:
 - a whole tile
 - the neighbours that followed a resize
+- the windows that filled a closed window's space
 
 ---
 
@@ -249,7 +260,7 @@ One step can cover several windows:
 
 Tessera can explain what it just did. A card appears beside the windows involved, the rest of the display dims, and those windows are outlined. The card says what happened in plain words and offers a fix where there is one.
 
-**On its own:** the first time something new happens (your first tile, your first learned split, neighbours following a resize), and when something surprising happens (some windows wouldn't move, an arrangement couldn't be saved as a split). Surprises show the card without the dim. Tips appear only for things you did with the ring, a hotkey, the menu bar or a drag; never for the command line, URLs, AppleScript or Shortcuts. They never take the keyboard: keep typing and the card goes away. They also close when you click into another app, press Esc, or leave the first card untouched for 12 seconds. A "Try it" step is the exception: it waits for your drag, so typing or clicking another window doesn't close it; Esc or **Skip** does.
+**On its own:** the first time something new happens (your first tile, your first learned split, neighbours following a resize, windows filling a closed window's space), and when something surprising happens (some windows wouldn't move, an arrangement couldn't be saved as a split). Surprises show the card without the dim. Tips appear only for things you did with the ring, a hotkey, the menu bar or a drag; never for the command line, URLs, AppleScript or Shortcuts. They never take the keyboard: keep typing and the card goes away. They also close when you click into another app, press Esc, or leave the first card untouched for 12 seconds. A "Try it" step is the exception: it waits for your drag, so typing or clicking another window doesn't close it; Esc or **Skip** does.
 
 **On request:** press **⌃⌥/** (by default), or choose **What Just Happened?** from the menu bar, to explain the latest event, whatever started it. The card then takes the keyboard: Tab moves between its buttons, Return presses the highlighted one, Esc closes it. **‹ ›** (or ← →) step through the last 10 events.
 
