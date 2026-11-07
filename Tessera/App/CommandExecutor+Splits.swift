@@ -55,8 +55,12 @@ extension CommandExecutor {
         guard let previous = SplitMemory.lookup(key, in: model.settings.learnedSplits) else {
             throw Failure(message: "No split for these apps")
         }
+        // A learn still pending from an earlier adjustment must not re-save the split just forgotten.
+        splitWatcher.stop()
         model.settings.learnedSplits = SplitMemory.forget(key, in: model.settings.learnedSplits)
-        onEvent?(.make(kind: .splitForgotten, source: source, display: display, group: found, split: nil,
+        splitWatcher.armSoon()
+        onEvent?(.make(kind: .splitForgotten, source: source, display: display,
+                       group: onScreenOrder(found, portrait: display.range.isPortrait), split: nil,
                        previous: previous))
         return CommandResult(ok: true, message: "Forgot split · \(SplitLabel.apps(key))")
     }
@@ -72,7 +76,7 @@ extension CommandExecutor {
         let (display, found) = try await windowsOnDisplay(selector)
         guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display") }
         let portrait = display.range.isPortrait
-        let ordered = found.sorted { portrait ? $0.frame.midY > $1.frame.midY : $0.frame.minX < $1.frame.minX }
+        let ordered = onScreenOrder(found, portrait: portrait)
         // An earlier Tile's watch would learn adjustments made after this one.
         if evenly { splitWatcher.stop() }
         let (slots, learned) = evenly
@@ -80,33 +84,34 @@ extension CommandExecutor {
             : splitFrames(for: ordered, display: display)
         // All at once, so with a snap speed set the windows glide together instead of one after another.
         let batch = await windows.newBatch()
-        let applied = await withTaskGroup(of: (Int, Bool).self) { group in
+        let landed = await withTaskGroup(of: (Int, CGRect?).self) { group in
             for (index, (entry, slot)) in zip(ordered, slots).enumerated() {
                 group.addTask {
                     let result = await self.place(entry.window, current: entry.frame, goal: slot, batch: batch)
-                    if case .applied = result { return (index, true) }
-                    return (index, false)
+                    if case let .applied(frame) = result { return (index, frame) }
+                    return (index, nil)
                 }
             }
-            var results = [Bool](repeating: false, count: ordered.count)
-            for await (index, ok) in group { results[index] = ok }
+            var results = [CGRect?](repeating: nil, count: ordered.count)
+            for await (index, frame) in group { results[index] = frame }
             return results
         }
         await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
         // After the moves, so their settling is already ignored.
         splitWatcher.watch(ordered, display: display, learns: !evenly)
         let n = ordered.count
-        let moved = applied.filter { $0 }.count
+        let moved = landed.compactMap { $0 }.count
         let split = SplitMemory.lookup(SplitKey(ordered, on: display), in: model.settings.learnedSplits)
         let kind: HelpEventKind = if moved < n {
             .tilePartial(moved: moved, total: n,
-                         stuck: ordered.indices.filter { !applied[$0] }.map { HelpEvent.appName(ordered[$0].window) })
+                         stuck: ordered.indices.filter { landed[$0] == nil }.map { HelpEvent.appName(ordered[$0].window) })
         } else if evenly {
             .tiledEvenly(hasSplit: split != nil)
         } else {
             .tiled(usedSplit: learned)
         }
-        onEvent?(.make(kind: kind, source: source, display: display, group: ordered, split: split, previous: nil))
+        let after = ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) }
+        onEvent?(.make(kind: kind, source: source, display: display, group: after, split: split, previous: nil))
         let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
         return CommandResult(ok: moved > 0, message: message + (learned ? " · your split" : evenly ? " evenly" : ""))
     }
