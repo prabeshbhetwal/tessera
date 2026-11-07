@@ -46,7 +46,8 @@ extension HelpCenter {
 
     /// An Undo reverses only what the card describes: the window history's latest step is still the event's own (a
     /// later move anywhere, or ‹ › to an older card, would otherwise undo something else), or the stored split is still
-    /// the one the event left. Other actions need nothing more than the windows check.
+    /// the one the event left. Other actions need nothing more than the windows check. An event without a marker (its
+    /// batch recorded no step of its own, see `WindowUndoHistory.merge`) is never undoable.
     private func undoes(_ action: CoachAction, event: HelpEvent, undoMarker: Int?) -> Bool {
         switch action {
         case .undoMove:

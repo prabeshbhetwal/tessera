@@ -265,10 +265,11 @@ final class SplitWatcher {
             let changedIndex = visible.indices.first {
                 !moved.contains($0) && !CommandExecutor.sameFrame(visible[$0].frame, before[$0])
             }
-            if !moves.isEmpty, let changedIndex {
+            let followed = moves.filter { landed[$0.index] != nil }  // a follower whose app refused didn't follow
+            if !followed.isEmpty, let changedIndex {
                 let kind = HelpEventKind.neighboursFollowed(
                     changed: HelpEvent.appName(visible[changedIndex].window),
-                    followers: moves.map { HelpEvent.appName($0.window) })
+                    followers: followed.map { HelpEvent.appName($0.window) })
                 onHelpEvent?(.make(kind: kind, source: .hand, display: display,
                                    group: onScreenOrder(finals, portrait: display.range.isPortrait),
                                    split: nil, previous: nil, undoMarker: undoMarker))

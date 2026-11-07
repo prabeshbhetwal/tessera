@@ -121,8 +121,8 @@ actor WindowService {
     func newBatch() -> Int { undo.newBatch() }
 
     /// Joins the moves tagged `batch` into one undo step; moves made meanwhile by anything else stay their own steps.
-    /// Returns `undoMarker()` as it is right after the merge.
-    @discardableResult func mergeMoves(_ batch: Int) -> Int { undo.merge(batch: batch); return undo.marker }
+    /// Returns `undoMarker()` when the next undo takes back exactly this batch, nil otherwise (`WindowUndoHistory.merge`).
+    @discardableResult func mergeMoves(_ batch: Int) -> Int? { undo.merge(batch: batch) }
 
     /// Changes with every recorded move, merge and undo, so a caller can tell whether the latest step is still its own.
     func undoMarker() -> Int { undo.marker }
