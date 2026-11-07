@@ -12,6 +12,7 @@ This guide covers every feature, with examples. Jump to the part you need:
 6. [Tiling every window](#6-tiling-every-window)
 7. [Learned splits](#7-learned-splits)
 8. [Undo](#8-undo)
+   - [8a. What Just Happened?](#8a-what-just-happened)
 9. [The menu bar menu](#9-the-menu-bar-menu)
 10. [Settings, pane by pane](#10-settings-pane-by-pane)
 11. [Automation: command line, URLs, AppleScript, Shortcuts](#11-automation)
@@ -152,6 +153,7 @@ These work without the ring. You can rebind every one of them in **Settings › 
 | ⌃⌥N / ⌃⌥P | Move to the next / previous display |
 | ⌃⌥T | Tile All Windows |
 | ⌃⌥Z | Undo the last move |
+| ⌃⌥/ | What Just Happened? (see [8a](#8a-what-just-happened)) |
 | ⌃⌥⌘, | Open Settings |
 
 **Adding a hotkey:** in **Settings › Shortcuts**, choose **Add Hotkey**, pick a command (Move window, Run cycle, Change columns, Move to display, Tile all windows, Tile windows evenly, Remember split, Undo, Open Settings, and others), then record the keys.
@@ -243,11 +245,38 @@ One step can cover several windows:
 
 ---
 
+## 8a. What Just Happened?
+
+Tessera can explain what it just did. A card appears beside the windows involved, the rest of the display dims, and those windows are outlined. The card says what happened in plain words and offers a fix where there is one.
+
+**On its own:** the first time something new happens (your first tile, your first learned split, neighbours following a resize), and when something surprising happens (some windows wouldn't move, an arrangement couldn't be saved as a split). Surprises show the card without the dim. Tips appear only for things you did with the ring, a hotkey, the menu bar or a drag; never for the command line, URLs, AppleScript or Shortcuts. They never take the keyboard: keep typing and the card goes away. They also close when you click into another app, press Esc, or leave the first card untouched for 12 seconds.
+
+**On request:** press **⌃⌥/**, or choose **What Just Happened?** from the menu bar, to explain the latest event, whatever started it. The card then takes the keyboard: Tab moves between its buttons, Return presses the highlighted one, Esc closes it. **‹ ›** (or ← →) step through the last 10 events.
+
+Example, after your first **⌃⌥T** with Dia, Claude and Codex:
+1. **Tiled in equal shares.** No split for these apps yet, so each got a third. Choose **Show Me More**.
+2. **Try it: drag this edge.** The seam between Dia and Claude pulses. Drag it; Claude and Codex move with it. **Skip** ends the tour.
+3. **Claude and Codex followed.** Tessera saved this as your split. **Undo** puts the split back as it was and tiles the windows again.
+
+The buttons only act on the windows the card is about. If they've changed since (an app closed, another opened), the card reads "These windows have changed since then." and nothing moves. **Forget This Split** forgets the split the card describes, not whatever is on screen now, and its card offers **Undo**. `tessera explain` opens the card from the command line.
+
+**Settings › General › Help:**
+
+| Setting | Default | Meaning |
+|---|---|---|
+| Show tips when something new happens | On | Off: cards only appear when you ask. The card's **Don't show tips** turns this off too. |
+| Dim the screen behind tips | On | Off: every card, including one you ask for, shows without the dim and outline. |
+
+**Show Tips Again** lets every first-time tip show once more. ⌃⌥/ and the menu item work whichever way these are set. Rebind ⌃⌥/ in **Settings › Shortcuts**; hide the menu item in **Settings › General › Menu bar**.
+
+---
+
 ## 9. The menu bar menu
 
 | Item | What it does |
 |---|---|
 | Hold ⌃⌥⌘ to snap | A reminder of your trigger. Reads "Accessibility not granted" until you allow it. |
+| What Just Happened? | Same as ⌃⌥/: explains the latest thing Tessera did. |
 | Snap Front Window › | Tile All Windows, Remember Split, Tile Evenly, then every layout (Maximise, Centre, halves, quarters). |
 | Columns › | One More Column, One Fewer Column, 2–8 Columns, for the front window's display. |
 | Settings… (⌘,) | Opens Settings. Reads **Finish Setup…** until Accessibility is allowed. |
@@ -272,6 +301,7 @@ Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera agai
 - **Launch at login.** You may need to approve it in System Settings › General › Login Items.
 - **Menu bar:** show or hide the icon, pick its picture (Grid, Columns, Halves, Quarters, Window, Ring), and choose which menu items appear.
 - **Messages:** short on-screen confirmations such as "5 columns". Choose the position (Top, Centre, Bottom) and how long they stay (1.2 s by default).
+- **Help:** tips that appear on their own, the dim behind them, and **Show Tips Again**. See [What Just Happened?](#8a-what-just-happened).
 - **Updates:** check automatically (daily, weekly, fortnightly or monthly), download and install automatically, include beta versions, or **Check Now**.
 - **Import and export:** saves all settings to one JSON file, or loads them. Import replaces every setting; an invalid file is rejected and nothing changes.
 - **Command line:** **Install Command-Line Tool** links `tessera` into `~/.local/bin`. See [Automation](#11-automation).

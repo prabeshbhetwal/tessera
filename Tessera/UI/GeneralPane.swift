@@ -70,6 +70,7 @@ struct GeneralPane: View {
                         .fixedSize()
                     }
                     Toggle("Status line (how to snap)", isOn: $model.settings.menuBarItems.statusLine)
+                    Toggle("What Just Happened?", isOn: $model.settings.menuBarItems.explain)
                     Toggle("Snap Front Window submenu", isOn: $model.settings.menuBarItems.snapSubmenu)
                     Toggle("Columns submenu", isOn: $model.settings.menuBarItems.columnsSubmenu)
                     Toggle("Shortcuts…", isOn: $model.settings.menuBarItems.shortcuts)
@@ -101,6 +102,8 @@ struct GeneralPane: View {
             } footer: {
                 Footer("Shortcut confirmations and short results such as \u{201C}5 columns\u{201D}, shown on the screen under the mouse.")
             }
+
+            HelpSection(model: model)
 
             UpdatesSection(model: model)
 
@@ -168,6 +171,8 @@ struct GeneralPane: View {
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
                 model.settings.updates = UpdateSettings()
+                model.settings.help.autoShow = true
+                model.settings.help.dimScreen = true
                 if model.settings.launchAtLogin { setLaunchAtLogin(false) }
             }
         }
