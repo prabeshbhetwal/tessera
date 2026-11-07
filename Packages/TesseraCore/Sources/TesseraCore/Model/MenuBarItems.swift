@@ -12,6 +12,8 @@ public struct MenuBarItems: Codable, Equatable, Sendable {
     public var checkForUpdates = true
     /// "Explain", which opens the help coach.
     public var explain = true
+    /// Each item's hotkey at its right edge, as in any Mac menu.
+    public var shortcutKeys = true
 
     public init() {}
 }

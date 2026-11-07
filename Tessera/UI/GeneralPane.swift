@@ -76,6 +76,7 @@ struct GeneralPane: View {
                     Toggle("Shortcuts…", isOn: $model.settings.menuBarItems.shortcuts)
                     Toggle("Undo Last Move", isOn: $model.settings.menuBarItems.undo)
                     Toggle("Check for Updates…", isOn: $model.settings.menuBarItems.checkForUpdates)
+                    Toggle("Show each item's shortcut", isOn: $model.settings.menuBarItems.shortcutKeys)
                 }
                 .disabled(!model.settings.showMenuBarIcon)
             } header: {

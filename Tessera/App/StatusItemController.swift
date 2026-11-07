@@ -107,6 +107,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         checkItem.isHidden = !items.checkForUpdates && !updateWaiting
         // Not gated on Accessibility: updating is how a broken build gets fixed. Greyed only while a check runs.
         checkItem.isEnabled = updates.canCheckForUpdates
+        // Read each time the menu opens, so a hotkey changed in Settings › Shortcuts shows straight away.
+        let keys = items.shortcutKeys
+        explainItem.showShortcut(for: .explain, in: s.hotkeys, visible: keys)
+        undoItem.showShortcut(for: .undo, in: s.hotkeys, visible: keys)
+        settingsItem.showShortcut(for: .openSettings, in: s.hotkeys, visible: keys, fallback: (",", .command))
+        for entry in (snapItem.submenu?.items ?? []) + (columnsItem.submenu?.items ?? []) {
+            entry.showShortcut(for: (entry.representedObject as? CommandBox)?.command, in: s.hotkeys, visible: keys)
+        }
     }
 
     private func updateIcon() {
