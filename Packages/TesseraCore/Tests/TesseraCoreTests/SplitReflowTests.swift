@@ -74,6 +74,31 @@ import Testing
         #expect(reflow(before, [rect(100, 495), before[1]]) == nil)
     }
 
+    @Test func neighbourAcrossAHoleCloses() {
+        // Windows restored at login, or a dead seam, leave a hole; the next adjustment still fills the display.
+        let before = [rect(0, 400), rect(700, 1000)]
+        #expect(reflow(before, [rect(0, 300), before[1]]) == [rect(0, 300), rect(310, 1000)])
+    }
+
+    @Test func onlyTheNearestWindowFollowsAcrossAHole() {
+        let before = [rect(0, 400), rect(500, 700), rect(710, 1000)]
+        #expect(reflow(before, [rect(0, 300), before[1], before[2]]) == [rect(0, 300), rect(310, 700), rect(710, 1000)])
+    }
+
+    @Test func pushNeverJumpsOverTheWindowThatMoved() {
+        // Widening one side of the middle window: the right column follows, the left column is behind the anchor.
+        let before = [rect(0, 326), rect(336, 663), rect(673, 1000)]
+        let after = [before[0], rect(336, 763), before[2]]
+        #expect(reflow(before, after) == [rect(0, 326), rect(336, 763), rect(773, 1000)])
+    }
+
+    @Test func toleratedOverlapKeepsTheWholeSeamFollowing() {
+        // Stacked neighbours with slightly misaligned edges, one of them overlapping the moved window a little.
+        let before = [rect(0, 495), rect(480, 1000, 250, 500), rect(505, 1000, 0, 250)]
+        let after = [rect(0, 595), before[1], before[2]]
+        #expect(reflow(before, after) == [rect(0, 595), rect(605, 1000, 250, 500), rect(605, 1000, 0, 250)])
+    }
+
     @Test func windowDroppedOverAnotherIsLeftAlone() {
         let before = [rect(0, 326), rect(336, 663), rect(673, 1000)]
         #expect(reflow(before, [rect(500, 826), before[1], before[2]]) == nil)
