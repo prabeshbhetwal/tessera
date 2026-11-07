@@ -3,6 +3,18 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.6</title>
+            <pubDate>Sat, 07 Nov 2026 14:34:50 +0000</pubDate>
+            <sparkle:version>20261107.143334</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.6</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- New: closing a window no longer leaves a gap. When a window that sits side by side with others closes (or its app quits), the rest cover its space straight away: the apps left go back to the split you taught Tessera for them, or, without one, the window beside the space you used last grows into it. A column beside a closed column widens together. ⌃⌥Z puts the windows back.
+- New: Settings › Splits › Fill the space when a window closes (on by default) turns it off.
+- New: setup has a "Tiling that remembers" step, and a tip explains the first gap Tessera fills.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.6/Tessera-0.2.0-beta.6.zip" length="4367804" type="application/octet-stream" sparkle:edSignature="BGJ50cE6jEKxcAx+BqgUauJBSZ2bW96RYY1qvVvurZ/Qmrfcfs2bt24EfbG7783QSx0u8UEX4n/MxbN+CfSmBg==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.5</title>
             <pubDate>Sat, 07 Nov 2026 08:48:06 +0000</pubDate>
             <sparkle:version>20261107.084715</sparkle:version>
