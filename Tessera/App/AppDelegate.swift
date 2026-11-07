@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             presenter: { [weak self] in self?.coordinator?.presenter },
             run: { [weak self] command in
                 guard let coordinator = self?.coordinator else { return }
-                Task { await coordinator.run(command) }
+                Task { await coordinator.run(command, source: .menu) }
             }
         )
         guard let fileURL = Self.settingsURL() else {
@@ -111,7 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             log.notice("refused settings file command from URL")
             coordinator.showHUD("Settings import/export isn't available from URLs")
         default:
-            await coordinator.run(command)
+            await coordinator.run(command, source: .automation)
         }
     }
 

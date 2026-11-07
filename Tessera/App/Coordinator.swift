@@ -188,16 +188,16 @@ final class Coordinator {
         cancelSession()
     }
 
-    func undoLast() {
-        Task { await run(.undo) }
-    }
+    func undoLast() { Task { await run(.undo, source: .menu) } }
+    var isRingOpen: Bool { session != nil }
 
     /// Runs a command through the bridge. The HUD shows a failure, and any message a success carries
     /// ("5 columns", "Already on that display"): a hotkey has no other way to tell the user what happened.
-    func run(_ command: Command, hotkey: Bool = false) async {
+    func run(_ command: Command, source: CommandSource) async {
+        let hotkey = source == .hotkey
         if hotkey { hotkeyFeedbackGeneration += 1; shortcutReceipt.hide() }
         let feedbackGeneration = hotkeyFeedbackGeneration
-        let result = await CommandBridge.execute(command)
+        let result = await CommandBridge.execute(command, source: source)
         if hotkey, feedbackGeneration != hotkeyFeedbackGeneration { return }
         if !result.ok { log.notice("command failed: \(result.message ?? "?", privacy: .public)") }
         if hotkey, result.ok, model.settings.showHUD, session == nil, command != .openSettings {
@@ -254,7 +254,7 @@ final class Coordinator {
         case let .command(command):
             // Not awaited: a command can glide a window for up to a second, and this loop is the only
             // consumer of trigger outputs. Awaiting it would hold up the next ring open or hotkey.
-            Task { await run(command, hotkey: true) }
+            Task { await run(command, source: .hotkey) }
         }
     }
 
@@ -432,7 +432,7 @@ final class Coordinator {
         // A tap: pressed and released without ever leaving the middle.
         if s.selection == .none, !s.leftDeadZone, model.settings.ring.tapTilesWindows {
             s.lookup.cancel()
-            Task { await run(.tileWindows(display: .cursor)) }
+            Task { await run(.tileWindows(display: .cursor), source: .ring) }
             return
         }
         guard s.targetFrame != nil else { s.lookup.cancel(); return }

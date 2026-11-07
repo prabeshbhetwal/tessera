@@ -22,9 +22,10 @@ final class CommandExecutor: CommandExecuting {
     private let store: SettingsStore
     let splitWatcher: SplitWatchers
     var onExplain: (() -> Void)?
+    var onEvent: ((HelpEvent) -> Void)?
     private var cycles = CycleTracker()
     /// A Tile is in flight. Two at once would fold unrelated moves into one undo step.
-    private var tiling = false
+    var tiling = false
 
     init(model: SettingsModel, displays: DisplayService, windows: WindowService,
          presenter: WindowPresenter, store: SettingsStore) {
@@ -36,9 +37,9 @@ final class CommandExecutor: CommandExecuting {
         self.splitWatcher = SplitWatchers(windows: windows, displays: displays, model: model)
     }
 
-    func execute(_ command: Command) async -> CommandResult {
+    func execute(_ command: Command, source: CommandSource) async -> CommandResult {
         do {
-            return try await run(command)
+            return try await run(command, source: source)
         } catch {
             return .failure(error.message)
         }
@@ -77,7 +78,7 @@ final class CommandExecutor: CommandExecuting {
 
     // MARK: - Commands
 
-    private func run(_ command: Command) async throws(Failure) -> CommandResult {
+    private func run(_ command: Command, source: CommandSource) async throws(Failure) -> CommandResult {
         switch command {
         case let .apply(target, selector):
             let (window, frame) = try await frontmost()
@@ -94,13 +95,13 @@ final class CommandExecutor: CommandExecuting {
         case let .moveToDisplay(step):
             return try await moveToDisplay(step)
         case let .tileWindows(selector):
-            return try await tile(selector)
+            return try await tile(selector, evenly: false, source: source)
         case let .tileEvenly(selector):
-            return try await tile(selector, evenly: true)
+            return try await tile(selector, evenly: true, source: source)
         case let .rememberSplit(selector):
             return try await rememberSplit(selector)
         case let .forgetSplit(selector):
-            return try await forgetSplit(selector)
+            return try await forgetSplit(selector, source: source)
         case .explain:
             onExplain?()
             return .success
@@ -143,45 +144,6 @@ final class CommandExecutor: CommandExecuting {
             }
         }
         return CommandResult(ok: true, message: "Window already fits every step")
-    }
-
-    /// Every visible window on the display, side by side: in the display's learned split for those apps when there is
-    /// one, otherwise in equal shares (3 windows get a third each). Windows keep their left-to-right order
-    /// (top-to-bottom on a portrait display) unless the split restores its own. One ⌃⌥Z undoes the lot.
-    /// `evenly` always uses equal shares and its watch never learns, so the learned split survives for the next Tile.
-    private func tile(_ selector: DisplaySelector, evenly: Bool = false) async throws(Failure) -> CommandResult {
-        guard !tiling else { throw Failure(message: "Already tiling") }
-        tiling = true
-        defer { tiling = false }
-        let (display, found) = try await windowsOnDisplay(selector)
-        guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display") }
-        let portrait = display.range.isPortrait
-        let ordered = found.sorted { portrait ? $0.frame.midY > $1.frame.midY : $0.frame.minX < $1.frame.minX }
-        // An earlier Tile's watch would learn adjustments made after this one.
-        if evenly { splitWatcher.stop() }
-        let (slots, learned) = evenly
-            ? (GridGeometry.tiles(ordered.count, display: display), false)
-            : splitFrames(for: ordered, display: display)
-        // All at once, so with a snap speed set the windows glide together instead of one after another.
-        let batch = await windows.newBatch()
-        let moved = await withTaskGroup(of: Bool.self) { group in
-            for (entry, slot) in zip(ordered, slots) {
-                group.addTask {
-                    let result = await self.place(entry.window, current: entry.frame, goal: slot, batch: batch)
-                    if case .applied = result { return true }
-                    return false
-                }
-            }
-            var count = 0
-            for await ok in group where ok { count += 1 }
-            return count
-        }
-        await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
-        // After the moves, so their settling is already ignored.
-        splitWatcher.watch(ordered, display: display, learns: !evenly)
-        let n = ordered.count
-        let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
-        return CommandResult(ok: moved > 0, message: message + (learned ? " · your split" : evenly ? " evenly" : ""))
     }
 
     private func moveToDisplay(_ step: DisplayStep) async throws(Failure) -> CommandResult {

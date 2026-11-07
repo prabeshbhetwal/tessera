@@ -49,14 +49,66 @@ extension CommandExecutor {
     }
 
     /// Forgets the learned split for the apps on the display now.
-    func forgetSplit(_ selector: DisplaySelector) async throws(Failure) -> CommandResult {
+    func forgetSplit(_ selector: DisplaySelector, source: CommandSource) async throws(Failure) -> CommandResult {
         let (display, found) = try await windowsOnDisplay(selector)
         let key = SplitKey(found, on: display)
-        guard SplitMemory.lookup(key, in: model.settings.learnedSplits) != nil else {
+        guard let previous = SplitMemory.lookup(key, in: model.settings.learnedSplits) else {
             throw Failure(message: "No split for these apps")
         }
         model.settings.learnedSplits = SplitMemory.forget(key, in: model.settings.learnedSplits)
+        onEvent?(.make(kind: .splitForgotten, source: source, display: display, group: found, split: nil,
+                       previous: previous))
         return CommandResult(ok: true, message: "Forgot split · \(SplitLabel.apps(key))")
+    }
+
+    /// Every visible window on the display, side by side: in the display's learned split for those apps when there is
+    /// one, otherwise in equal shares (3 windows get a third each). Windows keep their left-to-right order
+    /// (top-to-bottom on a portrait display) unless the split restores its own. One ⌃⌥Z undoes the lot.
+    /// `evenly` always uses equal shares and its watch never learns, so the learned split survives for the next Tile.
+    func tile(_ selector: DisplaySelector, evenly: Bool, source: CommandSource) async throws(Failure) -> CommandResult {
+        guard !tiling else { throw Failure(message: "Already tiling") }
+        tiling = true
+        defer { tiling = false }
+        let (display, found) = try await windowsOnDisplay(selector)
+        guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display") }
+        let portrait = display.range.isPortrait
+        let ordered = found.sorted { portrait ? $0.frame.midY > $1.frame.midY : $0.frame.minX < $1.frame.minX }
+        // An earlier Tile's watch would learn adjustments made after this one.
+        if evenly { splitWatcher.stop() }
+        let (slots, learned) = evenly
+            ? (GridGeometry.tiles(ordered.count, display: display), false)
+            : splitFrames(for: ordered, display: display)
+        // All at once, so with a snap speed set the windows glide together instead of one after another.
+        let batch = await windows.newBatch()
+        let applied = await withTaskGroup(of: (Int, Bool).self) { group in
+            for (index, (entry, slot)) in zip(ordered, slots).enumerated() {
+                group.addTask {
+                    let result = await self.place(entry.window, current: entry.frame, goal: slot, batch: batch)
+                    if case .applied = result { return (index, true) }
+                    return (index, false)
+                }
+            }
+            var results = [Bool](repeating: false, count: ordered.count)
+            for await (index, ok) in group { results[index] = ok }
+            return results
+        }
+        await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
+        // After the moves, so their settling is already ignored.
+        splitWatcher.watch(ordered, display: display, learns: !evenly)
+        let n = ordered.count
+        let moved = applied.filter { $0 }.count
+        let split = SplitMemory.lookup(SplitKey(ordered, on: display), in: model.settings.learnedSplits)
+        let kind: HelpEventKind = if moved < n {
+            .tilePartial(moved: moved, total: n,
+                         stuck: ordered.indices.filter { !applied[$0] }.map { HelpEvent.appName(ordered[$0].window) })
+        } else if evenly {
+            .tiledEvenly(hasSplit: split != nil)
+        } else {
+            .tiled(usedSplit: learned)
+        }
+        onEvent?(.make(kind: kind, source: source, display: display, group: ordered, split: split, previous: nil))
+        let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
+        return CommandResult(ok: moved > 0, message: message + (learned ? " · your split" : evenly ? " evenly" : ""))
     }
 
     func undoLast() async throws(Failure) {
