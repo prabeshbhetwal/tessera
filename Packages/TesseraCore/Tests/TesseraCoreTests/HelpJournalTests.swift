@@ -104,6 +104,13 @@ import Testing
         #expect(!Self.event(key: nil).stillMatches(nil))
     }
 
+    @Test func undoMarkerRoundTripsAndDefaultsToNil() {
+        #expect(Self.event().undoMarker == nil)
+        let marked = HelpEvent(kind: .tilePartial(moved: 1, total: 2, stuck: ["Notes"]), source: .hotkey, displayKey: "d",
+                               displayName: "CHG90", apps: [], frames: [], usable: .zero, portrait: false, key: nil,
+                               split: nil, previousSplit: nil, undoMarker: 42)
+        #expect(marked.undoMarker == 42)
+    }
     @Test func interactiveSources() {
         for s: CommandSource in [.ring, .hotkey, .menu, .hand] { #expect(s.isInteractive) }
         for s: CommandSource in [.coach, .automation] { #expect(!s.isInteractive) }

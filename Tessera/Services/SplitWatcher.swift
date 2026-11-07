@@ -257,7 +257,7 @@ final class SplitWatcher {
             for await (index, frame) in group { frames[index] = frame }
             return frames
         }
-        await windows.mergeMoves(batch)  // one ⌃⌥Z puts the neighbours back
+        let undoMarker = await windows.mergeMoves(batch)  // one ⌃⌥Z puts the neighbours back
         if generation == self.generation {
             let finals = visible.indices.map { (window: visible[$0].window, frame: landed[$0] ?? visible[$0].frame) }
             baseline = finals
@@ -271,7 +271,7 @@ final class SplitWatcher {
                     followers: moves.map { HelpEvent.appName($0.window) })
                 onHelpEvent?(.make(kind: kind, source: .hand, display: display,
                                    group: onScreenOrder(finals, portrait: display.range.isPortrait),
-                                   split: nil, previous: nil))
+                                   split: nil, previous: nil, undoMarker: undoMarker))
             }
         }
         return true

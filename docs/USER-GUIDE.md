@@ -249,9 +249,9 @@ One step can cover several windows:
 
 Tessera can explain what it just did. A card appears beside the windows involved, the rest of the display dims, and those windows are outlined. The card says what happened in plain words and offers a fix where there is one.
 
-**On its own:** the first time something new happens (your first tile, your first learned split, neighbours following a resize), and when something surprising happens (some windows wouldn't move, an arrangement couldn't be saved as a split). Surprises show the card without the dim. Tips appear only for things you did with the ring, a hotkey, the menu bar or a drag; never for the command line, URLs, AppleScript or Shortcuts. They never take the keyboard: keep typing and the card goes away. They also close when you click into another app, press Esc, or leave the first card untouched for 12 seconds.
+**On its own:** the first time something new happens (your first tile, your first learned split, neighbours following a resize), and when something surprising happens (some windows wouldn't move, an arrangement couldn't be saved as a split). Surprises show the card without the dim. Tips appear only for things you did with the ring, a hotkey, the menu bar or a drag; never for the command line, URLs, AppleScript or Shortcuts. They never take the keyboard: keep typing and the card goes away. They also close when you click into another app, press Esc, or leave the first card untouched for 12 seconds. A "Try it" step is the exception: it waits for your drag, so typing or clicking another window doesn't close it; Esc or **Skip** does.
 
-**On request:** press **⌃⌥/**, or choose **What Just Happened?** from the menu bar, to explain the latest event, whatever started it. The card then takes the keyboard: Tab moves between its buttons, Return presses the highlighted one, Esc closes it. **‹ ›** (or ← →) step through the last 10 events.
+**On request:** press **⌃⌥/** (by default), or choose **What Just Happened?** from the menu bar, to explain the latest event, whatever started it. The card then takes the keyboard: Tab moves between its buttons, Return presses the highlighted one, Esc closes it. **‹ ›** (or ← →) step through the last 10 events.
 
 Example, after your first **⌃⌥T** with Dia, Claude and Codex:
 1. **Tiled in equal shares.** No split for these apps yet, so each got a third. Choose **Show Me More**.
@@ -264,10 +264,10 @@ The buttons only act on the windows the card is about. If they've changed since 
 
 | Setting | Default | Meaning |
 |---|---|---|
-| Show tips when something new happens | On | Off: cards only appear when you ask. The card's **Don't show tips** turns this off too. |
-| Dim the screen behind tips | On | Off: every card, including one you ask for, shows without the dim and outline. |
+| Show tips on their own | On | Off: cards only appear when you ask. The card's **Don't show tips** turns this off too. |
+| Dim the screen behind tips | On | Off: every card, including one you ask for, shows without the dim and outline. A "Try it" step still shows its pulsing edge. |
 
-**Show Tips Again** lets every first-time tip show once more. ⌃⌥/ and the menu item work whichever way these are set. Rebind ⌃⌥/ in **Settings › Shortcuts**; hide the menu item in **Settings › General › Menu bar**.
+**Show Tips Again** lets every first-time tip show once more. What Just Happened? (⌃⌥/ by default) and the menu item work whichever way these are set. Rebind its hotkey in **Settings › Shortcuts**; hide the menu item in **Settings › General › Menu bar**.
 
 ---
 
@@ -276,7 +276,7 @@ The buttons only act on the windows the card is about. If they've changed since 
 | Item | What it does |
 |---|---|
 | Hold ⌃⌥⌘ to snap | A reminder of your trigger. Reads "Accessibility not granted" until you allow it. |
-| What Just Happened? | Same as ⌃⌥/: explains the latest thing Tessera did. |
+| What Just Happened? | Same as its hotkey (⌃⌥/ by default): explains the latest thing Tessera did. |
 | Snap Front Window › | Tile All Windows, Remember Split, Tile Evenly, then every layout (Maximise, Centre, halves, quarters). |
 | Columns › | One More Column, One Fewer Column, 2–8 Columns, for the front window's display. |
 | Settings… (⌘,) | Opens Settings. Reads **Finish Setup…** until Accessibility is allowed. |

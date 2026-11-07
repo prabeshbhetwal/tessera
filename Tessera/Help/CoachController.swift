@@ -7,8 +7,9 @@ import TesseraCore
 ///
 /// Shown on its own (`keyable == false`) the card never becomes key and never swallows a key; it reports `onClose`
 /// on Esc, on any other key unless the step waits for a drag, when another app activates, or after 12 s untouched on
-/// the first step. Opened on request it becomes key, and Esc or another app activating reports `onClose`. The owner
-/// decides when to `dismiss()`.
+/// the first step. Opened on request it becomes key, and Esc or another app activating reports `onClose`. On a step
+/// that waits for a drag only Esc closes it (besides its buttons): the drag itself may activate another app. The owner
+/// decides when to `dismiss()`. Fades stay under Reduce Motion (a cross-fade isn't motion); the seam's pulse doesn't.
 @MainActor
 final class CoachController {
     var onAction: ((CoachAction) -> Void)?
@@ -91,11 +92,9 @@ final class CoachController {
         cardPanel.ignoresMouseEvents = true  // a fading card takes no clicks
         let panels: [NSWindow] = [dimPanel, cardPanel].filter { $0.isVisible }
         Task { [weak self] in
-            if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-                await NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.2
-                    for panel in panels { panel.animator().alphaValue = 0 }
-                }
+            await NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                for panel in panels { panel.animator().alphaValue = 0 }
             }
             guard let self, self.generation == current else { return }
             for panel in panels { panel.orderOut(nil) }
@@ -150,10 +149,6 @@ final class CoachController {
         } else {
             panel.orderFrontRegardless()
         }
-        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            panel.alphaValue = 1
-            return
-        }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.2
             panel.animator().alphaValue = 1
@@ -181,23 +176,28 @@ final class CoachController {
             self.onClose?()
         }
         let settled: @MainActor () -> Bool = { ContinuousClock.now - start >= .milliseconds(300) }
-        // Opened on request: Tessera or the app it came from may be front. On its own: only the app that was front.
-        let stays: Set<pid_t?> = keyable
-            ? [ProcessInfo.processInfo.processIdentifier, previousPID]
-            : [NSWorkspace.shared.frontmostApplication?.processIdentifier]
-        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-        ) { note in
-            let pid = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.processIdentifier
-            MainActor.assumeIsolated {
-                if settled(), !stays.contains(pid) { close() }
+        // A "try it" step waits for a drag, and clicking the window to drag can activate its app: only Esc, Skip or
+        // the card's buttons close it. Esc is watched even on a card opened on request, which loses key on that click.
+        let waits = step.waitsForLearn
+        if !waits {
+            // Opened on request: Tessera or the app it came from may be front. On its own: only the app that was front.
+            let stays: Set<pid_t?> = keyable
+                ? [ProcessInfo.processInfo.processIdentifier, previousPID]
+                : [NSWorkspace.shared.frontmostApplication?.processIdentifier]
+            activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+                forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+            ) { note in
+                let pid = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.processIdentifier
+                MainActor.assumeIsolated {
+                    if settled(), !stays.contains(pid) { close() }
+                }
             }
         }
-        guard !keyable else { return }
+        guard !keyable || waits else { return }
         keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
             let escape = event.keyCode == KeyCodes.escape, repeated = event.isARepeat
             MainActor.assumeIsolated {
-                if settled(), !repeated, escape || !step.waitsForLearn { close() }
+                if settled(), !repeated, escape || !waits { close() }
             }
         }
         guard index == 0 else { return }

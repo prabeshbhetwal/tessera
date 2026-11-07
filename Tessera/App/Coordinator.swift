@@ -200,7 +200,7 @@ final class Coordinator {
         let result = await CommandBridge.execute(command, source: source)
         if hotkey, feedbackGeneration != hotkeyFeedbackGeneration { return }
         if !result.ok { log.notice("command failed: \(result.message ?? "?", privacy: .public)") }
-        if hotkey, result.ok, model.settings.showHUD, session == nil, command != .openSettings {
+        if hotkey, result.ok, model.settings.showHUD, session == nil, ![.openSettings, .explain].contains(command) {
             let title = result.message ?? command.summary
             let action: WindowAction? = if case let .apply(.action(value), _) = command { value }
                 else { WindowAction.allCases.first { $0.displayName == title } }

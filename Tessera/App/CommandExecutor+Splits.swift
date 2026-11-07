@@ -96,7 +96,7 @@ extension CommandExecutor {
             for await (index, frame) in group { results[index] = frame }
             return results
         }
-        await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
+        let undoMarker = await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
         // After the moves, so their settling is already ignored.
         splitWatcher.watch(ordered, display: display, learns: !evenly)
         let n = ordered.count
@@ -111,7 +111,8 @@ extension CommandExecutor {
             .tiled(usedSplit: learned)
         }
         let after = ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) }
-        onEvent?(.make(kind: kind, source: source, display: display, group: after, split: split, previous: nil))
+        onEvent?(.make(kind: kind, source: source, display: display, group: after, split: split, previous: nil,
+                       undoMarker: undoMarker))
         let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
         return CommandResult(ok: moved > 0, message: message + (learned ? " · your split" : evenly ? " evenly" : ""))
     }

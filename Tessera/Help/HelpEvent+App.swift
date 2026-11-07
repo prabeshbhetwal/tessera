@@ -13,7 +13,7 @@ extension HelpEvent {
     @MainActor
     static func make(kind: HelpEventKind, source: CommandSource, display: DisplayContext,
                      group: [(window: WindowRef, frame: CGRect)], split: LearnedSplit?,
-                     previous: LearnedSplit?) -> HelpEvent {
+                     previous: LearnedSplit?, undoMarker: Int? = nil) -> HelpEvent {
         let portrait = display.range.isPortrait
         let sorted = group
         return HelpEvent(
@@ -21,7 +21,8 @@ extension HelpEvent {
             displayName: NSScreen.screens.first { $0.frame == display.frame }?.localizedName ?? "this display",
             apps: sorted.map { appName($0.window) }, frames: sorted.map(\.frame),
             usable: GridGeometry.usableFrame(display.visibleFrame, profile: display.profile),
-            portrait: portrait, key: SplitKey(sorted, on: display), split: split, previousSplit: previous)
+            portrait: portrait, key: SplitKey(sorted, on: display), split: split, previousSplit: previous,
+            undoMarker: undoMarker)
     }
 }
 

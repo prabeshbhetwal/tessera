@@ -49,6 +49,8 @@ public struct HelpEvent: Equatable, Sendable, Identifiable {
     public var split: LearnedSplit?
     /// For `splitLearned` / `splitForgotten`: what Undo restores.
     public var previousSplit: LearnedSplit?
+    /// The window undo history's marker right after the event's moves; the coach's Undo runs only while it still holds.
+    public var undoMarker: Int?
 
     public init(
         id: UUID = UUID(),
@@ -63,7 +65,8 @@ public struct HelpEvent: Equatable, Sendable, Identifiable {
         portrait: Bool,
         key: SplitKey?,
         split: LearnedSplit?,
-        previousSplit: LearnedSplit?
+        previousSplit: LearnedSplit?,
+        undoMarker: Int? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -78,6 +81,7 @@ public struct HelpEvent: Equatable, Sendable, Identifiable {
         self.key = key
         self.split = split
         self.previousSplit = previousSplit
+        self.undoMarker = undoMarker
     }
 
     public var moment: CoachMoment {

@@ -46,7 +46,7 @@ final class HelpCenter {
         coach.onClose = { [weak self] in self?.close() }
         coach.onBrowse = { [weak self] in self?.browse($0) }
         coach.onDontShow = { [weak self] in
-            self?.model.settings.help.autoShow = false
+            self?.updateHelp { $0.autoShow = false }
             self?.close()
         }
     }
@@ -63,6 +63,12 @@ final class HelpCenter {
             next.event.split = event.split
             next.event.previousSplit = event.previousSplit
             next.index += 1
+            journal.record(event)
+            // The tour just explained this learn and the neighbours following; neither shows again on its own.
+            if !tour.keyable {
+                let moments = [CoachMoment.splitLearned, .neighboursFollowed].map(\.rawValue)
+                updateHelp { $0.seenMoments.formUnion(moments) }
+            }
             show(next)
             return
         }
@@ -75,7 +81,8 @@ final class HelpCenter {
         let previousTile = event.key.flatMap { journal.lastTile(for: $0, before: event.id) }
         guard let presentation = policy.presentation(for: event, help: model.settings.help,
                                                       previousTile: previousTile, context: context) else { return }
-        model.settings.help.seenMoments.insert(event.moment.rawValue)
+        let moment = event.moment.rawValue
+        updateHelp { $0.seenMoments.formUnion([moment]) }
         show(Tour(event: event, steps: CoachScript.steps(for: event), presentation: dimmed(presentation), keyable: false))
     }
 
@@ -92,6 +99,10 @@ final class HelpCenter {
 
     /// `event` from its first step, on request: the card takes the keyboard and ‹ › browse the journal.
     private func open(_ event: HelpEvent) {
+        guard display(for: event) != nil else {
+            showHUD("That display isn't connected now")
+            return
+        }
         show(Tour(event: event, steps: CoachScript.steps(for: event), presentation: dimmed(.full), keyable: true))
     }
 
@@ -114,15 +125,27 @@ final class HelpCenter {
         }
         self.tour = tour
         generation += 1
+        var presentation = tour.presentation
+        var theme = model.settings.activeTheme
+        // With the dim off, a "try it" step still needs its pulsing seam: a clear dim draws only that.
+        if tour.step.spotlight == .seam, !model.settings.help.dimScreen {
+            presentation = .full
+            theme.preview.dimStrength = 0
+        }
         coach.present(step: tour.step, index: tour.index, count: tour.steps.count, event: tour.event,
-                      display: display, presentation: tour.presentation, keyable: tour.keyable,
-                      theme: model.settings.activeTheme)
+                      display: display, presentation: presentation, keyable: tour.keyable, theme: theme)
     }
 
     func close() {
         tour = nil
         generation += 1
         coach.dismiss()
+    }
+
+    /// Settings writes run `Coordinator.settingsChanged` at once. `record` can be called in the middle of a watcher's
+    /// reflow, so every write from here waits for the next turn of the main actor.
+    func updateHelp(_ change: @escaping @MainActor (inout HelpSettings) -> Void) {
+        Task { @MainActor [model] in change(&model.settings.help) }
     }
 
     private func display(for event: HelpEvent) -> DisplayContext? {

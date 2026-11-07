@@ -1,8 +1,12 @@
 import AppKit
 import TesseraCore
 
+/// A display and the visible windows on it, as `CommandExecutor.windowsOnDisplay` reads them.
+private typealias DisplayWindows = (display: DisplayContext, found: [(window: WindowRef, frame: CGRect)])
+
 /// The coach card's buttons. Anything that moves windows or changes a split first reads the event's display: when it no
-/// longer holds the event's apps, the card says so and nothing changes.
+/// longer holds the event's apps, or an Undo would no longer reverse what the card describes, the card says so and
+/// nothing changes.
 extension HelpCenter {
     func perform(_ action: CoachAction) {
         guard let tour else { return }
@@ -27,9 +31,12 @@ extension HelpCenter {
             let generation = self.generation
             Task {
                 let current = try? await executor.windowsOnDisplay(.id(tour.event.displayKey))
+                var undoMarker: Int?
+                if action == .undoMove { undoMarker = await executor.windows.undoMarker() }
                 // The card closed or moved on while the windows were read; the click belonged to a card that's gone.
                 guard generation == self.generation else { return }
-                guard let current, tour.event.stillMatches(SplitKey(current.found, on: current.display)) else {
+                guard let current, tour.event.stillMatches(SplitKey(current.found, on: current.display)),
+                      undoes(action, event: tour.event, undoMarker: undoMarker) else {
                     return showChanged(tour)
                 }
                 await run(action, event: tour.event, current: current)
@@ -37,9 +44,24 @@ extension HelpCenter {
         }
     }
 
-    /// Runs a checked action. Commands go through `CommandBridge` as `.coach`: journalled, never coached.
-    private func run(_ action: CoachAction, event: HelpEvent,
-                     current: (display: DisplayContext, found: [(window: WindowRef, frame: CGRect)])) async {
+    /// An Undo reverses only what the card describes: the window history's latest step is still the event's own (a
+    /// later move anywhere, or ‹ › to an older card, would otherwise undo something else), or the stored split is still
+    /// the one the event left. Other actions need nothing more than the windows check.
+    private func undoes(_ action: CoachAction, event: HelpEvent, undoMarker: Int?) -> Bool {
+        switch action {
+        case .undoMove:
+            return event.undoMarker != nil && undoMarker == event.undoMarker
+        case .undoSplitChange:
+            guard let key = event.key else { return false }
+            return SplitMemory.lookup(key, in: model.settings.learnedSplits) == event.split
+        default:
+            return true
+        }
+    }
+
+    /// Runs a checked action. Commands go through `CommandBridge` as `.coach`: journalled, never coached. Called from
+    /// a button's `Task`, never from `record`, so its settings writes don't land inside a reflow.
+    private func run(_ action: CoachAction, event: HelpEvent, current: DisplayWindows) async {
         let display = DisplaySelector.id(event.displayKey)
         switch action {
         case .tileEvenly:
@@ -68,7 +90,7 @@ extension HelpCenter {
 
     /// Forgets the event's own split key, not whatever the display holds now, so ‹ › never forgets the wrong split.
     /// Then shows what that did, with an Undo that puts the split back.
-    private func forget(_ event: HelpEvent, current: (display: DisplayContext, found: [(window: WindowRef, frame: CGRect)])) {
+    private func forget(_ event: HelpEvent, current: DisplayWindows) {
         guard let key = event.key, let tour else { return }
         let previous = SplitMemory.lookup(key, in: model.settings.learnedSplits)
         changeSplits { SplitMemory.forget(key, in: $0) }

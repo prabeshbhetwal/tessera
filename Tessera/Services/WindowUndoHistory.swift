@@ -20,6 +20,8 @@ struct WindowUndoHistory {
 
     private var steps: [Step] = []
     private var nextBatch = 0
+    /// Bumped by every push, merge and pop, so a caller can tell whether the latest step is still the one it saw.
+    private(set) var marker = 0
 
     /// A fresh tag for moves that should undo together; pass it to `push`, then `merge` once they are done.
     mutating func newBatch() -> Int {
@@ -29,6 +31,7 @@ struct WindowUndoHistory {
 
     /// Records `frame` as where `ref` was before a move, as its own step tagged `batch`.
     mutating func push(_ frame: CGRect, for ref: WindowRef, key: Key, batch: Int?) {
+        marker += 1
         steps.append(Step(moves: [(key, ref, frame)], batch: batch))
         if steps.count > Self.maxSteps { steps.removeFirst(steps.count - Self.maxSteps) }
     }
@@ -36,6 +39,7 @@ struct WindowUndoHistory {
     /// Joins the steps tagged `batch` into the first of them. A tagged step for a window that another step moved in
     /// the meantime (a hotkey during a glide) stays separate, so every window still undoes in the order it moved.
     mutating func merge(batch: Int) {
+        marker += 1
         guard let first = steps.firstIndex(where: { $0.batch == batch }) else { return }
         var movedSince = Set<Key>()
         var joined: [Int] = []
@@ -53,6 +57,8 @@ struct WindowUndoHistory {
 
     /// Takes the most recent step: each of its windows with the frame to restore. Nil when there are no steps left.
     mutating func popStep() -> [Move]? {
-        steps.popLast()?.moves
+        guard let step = steps.popLast() else { return nil }
+        marker += 1
+        return step.moves
     }
 }
