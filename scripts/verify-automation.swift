@@ -4,7 +4,7 @@ import TesseraCore
 
 @MainActor private final class TestExecutor: CommandExecuting {
     var calls = 0
-    func execute(_ command: Command) async -> CommandResult {
+    func execute(_ command: Command, source: CommandSource) async -> CommandResult {
         calls += 1
         return .success
     }

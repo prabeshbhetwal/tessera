@@ -83,7 +83,7 @@ final class HelpCenter {
                                                       previousTile: previousTile, context: context) else { return }
         let moment = event.moment.rawValue
         updateHelp { $0.seenMoments.formUnion([moment]) }
-        show(Tour(event: event, steps: CoachScript.steps(for: event), presentation: dimmed(presentation), keyable: false))
+        show(Tour(event: event, steps: steps(for: event), presentation: dimmed(presentation), keyable: false))
     }
 
     /// What Just Happened?: the latest event, opened on request.
@@ -103,7 +103,7 @@ final class HelpCenter {
             showHUD("That display isn't connected now")
             return
         }
-        show(Tour(event: event, steps: CoachScript.steps(for: event), presentation: dimmed(.full), keyable: true))
+        show(Tour(event: event, steps: steps(for: event), presentation: dimmed(.full), keyable: true))
     }
 
     private func browse(_ delta: Int) {
@@ -113,6 +113,12 @@ final class HelpCenter {
     }
 
     /// `.light` when Settings › General › Help › Dim the screen behind tips is off.
+    /// The drag tour needs both learning and neighbour resizing; without either the drag could never finish it.
+    func steps(for event: HelpEvent) -> [CoachStep] {
+        let s = model.settings
+        return CoachScript.steps(for: event, dragTour: s.learnSplits && s.splitReflowsNeighbours)
+    }
+
     func dimmed(_ presentation: CoachPresentation) -> CoachPresentation {
         model.settings.help.dimScreen ? presentation : .light
     }

@@ -55,6 +55,16 @@ import Testing
         #expect(steps[2].body.hasPrefix("Tessera saved this as your split for these 3 apps."))
     }
 
+    @Test func noDragTourWhenLearningOrReflowIsOff() {
+        let withSplit = CoachScript.steps(for: Self.event(.tiled(usedSplit: true)), dragTour: false)
+        #expect(withSplit.count == 1)
+        #expect(withSplit[0].actions == [.tileEvenly, .done])
+        let equal = CoachScript.steps(for: Self.event(.tiled(usedSplit: false)), dragTour: false)
+        #expect(equal.count == 1)
+        #expect(equal[0].actions == [.done])
+        #expect(!equal.contains { $0.waitsForLearn })
+    }
+
     @Test func oneWindowTileHasOneStep() {
         for used in [true, false] {
             let e = Self.event(.tiled(usedSplit: used), apps: ["Dia"], fractions: [1])

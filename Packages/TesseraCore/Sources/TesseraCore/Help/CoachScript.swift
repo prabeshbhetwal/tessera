@@ -47,7 +47,9 @@ public enum CoachScript {
     /// Shown instead of running an action when the display no longer holds the event's apps.
     public static let changed = "These windows have changed since then."
 
-    public static func steps(for event: HelpEvent) -> [CoachStep] {
+    /// `dragTour` false (learning or neighbour resizing is off) leaves out the "drag this edge" steps for a Tile:
+    /// a drag would neither move the neighbours nor teach a split, so the step could never finish.
+    public static func steps(for event: HelpEvent, dragTour: Bool = true) -> [CoachStep] {
         let apps = event.apps
         let n = apps.count
         let followers = CoachCopy.list(Array(apps.dropFirst()))
@@ -69,6 +71,11 @@ public enum CoachScript {
             guard n >= 2 else {
                 var only = first
                 only.actions = [.done]
+                return [only]
+            }
+            guard dragTour else {
+                var only = first
+                only.actions.removeAll { $0 == .next }
                 return [only]
             }
             let saved = (usedSplit && event.split != nil) ? "your new split" : "your split"

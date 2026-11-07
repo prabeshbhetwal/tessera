@@ -110,7 +110,9 @@ extension CommandExecutor {
         } else {
             .tiled(usedSplit: learned)
         }
-        let after = ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) }
+        // A split that restores its own order can land the windows in a different order from `ordered`.
+        let after = onScreenOrder(ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) },
+                                  portrait: display.range.isPortrait)
         onEvent?(.make(kind: kind, source: source, display: display, group: after, split: split, previous: nil,
                        undoMarker: undoMarker))
         let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
