@@ -279,11 +279,13 @@ The buttons only act on the windows the card is about. If they've changed since 
 | What Just Happened? | Same as its hotkey (⌃⌥/ by default): explains the latest thing Tessera did. |
 | Snap Front Window › | Tile All Windows, Remember Split, Tile Evenly, then every layout (Maximise, Centre, halves, quarters). |
 | Columns › | One More Column, One Fewer Column, 2–8 Columns, for the front window's display. |
-| Settings… (⌘,) | Opens Settings. Reads **Finish Setup…** until Accessibility is allowed. |
+| Settings… | Opens Settings (⌃⌥⌘, by default; ⌘, while the menu is open if you clear that hotkey). Reads **Finish Setup…** until Accessibility is allowed. |
 | Shortcuts… | Opens Settings › Shortcuts. |
 | Undo Last Move | Same as ⌃⌥Z. |
 | Check for Updates… | Reads **Update Available…** when a new version is waiting. |
 | Quit Tessera (⌘Q) | Quits. |
+
+Each item shows its hotkey at the right edge, the way any Mac menu does, and follows any change you make in **Settings › Shortcuts**. Items with no hotkey show none. Turn this off with **Show each item's shortcut**.
 
 The icon turns into a warning triangle when Accessibility isn't granted. Choose which items show, and the icon's picture, in **Settings › General › Menu bar**.
 
@@ -299,7 +301,7 @@ Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera agai
 - **Trigger:** click the chord, hold the modifier keys you want, and release. Delete resets it to the default. A single-key chord opens the ring every time you press that key.
 - **Appearance:** Light, Dark or Match System, for Tessera's own windows.
 - **Launch at login.** You may need to approve it in System Settings › General › Login Items.
-- **Menu bar:** show or hide the icon, pick its picture (Grid, Columns, Halves, Quarters, Window, Ring), and choose which menu items appear.
+- **Menu bar:** show or hide the icon, pick its picture (Grid, Columns, Halves, Quarters, Window, Ring), and choose which menu items appear and whether each shows its shortcut.
 - **Messages:** short on-screen confirmations such as "5 columns". Choose the position (Top, Centre, Bottom) and how long they stay (1.2 s by default).
 - **Help:** tips that appear on their own, the dim behind them, and **Show Tips Again**. See [What Just Happened?](#8a-what-just-happened).
 - **Updates:** check automatically (daily, weekly, fortnightly or monthly), download and install automatically, include beta versions, or **Check Now**.
