@@ -23,3 +23,6 @@ Tessera.xcodeproj/
 
 # Superseded files kept on disk, never committed
 _trash/
+
+# Brainstorm mockups (local only)
+.superpowers/

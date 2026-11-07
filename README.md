@@ -17,6 +17,8 @@ The preview shows:
 
 Everything is customisable. Settings export and import as one JSON file.
 
+**New to Tessera?** Read the [User Guide](docs/USER-GUIDE.md). It covers every feature with examples.
+
 ## Keyboard-only use
 
 Everything works without a mouse.
