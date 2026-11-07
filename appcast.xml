@@ -3,6 +3,17 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.9</title>
+            <pubDate>Sat, 07 Nov 2026 15:33:46 +0000</pubDate>
+            <sparkle:version>20261107.153327</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.9</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- Changed: the ring always shows its wedge icons. Ring › Appearance › Layout icons offers Layout pictures or Arrows; "None" is gone, because it left the ring (and the Ring pane's wedge picker) blank. If you had chosen None, you'll see layout pictures again.
+- Changed: About's icon in Settings is pink, so it no longer looks like General's.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.9/Tessera-0.2.0-beta.9.zip" length="4369948" type="application/octet-stream" sparkle:edSignature="Qzid/EQqaiHwqDwSmWWDgwOHFfMb+SffWHfq63PRZB4ZTj1PCKUo0cPwJTpyibElahZQK0aScDSAWy0xIOMBBA==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.8</title>
             <pubDate>Sat, 07 Nov 2026 15:00:51 +0000</pubDate>
             <sparkle:version>20261107.145712</sparkle:version>
