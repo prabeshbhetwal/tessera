@@ -18,6 +18,16 @@ import Testing
         #expect(s.help.autoShow)
         #expect(s.help.seenMoments.isEmpty)
     }
+    @Test func helpWithoutDimScreenDecodesAsTrue() throws {
+        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(TesseraSettings.defaults)) as! [String: Any]
+        var help = json["help"] as! [String: Any]
+        help.removeValue(forKey: "dimScreen")
+        help["autoShow"] = false
+        json["help"] = help
+        let s = try SettingsStore.decode(JSONSerialization.data(withJSONObject: json)).settings
+        #expect(s.help.dimScreen)
+        #expect(!s.help.autoShow)
+    }
     @Test func upgradeFileGetsExplainWhenFree() throws {
         let s = try decode(.defaults, dropHelp: true)
         #expect(s.hotkeys.filter { $0.id == "explain" }.count == 1)

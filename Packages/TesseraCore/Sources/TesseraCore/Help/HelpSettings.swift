@@ -4,6 +4,8 @@ public struct HelpSettings: Codable, Equatable, Sendable {
     public var autoShow = true
     /// Moments whose card has been shown, so each appears once.
     public var seenMoments: Set<String> = []
+    /// Dim the display behind a card and cut out the windows it is about. Off: every card shows without the dim.
+    public var dimScreen = true
 
     public init() {}
 }
