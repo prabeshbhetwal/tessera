@@ -76,7 +76,7 @@ public enum CoachScript {
                 first,
                 CoachStep(
                     title: "Try it: drag this edge",
-                    body: "Make \(apps[0]) narrower. \(followers) will move with it.",
+                    body: "Make \(apps[0]) \(event.portrait ? "shorter" : "narrower"). \(followers) will move with it.",
                     actions: [.skip], spotlight: .seam, waitsForLearn: true),
                 CoachStep(
                     title: "\(followers) followed",

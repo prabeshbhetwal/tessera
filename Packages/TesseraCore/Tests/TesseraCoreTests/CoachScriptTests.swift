@@ -140,6 +140,13 @@ import Testing
     }
 
     @Test func dayHasNoPeriod() {
-        #expect(CoachCopy.day(Date(timeIntervalSince1970: 1_794_052_800)) == "7 Nov")
+        let sydney = TimeZone(identifier: "Australia/Sydney")!
+        #expect(CoachCopy.day(Date(timeIntervalSince1970: 1_794_052_800), timeZone: sydney) == "7 Nov")
+    }
+
+    @Test func tryItBodyFollowsOrientation() {
+        var portrait = Self.event(.tiled(usedSplit: true), apps: ["Dia", "Claude"], fractions: [0.5, 0.5])
+        portrait.portrait = true
+        #expect(CoachScript.steps(for: portrait)[1].body == "Make Dia shorter. Claude will move with it.")
     }
 }

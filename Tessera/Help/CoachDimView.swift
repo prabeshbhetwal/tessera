@@ -28,7 +28,9 @@ final class CoachDimView: NSView {
     }
 
     /// `spotlights` and `seamRect` are in this view's coordinates. `outlined` draws the accent edge round the spotlights.
-    func update(spotlights: [CGRect], seamRect: CGRect?, outlined: Bool, dimColor: CGColor, accent: CGColor) {
+    func update(spotlights: [CGRect], seamRect: CGRect?, outlined: Bool, dimColor: CGColor, accent: CGColor,
+                description: String) {
+        setAccessibilityLabel(description)
         let holes = CGMutablePath()
         for rect in spotlights {
             let radius = min(10, rect.width / 2, rect.height / 2)

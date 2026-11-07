@@ -366,6 +366,8 @@ tessera move next
 tessera tile                             # learned split, else equal shares
 tessera tile evenly
 tessera remember                         # save the current arrangement
+tessera explain                          # open What Just Happened? for the latest event
+tessera forget [--display D]             # forget the learned split for the apps on the display now
 tessera undo
 tessera displays --json
 tessera window --json                    # the front window's app and frame
@@ -384,7 +386,7 @@ open "tessera://apply?cols=2-4&band=top"
 open "tessera://tile"
 ```
 
-For safety, URLs can't read or write files or query state. `displays`, `window`, `settings export` and `settings import` aren't available this way.
+For safety, URLs can't read or write files or query state. `displays`, `window`, `settings export` and `settings import` aren't available this way, and neither is `forget`. `explain` is.
 
 ### AppleScript
 

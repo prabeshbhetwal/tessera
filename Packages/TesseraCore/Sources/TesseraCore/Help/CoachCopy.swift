@@ -49,11 +49,11 @@ public enum CoachCopy {
         return zip(apps, words).map { "\($0) \($1)" }.joined(separator: ", ")
     }
 
-    /// "7 Nov", in the current time zone.
-    public static func day(_ date: Date) -> String {
+    /// "7 Nov", in the current time zone unless given another.
+    public static func day(_ date: Date, timeZone: TimeZone = .current) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_AU")
-        formatter.timeZone = .current
+        formatter.timeZone = timeZone
         formatter.dateFormat = "d MMM"
         var text = formatter.string(from: date)
         if text.hasSuffix(".") { text.removeLast() }

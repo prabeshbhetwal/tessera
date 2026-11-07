@@ -7,8 +7,8 @@ import TesseraCore
 ///
 /// Shown on its own (`keyable == false`) the card never becomes key and never swallows a key; it reports `onClose`
 /// on Esc, on any other key unless the step waits for a drag, when another app activates, or after 12 s untouched on
-/// the first step. Opened on request it becomes key, and Esc or another app activating reports `onClose`. On a step
-/// that waits for a drag only Esc closes it (besides its buttons): the drag itself may activate another app. The owner
+/// the first step (60 s on a step that waits for a drag). Opened on request it becomes key, and Esc or another app
+/// activating reports `onClose`. On a step that waits for a drag only Esc closes it (besides its buttons): the drag itself may activate another app. The owner
 /// decides when to `dismiss()`. Fades stay under Reduce Motion (a cross-fade isn't motion); the seam's pulse doesn't.
 @MainActor
 final class CoachController {
@@ -66,7 +66,7 @@ final class CoachController {
         let target: CGRect
         if presentation == .full {
             target = Self.union(holes) ?? display.visibleFrame
-            showDim(holes: holes, seam: seam, display: display, theme: theme)
+            showDim(holes: holes, seam: seam, display: display, theme: theme, apps: event.apps)
         } else {
             target = Self.union(event.frames) ?? display.visibleFrame
             dimPanel.orderOut(nil)
@@ -103,14 +103,14 @@ final class CoachController {
 
     // MARK: Panels
 
-    private func showDim(holes: [CGRect], seam: CGRect?, display: DisplayContext, theme: Theme) {
+    private func showDim(holes: [CGRect], seam: CGRect?, display: DisplayContext, theme: Theme, apps: [String]) {
         let frame = display.frame
         dimPanel.setFrame(frame, display: false)
         dimView.update(
             spotlights: holes.map { $0.offsetBy(dx: -frame.minX, dy: -frame.minY) },
             seamRect: seam?.offsetBy(dx: -frame.minX, dy: -frame.minY), outlined: seam == nil,
             dimColor: HexColor.cgColor(theme.dimHex, alpha: theme.preview.dimStrength),
-            accent: HexColor.cgColor(theme.accentHex))
+            accent: HexColor.cgColor(theme.accentHex), description: CoachCopy.list(apps))
         fadeIn(dimPanel)
     }
 
@@ -200,9 +200,11 @@ final class CoachController {
                 if settled(), !repeated, escape || !waits { close() }
             }
         }
-        guard index == 0 else { return }
+        // The first step times out after 12 s; an auto-shown "try it" step after 60 s, so its dim can't linger.
+        guard index == 0 || (waits && !keyable) else { return }
+        let timeout = waits ? 60 : 12
         autoClose = Task {
-            try? await Task.sleep(for: .seconds(12))
+            try? await Task.sleep(for: .seconds(timeout))
             guard !Task.isCancelled else { return }
             close()
         }

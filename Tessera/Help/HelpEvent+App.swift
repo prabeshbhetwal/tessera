@@ -14,15 +14,15 @@ extension HelpEvent {
     static func make(kind: HelpEventKind, source: CommandSource, display: DisplayContext,
                      group: [(window: WindowRef, frame: CGRect)], split: LearnedSplit?,
                      previous: LearnedSplit?, undoMarker: Int? = nil) -> HelpEvent {
-        let portrait = display.range.isPortrait
-        let sorted = group
-        return HelpEvent(
+        let event = HelpEvent(
             kind: kind, source: source, displayKey: display.id.storageKey,
             displayName: NSScreen.screens.first { $0.frame == display.frame }?.localizedName ?? "this display",
-            apps: sorted.map { appName($0.window) }, frames: sorted.map(\.frame),
+            apps: group.map { appName($0.window) }, frames: group.map(\.frame),
             usable: GridGeometry.usableFrame(display.visibleFrame, profile: display.profile),
-            portrait: portrait, key: SplitKey(sorted, on: display), split: split, previousSplit: previous,
+            portrait: display.range.isPortrait, key: SplitKey(group, on: display), split: split, previousSplit: previous,
             undoMarker: undoMarker)
+        assert(event.apps.count == event.frames.count, "apps and frames must pair up")
+        return event
     }
 }
 
