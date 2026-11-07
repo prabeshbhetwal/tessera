@@ -49,14 +49,8 @@ struct RingPane: View {
                 Toggle("Show the ring", isOn: ring.showRing)
                 Group {
                     Toggle("Action name and input hints", isOn: ring.showActionLabels)
-                    Picker("Layout icons", selection: Binding(
-                        get: { r.showGlyphs ? WedgeIcons(r.iconStyle) : .none },
-                        set: { choice in
-                            model.settings.ring.showGlyphs = choice != .none
-                            if let style = choice.style { model.settings.ring.iconStyle = style }
-                        }
-                    )) {
-                        ForEach(WedgeIcons.allCases, id: \.self) { Text($0.title).tag($0) }
+                    Picker("Layout icons", selection: ring.iconStyle) {
+                        ForEach(RingIconStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                     Toggle("Dashed circle where pointing begins", isOn: ring.showBoundary)
                         .disabled(!(r.directions && r.pointing))
@@ -132,25 +126,11 @@ struct RingPane: View {
     }
 }
 
-/// The "Wedge icons" menu: the show switch and the style folded into one choice.
-private enum WedgeIcons: CaseIterable {
-    case layouts, arrows, none
-
-    init(_ style: RingIconStyle) { self = style == .arrows ? .arrows : .layouts }
-
-    var style: RingIconStyle? {
-        switch self {
-        case .layouts: .layouts
-        case .arrows: .arrows
-        case .none: nil
-        }
-    }
-
+private extension RingIconStyle {
     var title: String {
         switch self {
         case .layouts: "Layout pictures"
         case .arrows: "Arrows"
-        case .none: "None"
         }
     }
 }
@@ -244,11 +224,11 @@ struct RingDiagram: View {
 
             for i in 0..<8 {
                 let wedge = flipped(RingGeometry.tilePath(index: i, center: .zero, ring: scaled))
-                if ring.showGlyphs && ring.iconStyle == .layouts {
+                if ring.iconStyle == .layouts {
                     context.fill(wedge, with: .color(fill.opacity(max(tint, 0.85))))
                 }
             }
-            if ring.showGlyphs, let glyphs = RingLayer.glyphPaths(ring: scaled, center: .zero, aspect: 1.6) {
+            if let glyphs = RingLayer.glyphPaths(ring: scaled, center: .zero, aspect: 1.6) {
                 context.stroke(flipped(glyphs.outlines), with: .color(stroke.opacity(0.65)), lineWidth: 1.25)
                 context.fill(flipped(glyphs.fills), with: .color(stroke.opacity(0.28)))
                 if let active, let selected = RingLayer.glyphPaths(ring: scaled, center: .zero, aspect: 1.6, only: active) {

@@ -187,6 +187,20 @@ private func makeDirectory() throws -> URL {
         #expect(decoded.defaultGap == 12)
     }
 
+    /// Files from before the icon picker lost "None" carry `ring.showGlyphs`; it is ignored and the rest still loads.
+    @Test func retiredShowGlyphsKeyIsIgnored() throws {
+        var s = userSettings()
+        s.ring.iconStyle = .arrows
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as? [String: Any])
+        var ring = try #require(object["ring"] as? [String: Any])
+        ring["showGlyphs"] = false
+        object["ring"] = ring
+
+        let decoded = try SettingsStore.decode(JSONSerialization.data(withJSONObject: object)).settings
+        #expect(decoded.ring.iconStyle == .arrows)
+        #expect(decoded == s)
+    }
+
     @Test func filledFileStillValidates() throws {
         let sparse = Data(#"{"schemaVersion":2,"defaultGap":3}"#.utf8)
         let decoded = try SettingsStore.decode(sparse)

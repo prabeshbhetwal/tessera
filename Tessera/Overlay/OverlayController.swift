@@ -284,7 +284,7 @@ final class OverlayController {
             maskCache = (key, image)
         }
         if view.maskImage !== maskCache?.image { view.maskImage = maskCache?.image }
-        view.isHidden = !(ring.showRing && ring.showGlyphs && ring.frosted)
+        view.isHidden = !(ring.showRing && ring.frosted)
     }
 
     private static func capsuleMask(size: CGSize) -> NSImage {

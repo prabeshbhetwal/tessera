@@ -71,7 +71,7 @@ final class RingLayer {
         outer = radii.outer
 
         let path = RingGeometry.path(center: center, ring: ring)
-        tint.path = ring.showGlyphs && ring.iconStyle == .layouts ? path : nil
+        tint.path = ring.iconStyle == .layouts ? path : nil
         tint.fillColor = HexColor.cgColor(theme.ring.fillHex, alpha: theme.ring.opacity)
         tint.shadowColor = CGColor(gray: 0, alpha: 1)
         tint.shadowOpacity = 0.18
@@ -97,9 +97,7 @@ final class RingLayer {
             layer.shadowRadius = 1.5
             layer.shadowOffset = .zero
         }
-        let glyphs = ring.showGlyphs
-            ? Self.glyphPaths(ring: ring, center: center, aspect: aspect)
-            : nil
+        let glyphs = Self.glyphPaths(ring: ring, center: center, aspect: aspect)
         glyphOutlines.path = glyphs?.outlines
         glyphFills.path = glyphs?.fills
         hub.configure(bounds: bounds, center: center, ring: ring, theme: theme, scale: scale)
@@ -139,9 +137,7 @@ final class RingLayer {
         let action = index.flatMap { settings.wedges.indices.contains($0) ? settings.wedges[$0] : nil }
         hub.select(action.map(Self.unitRect), direction: index)
         hub.root.isHidden = true
-        let glyph = index.flatMap { selected in
-            settings.showGlyphs ? Self.glyphPaths(ring: settings, center: center, aspect: aspect, only: selected) : nil
-        }
+        let glyph = index.flatMap { Self.glyphPaths(ring: settings, center: center, aspect: aspect, only: $0) }
         activeGlyphOutlines.path = glyph?.outlines
         activeGlyphFills.path = glyph?.fills
         guard animate, index != nil else { activeGlyphFills.removeAllAnimations(); return }
@@ -171,7 +167,7 @@ final class RingLayer {
     func setSpan(_ span: ColumnSpan, columns: Int, portrait: Bool = false) {
         if activeIndex != nil { setActive(nil) }
         spanVisible = true
-        hub.root.isHidden = !settings.showGlyphs
+        hub.root.isHidden = false
         let count = CGFloat(max(columns, 1))
         if portrait {
             hub.select(CGRect(x: 0, y: 1 - CGFloat(span.columns.upperBound + 1) / count,

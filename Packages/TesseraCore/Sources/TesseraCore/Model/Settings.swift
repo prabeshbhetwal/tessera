@@ -59,8 +59,7 @@ public struct RingSettings: Codable, Equatable, Sendable {
     public var showRing = true
     /// Plain-language selection and input guidance beside the direction dial.
     public var showActionLabels = true
-    /// The small picture inside each wedge; `iconStyle` picks which picture.
-    public var showGlyphs = true
+    /// The small picture inside each wedge. Always drawn: without it the ring is a blank donut.
     public var iconStyle: RingIconStyle = .layouts
     /// The vibrant blur behind the wedges.
     public var frosted = true

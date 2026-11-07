@@ -50,7 +50,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         case .ring: .indigo
         case .overlay: .teal
         case .motion: .mint
-        case .about: .gray
+        case .about: .pink
         }
     }
 
