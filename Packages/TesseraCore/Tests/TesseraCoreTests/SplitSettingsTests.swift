@@ -5,7 +5,7 @@ import Testing
 @Suite struct SplitSettingsTests {
     private static let splitKeys = [
         "learnSplits", "splitRestoresOrder", "splitGapPlacement", "splitGapWhenGrowing", "splitReflowsNeighbours",
-        "learnedSplits",
+        "splitFillsClosedGap", "learnedSplits",
     ]
 
     private func split(
@@ -36,6 +36,7 @@ import Testing
         #expect(s.splitGapPlacement == .staysInPlace)
         #expect(s.splitGapWhenGrowing == .fixed)
         #expect(s.splitReflowsNeighbours)
+        #expect(s.splitFillsClosedGap)
         #expect(s.learnedSplits.isEmpty)
     }
 

@@ -13,6 +13,8 @@ struct SplitsPane: View {
                 Toggle("Learn from my adjustments", isOn: $model.settings.learnSplits)
                 Toggle("Resize neighbours to fill the display", isOn: $model.settings.splitReflowsNeighbours)
                     .disabled(!model.settings.learnSplits)
+                Toggle("Fill the space when a window closes", isOn: $model.settings.splitFillsClosedGap)
+                    .disabled(!model.settings.learnSplits)
                 Toggle("Restore last order", isOn: $model.settings.splitRestoresOrder)
                 Picker("Empty space when order changes", selection: $model.settings.splitGapPlacement) {
                     Text("Stays in place").tag(SplitGapPlacement.staysInPlace)
@@ -21,7 +23,7 @@ struct SplitsPane: View {
             } header: {
                 Text("Learning")
             } footer: {
-                Footer("Off: windows keep their current order and take their app's learned size.")
+                Footer("Closing a window: the apps left go back to their split if you've taught one; otherwise the window beside it you used last grows into the space. Resizing and filling need Learn from my adjustments. Restore last order off: windows keep their current order and take their app's learned size.")
             }
 
             let groups = displayGroups
@@ -47,6 +49,7 @@ struct SplitsPane: View {
                 let defaults = TesseraSettings.defaults
                 model.settings.learnSplits = defaults.learnSplits
                 model.settings.splitReflowsNeighbours = defaults.splitReflowsNeighbours
+                model.settings.splitFillsClosedGap = defaults.splitFillsClosedGap
                 model.settings.splitRestoresOrder = defaults.splitRestoresOrder
                 model.settings.splitGapPlacement = defaults.splitGapPlacement
             }

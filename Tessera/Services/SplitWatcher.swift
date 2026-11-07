@@ -18,8 +18,10 @@ final class SplitWatcher {
 
     var onLearned: ((String) -> Void)?
     var onHelpEvent: ((HelpEvent) -> Void)?
-    /// The watched group changed (a window joined, left or closed) and the watch ended; `SplitWatchers` re-arms.
+    /// The watched group changed (a window joined or left) and the watch ended; `SplitWatchers` re-arms.
     var onEnded: (() -> Void)?
+    /// A watched window closed (see `closed`): the group as it last settled, and its display's storage key.
+    var onWindowClosed: ((_ group: [(window: WindowRef, frame: CGRect)], _ displayKey: String) -> Void)?
 
     private static let notifications = [kAXMovedNotification, kAXResizedNotification, kAXUIElementDestroyedNotification]
     private static let timeout: Float = 0.3
@@ -131,8 +133,7 @@ final class SplitWatcher {
     fileprivate func handle(_ notification: String) {
         guard key != nil else { return }  // queued before stop()
         if notification == kAXUIElementDestroyedNotification {
-            stop()
-            onEnded?()
+            closed()
             return
         }
         if quiet {
@@ -140,6 +141,17 @@ final class SplitWatcher {
             schedule()
         }
     }
+
+    /// A watched window closed, or its app quit: the watch ends, and `onWindowClosed` gets the group as it last settled.
+    func closed() {
+        guard let display = key?.display else { return }
+        let group = baseline
+        stop()
+        onWindowClosed?(group, display)
+    }
+
+    /// Watching a window of the app with this process ID.
+    func watches(pid: pid_t) -> Bool { watched.contains { $0.pid == pid } }
 
     /// A hand adjustment waits to be handled, or a move (Tessera's or this watcher's reflow) is settling: re-arming now
     /// would drop it.
@@ -239,25 +251,14 @@ final class SplitWatcher {
         // Mid-drag: following an edge that is still moving would leave the neighbours behind the final one.
         guard NSEvent.pressedMouseButtons == 0 else { return true }
         let moves = visible.indices.filter { visible[$0].frame != goals[$0] }.map { (index: $0, window: visible[$0].window) }
-        let (windows, generation, primaryHeight) = (self.windows, self.generation, DisplayService.primaryHeight)
-        let duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : model.settings.snapSeconds
+        let generation = self.generation
         beginOwnMove()
         defer { endOwnMove() }
-        let batch = await windows.newBatch()
-        let landed = await withTaskGroup(of: (Int, CGRect?).self) { group in
-            for move in moves {
-                group.addTask {
-                    let result = await windows.apply(goals[move.index], to: move.window, primaryHeight: primaryHeight,
-                                                     crossingDisplays: false, duration: duration, batch: batch)
-                    if case let .applied(frame) = result { return (move.index, frame) }
-                    return (move.index, nil)
-                }
-            }
-            var frames: [Int: CGRect] = [:]
-            for await (index, frame) in group { frames[index] = frame }
-            return frames
-        }
-        let undoMarker = await windows.mergeMoves(batch)  // one ⌃⌥Z puts the neighbours back
+        let (results, undoMarker) = await windows.moveTogether(  // one ⌃⌥Z puts the neighbours back
+            moves.map { (window: $0.window, goal: goals[$0.index]) }, primaryHeight: DisplayService.primaryHeight,
+            duration: model.glideSeconds)
+        var landed: [Int: CGRect] = [:]
+        for (move, frame) in zip(moves, results) { landed[move.index] = frame }
         if generation == self.generation {
             let finals = visible.indices.map { (window: visible[$0].window, frame: landed[$0] ?? visible[$0].frame) }
             baseline = finals

@@ -112,6 +112,14 @@ public enum CoachScript {
                 title: "Neighbours followed",
                 body: "You resized \(changed), so \(CoachCopy.list(others)) moved to fill the space. You can turn this off in Settings › Splits.",
                 actions: [.done, .undoMove, .openSplitsSettings])]
+        case .gapFilled(let closed, let filled, let usedSplit):
+            let gone = CoachCopy.list(closed)
+            let body = usedSplit
+                ? "\(gone) closed, so \(CoachCopy.list(apps)) went back to your split for these apps instead of leaving a gap."
+                : "\(gone) closed, so \(CoachCopy.list(filled)) grew into the space. Tessera picks the window beside it you used last."
+            return [CoachStep(
+                title: "Space filled", body: body + " You can turn this off in Settings › Splits.",
+                actions: [.done, .undoMove, .openSplitsSettings])]
         case .splitLearned:
             return [CoachStep(
                 title: "Saved as your split",

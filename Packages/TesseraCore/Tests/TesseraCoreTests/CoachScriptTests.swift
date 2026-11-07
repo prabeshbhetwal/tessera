@@ -90,6 +90,11 @@ import Testing
         #expect(partial.actions == [.undoMove, .done])
         let follow = CoachScript.steps(for: Self.event(.neighboursFollowed(changed: "Dia", followers: ["Claude", "Codex"])))[0]
         #expect(follow.actions == [.done, .undoMove, .openSplitsSettings])
+        let grew = CoachScript.steps(for: Self.event(.gapFilled(closed: ["WhatsApp"], filled: ["Dia"], usedSplit: false)))
+        #expect(grew.count == 1 && grew[0].actions == [.done, .undoMove, .openSplitsSettings])
+        #expect(grew[0].body.hasPrefix("WhatsApp closed, so Dia grew into the space."))
+        let split = CoachScript.steps(for: Self.event(.gapFilled(closed: ["WhatsApp"], filled: ["Dia"], usedSplit: true)))[0]
+        #expect(split.body.contains("went back to your split"))
         let gone = CoachScript.steps(for: Self.event(.splitForgotten))
         #expect(gone.count == 1 && gone[0].actions == [.undoSplitChange, .done])
         #expect(CoachScript.forgotten(Self.event(.splitForgotten)) == gone[0])
@@ -101,6 +106,8 @@ import Testing
             .tiledEvenly(hasSplit: true), .tiledEvenly(hasSplit: false),
             .tilePartial(moved: 1, total: 3, stuck: ["A", "B"]), .tilePartial(moved: 1, total: 2, stuck: []),
             .neighboursFollowed(changed: "Dia", followers: ["Claude"]),
+            .gapFilled(closed: ["WhatsApp"], filled: ["Dia"], usedSplit: false),
+            .gapFilled(closed: ["WhatsApp"], filled: [], usedSplit: true),
             .splitLearned, .splitNotLearned(reason: "Windows overlap"), .splitForgotten,
         ]
         for kind in kinds {

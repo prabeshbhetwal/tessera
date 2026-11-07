@@ -148,13 +148,14 @@ actor WindowService {
 
     /// Standard windows of regular apps whose centre is on `display` (AppKit frame), with their AppKit
     /// frames, for tiling. Skips Tessera, apps in `excluding`, minimised and hidden windows (they are not on
-    /// screen), panels and dialogs, and anything smaller than a tiny utility window.
+    /// screen), panels and dialogs, and anything smaller than a tiny utility window. Front-most first.
     func visibleWindows(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>) -> [(window: WindowRef, frame: CGRect)] {
         let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
         guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [] }
         let ownPID = ProcessInfo.processInfo.processIdentifier
         var framesByPID: [pid_t: [CGWindowID: CGRect]] = [:]
-        for info in list {
+        var depth: [CGWindowID: Int] = [:]  // the list runs front to back
+        for (z, info) in list.enumerated() {
             guard (info[kCGWindowLayer as String] as? Int) == 0,
                   let pid = info[kCGWindowOwnerPID as String] as? pid_t, pid != ownPID,
                   let id = info[kCGWindowNumber as String] as? CGWindowID,
@@ -164,6 +165,7 @@ actor WindowService {
             let frame = CoordinateSpace.fromAX(bounds, primaryHeight: primaryHeight)
             guard display.contains(CGPoint(x: frame.midX, y: frame.midY)) else { continue }
             framesByPID[pid, default: [:]][id] = frame
+            depth[id] = z
         }
 
         var result: [(window: WindowRef, frame: CGRect)] = []
@@ -180,7 +182,7 @@ actor WindowService {
                 result.append((WindowRef(element: element, pid: pid, windowID: id, bundleID: app.bundleIdentifier), frame))
             }
         }
-        return result
+        return result.sorted { depth[$0.window.windowID ?? 0, default: .max] < depth[$1.window.windowID ?? 0, default: .max] }
     }
 
     // MARK: - Private

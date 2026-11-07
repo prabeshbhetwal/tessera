@@ -8,7 +8,7 @@ public enum SplitReflow {
     /// Edges closer than this, in points, have not moved.
     private static let stillness: Double = 1
     /// Added to the gap when deciding whether two edges face each other.
-    private static let slack: Double = 8
+    static let slack: Double = 8
 
     /// Every window's frame, in input order, once the one window that changed between `before` and `after` has pulled
     /// its neighbours along. An edge that moved drags the facing edge of each window beside it (sharing a band across
@@ -56,7 +56,7 @@ public enum SplitReflow {
     }
 
     /// Two frames overlap by more than `SplitLearner.overlapTolerance` on both axes.
-    private static func stacked(_ frames: [CGRect]) -> Bool {
+    static func stacked(_ frames: [CGRect]) -> Bool {
         frames.indices.contains { i in
             frames.indices.dropFirst(i + 1).contains { k in
                 let (p, q) = (frames[i], frames[k])
@@ -74,7 +74,7 @@ public enum SplitReflow {
         let to: Double
     }
 
-    private enum Side: Int, CaseIterable {
+    enum Side: Int, CaseIterable {
         case minX, maxX, minY, maxY
 
         var isHigh: Bool { self == .maxX || self == .maxY }

@@ -23,15 +23,7 @@ extension CommandExecutor {
     /// fits, otherwise equal tiles.
     func splitFrames(for ordered: [(window: WindowRef, frame: CGRect)], display: DisplayContext)
         -> (frames: [CGRect], learned: Bool) {
-        let settings = model.settings
-        if let split = SplitMemory.lookup(SplitKey(ordered, on: display), in: settings.learnedSplits),
-           let frames = SplitApplier.frames(
-               for: split, windows: ordered.map { (bundleID: $0.window.bundleID, frame: $0.frame) },
-               usable: GridGeometry.usableFrame(display.visibleFrame, profile: display.profile),
-               portrait: display.range.isPortrait, restoresOrder: settings.splitRestoresOrder,
-               gapPlacement: settings.splitGapPlacement) {
-            return (frames, true)
-        }
+        if let frames = model.settings.learnedFrames(for: ordered, display: display) { return (frames, true) }
         return (GridGeometry.tiles(ordered.count, display: display), false)
     }
 
