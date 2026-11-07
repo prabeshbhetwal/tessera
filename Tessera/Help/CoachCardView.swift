@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 import TesseraCore
 
-/// The coach card: what happened, the step's buttons (the first is primary), and a footer that offers to stop tips
-/// (shown on its own) or browses earlier and later tips (opened on request).
+/// The coach card: what happened, the step's buttons (the first is primary), and a footer that offers to stop tips.
+/// Opened on request (`keyable`) it also browses earlier and later tips, with ← and →, and Esc closes it.
 struct CoachCardView: View {
     let step: CoachStep
     let index: Int
@@ -12,6 +12,8 @@ struct CoachCardView: View {
     let onAction: (CoachAction) -> Void
     let onBrowse: (Int) -> Void
     let onDontShow: () -> Void
+    let onClose: () -> Void
+    @Environment(\.controlActiveState) private var activeState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -33,7 +35,7 @@ struct CoachCardView: View {
         .padding(16)
         .frame(width: 340, alignment: .leading)
         // The auto card is never key; keep the primary button in the accent rather than the inactive grey.
-        .environment(\.controlActiveState, .key)
+        .environment(\.controlActiveState, keyable ? activeState : .key)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(step.title)
     }
@@ -50,19 +52,31 @@ struct CoachCardView: View {
         }
     }
 
-    @ViewBuilder private var footer: some View {
-        if keyable {
-            HStack(spacing: 4) {
+    private var footer: some View {
+        HStack(spacing: 4) {
+            if keyable {
                 Button { onBrowse(-1) } label: { Label("Earlier", systemImage: "chevron.left") }
+                    .keyboardShortcut(.leftArrow, modifiers: [])
+                    .help("Earlier tip")
                 Button { onBrowse(1) } label: { Label("Later", systemImage: "chevron.right") }
+                    .keyboardShortcut(.rightArrow, modifiers: [])
+                    .help("Later tip")
+                Spacer(minLength: 8)
             }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
-        } else {
             Button("Don't show tips", action: onDontShow)
-                .buttonStyle(.borderless)
                 .controlSize(.small)
                 .foregroundStyle(.secondary)
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        .background {
+            // Esc as a key equivalent, so it closes the key card even if `cancelOperation` never reaches the panel.
+            if keyable {
+                Button("Close", action: onClose)
+                    .keyboardShortcut(.cancelAction)
+                    .opacity(0)
+                    .accessibilityHidden(true)
+            }
         }
     }
 }
@@ -85,7 +99,7 @@ final class CoachCardPanel: NSPanel {
         level = .popUpMenu
         ignoresMouseEvents = false
         becomesKeyOnlyIfNeeded = true
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         backgroundColor = .clear
         isOpaque = false
         hasShadow = true

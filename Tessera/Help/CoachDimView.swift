@@ -1,8 +1,8 @@
 import AppKit
 import QuartzCore
 
-/// The coach's dimming: black at 0.45 alpha with rounded spotlight cut-outs, a 2 pt accent outline round them, and
-/// an optional pulsing seam. Its panel ignores the mouse, so clicks and drags reach the real windows underneath.
+/// The coach's dimming: the theme's dim colour and strength with rounded spotlight cut-outs, a 2 pt accent outline
+/// round them, and an optional pulsing seam. Its panel ignores the mouse, so clicks and drags reach the real windows.
 @MainActor
 final class CoachDimView: NSView {
     private let dim = CAShapeLayer()
@@ -14,7 +14,6 @@ final class CoachDimView: NSView {
         wantsLayer = true
         autoresizingMask = [.width, .height]
         dim.fillRule = .evenOdd
-        dim.fillColor = CGColor(gray: 0, alpha: 0.45)
         outline.fillColor = nil
         outline.lineWidth = 2
         for layer in [dim, outline, seam] { self.layer?.addSublayer(layer) }
@@ -22,8 +21,14 @@ final class CoachDimView: NSView {
 
     required init?(coder: NSCoder) { fatalError("CoachDimView is built in code") }
 
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        let scale = window?.backingScaleFactor ?? 2
+        for layer in [dim, outline, seam] { layer.contentsScale = scale }
+    }
+
     /// `spotlights` and `seamRect` are in this view's coordinates. `outlined` draws the accent edge round the spotlights.
-    func update(spotlights: [CGRect], seamRect: CGRect?, outlined: Bool, accent: CGColor, scale: CGFloat) {
+    func update(spotlights: [CGRect], seamRect: CGRect?, outlined: Bool, dimColor: CGColor, accent: CGColor) {
         let holes = CGMutablePath()
         for rect in spotlights {
             let radius = min(10, rect.width / 2, rect.height / 2)
@@ -37,10 +42,12 @@ final class CoachDimView: NSView {
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        let scale = window?.backingScaleFactor ?? 2
         for layer in [dim, outline, seam] {
             layer.frame = bounds
             layer.contentsScale = scale
         }
+        dim.fillColor = dimColor
         dim.path = path
         outline.path = outlined ? merged : nil
         outline.strokeColor = accent
