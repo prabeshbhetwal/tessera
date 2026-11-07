@@ -47,4 +47,24 @@ extension CommandExecutor {
                 + SplitLabel.display(key, displays: [display]))
         }
     }
+
+    /// Forgets the learned split for the apps on the display now.
+    func forgetSplit(_ selector: DisplaySelector) async throws(Failure) -> CommandResult {
+        let (display, found) = try await windowsOnDisplay(selector)
+        let key = SplitKey(found, on: display)
+        guard SplitMemory.lookup(key, in: model.settings.learnedSplits) != nil else {
+            throw Failure(message: "No split for these apps")
+        }
+        model.settings.learnedSplits = SplitMemory.forget(key, in: model.settings.learnedSplits)
+        return CommandResult(ok: true, message: "Forgot split · \(SplitLabel.apps(key))")
+    }
+
+    func undoLast() async throws(Failure) {
+        splitWatcher.stop()
+        // Bracketed so the restore is never read as a hand adjustment; its end re-arms the watchers.
+        splitWatcher.beginOwnMove()
+        let undone = await windows.undoLast()
+        splitWatcher.endOwnMove()
+        guard undone else { throw Failure(message: "Nothing to undo") }
+    }
 }

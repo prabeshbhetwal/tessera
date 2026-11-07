@@ -21,6 +21,7 @@ final class CommandExecutor: CommandExecuting {
     private let presenter: WindowPresenter
     private let store: SettingsStore
     let splitWatcher: SplitWatchers
+    var onExplain: (() -> Void)?
     private var cycles = CycleTracker()
     /// A Tile is in flight. Two at once would fold unrelated moves into one undo step.
     private var tiling = false
@@ -98,14 +99,13 @@ final class CommandExecutor: CommandExecuting {
             return try await tile(selector, evenly: true)
         case let .rememberSplit(selector):
             return try await rememberSplit(selector)
-        case .undo:
-            splitWatcher.stop()
-            // Bracketed so the restore is never read as a hand adjustment; its end re-arms the watchers.
-            splitWatcher.beginOwnMove()
-            let undone = await windows.undoLast()
-            splitWatcher.endOwnMove()
-            guard undone else { throw Failure(message: "Nothing to undo") }
+        case let .forgetSplit(selector):
+            return try await forgetSplit(selector)
+        case .explain:
+            onExplain?()
             return .success
+        case .undo:
+            try await undoLast(); return .success
         case .openSettings:
             presenter.showSettings()
             return .success

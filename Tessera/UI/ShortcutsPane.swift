@@ -135,11 +135,12 @@ struct CommandEditor: View {
     private enum Kind: String, CaseIterable, Identifiable {
         case apply = "Move window", cycle = "Run cycle", columns = "Change columns", move = "Move to display"
         case tile = "Tile all windows", tileEvenly = "Tile windows evenly", remember = "Remember split"
+        case forgetSplit = "Forget split", explain = "What just happened"
         case undo = "Undo last move", openSettings = "Open Settings", listDisplays = "List displays"
         case describeWindow = "Describe window", exportSettings = "Export settings", importSettings = "Import settings"
         var id: Self { self }
 
-        static let offered: [Kind] = [.apply, .cycle, .tile, .tileEvenly, .remember, .columns, .move, .undo, .openSettings]
+        static let offered: [Kind] = [.apply, .cycle, .tile, .tileEvenly, .remember, .forgetSplit, .explain, .columns, .move, .undo, .openSettings]
     }
 
     private var kind: Kind {
@@ -151,6 +152,8 @@ struct CommandEditor: View {
         case .tileWindows: .tile
         case .tileEvenly: .tileEvenly
         case .rememberSplit: .remember
+        case .forgetSplit: .forgetSplit
+        case .explain: .explain
         case .undo: .undo
         case .openSettings: .openSettings
         case .listDisplays: .listDisplays
@@ -169,6 +172,8 @@ struct CommandEditor: View {
         case .tile: .tileWindows(display: .current)
         case .tileEvenly: .tileEvenly(display: .current)
         case .remember: .rememberSplit(display: .current)
+        case .forgetSplit: .forgetSplit(display: .current)
+        case .explain: .explain
         case .undo: .undo
         case .openSettings: .openSettings
         case .listDisplays: .listDisplays
@@ -206,11 +211,13 @@ struct CommandEditor: View {
             DisplaySelectorEditor(title: "Display", selector: Binding(get: { display }, set: { command = .tileEvenly(display: $0) }))
         case .rememberSplit(let display):
             DisplaySelectorEditor(title: "Display", selector: Binding(get: { display }, set: { command = .rememberSplit(display: $0) }))
+        case .forgetSplit(let display):
+            DisplaySelectorEditor(title: "Display", selector: Binding(get: { display }, set: { command = .forgetSplit(display: $0) }))
         case .exportSettings(let path):
             TextField("File path", text: Binding(get: { path }, set: { command = .exportSettings(path: $0) }))
         case .importSettings(let path):
             TextField("File path", text: Binding(get: { path }, set: { command = .importSettings(path: $0) }))
-        case .undo, .openSettings, .listDisplays, .describeWindow:
+        case .undo, .openSettings, .listDisplays, .describeWindow, .explain:
             EmptyView()
         }
     }
@@ -270,6 +277,8 @@ extension Command {
         case .tileWindows(let display): return "Tile all windows" + on(display)
         case .tileEvenly(let display): return "Tile windows evenly" + on(display)
         case .rememberSplit(let display): return "Remember split" + on(display)
+        case .forgetSplit(let display): return "Forget split" + on(display)
+        case .explain: return "What just happened"
         case .undo: return "Undo last move"
         case .openSettings: return "Open Settings"
         case .listDisplays: return "List displays"

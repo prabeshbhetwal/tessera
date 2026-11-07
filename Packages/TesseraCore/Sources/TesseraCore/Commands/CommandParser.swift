@@ -25,6 +25,8 @@ public enum CommandParser {
           tessera tile [--display D]               (every visible window side by side: the learned split, else equal shares)
           tessera tile evenly [--display D]        (every visible window in equal shares, ignoring the learned split but keeping it)
           tessera remember [--display D]           (save how the windows are arranged now; Tile reuses it)
+          tessera explain                          (open What Just Happened? for the latest event)
+          tessera forget [--display D]             (forget the learned split for the apps on the display now)
           tessera undo
           tessera displays [--json]
           tessera window [--json]
@@ -34,7 +36,7 @@ public enum CommandParser {
         Use `..` for ranges that involve a negative column. Negative columns count from the right (-1 is the last).
         """
 
-    private static let verbs = "apply, action, cycle, columns, move, tile, remember, undo, displays, window, settings"
+    private static let verbs = "apply, action, cycle, columns, move, tile, remember, forget, explain, undo, displays, window, settings"
 
     // MARK: Entry points
 
@@ -51,7 +53,7 @@ public enum CommandParser {
 
         // A web page can open any URL, so URLs may not read or write files or query state.
         let sub = segments.first?.lowercased() ?? ""
-        if ["displays", "window"].contains(verb) || (verb == "settings" && ["export", "import"].contains(sub)) {
+        if ["displays", "window", "forget"].contains(verb) || (verb == "settings" && ["export", "import"].contains(sub)) {
             throw invalid("'\(([verb] + (verb == "settings" ? [sub] : [])).joined(separator: " "))' is not available via URL")
         }
 
@@ -169,6 +171,15 @@ public enum CommandParser {
             let selector = try display()
             try finish()
             return .rememberSplit(display: selector)
+
+        case "forget":
+            let selector = try display()
+            try finish()
+            return .forgetSplit(display: selector)
+
+        case "explain":
+            try finish()
+            return .explain
 
         case "undo":
             try finish()
