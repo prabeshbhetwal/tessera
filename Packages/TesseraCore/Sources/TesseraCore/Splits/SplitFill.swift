@@ -35,4 +35,22 @@ public enum SplitFill {
         }
         return best?.frames
     }
+
+    /// `frames` once every hole in `holes` that some side can cover is filled. A hole nothing faces yet is tried again
+    /// after another fills, so adjacent closed windows (an app quitting with two columns) are covered in any order.
+    /// Nil when none could be filled.
+    public static func frames(filling holes: [CGRect], frames: [CGRect], gap: Double) -> [CGRect]? {
+        var result = frames
+        var open = holes
+        while !open.isEmpty {
+            let before = open.count
+            open.removeAll { hole in
+                guard let next = Self.frames(filling: hole, frames: result, gap: gap) else { return false }
+                result = next
+                return true
+            }
+            if open.count == before { break }  // no progress: what is left can't be covered
+        }
+        return open.count < holes.count ? result : nil
+    }
 }

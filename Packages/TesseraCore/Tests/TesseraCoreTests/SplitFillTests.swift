@@ -44,6 +44,15 @@ import Testing
         #expect(fill(hole, [bottomLeft, topRight, bottomRight]) == [rect(0, 495, 0, 500), topRight, bottomRight])
     }
 
+    /// An app with two columns quits: the column nothing faces at first is filled once its neighbour has grown.
+    @Test func adjacentHolesFillInAnyOrder() {
+        let holes = [rect(0, 326), rect(336, 663)]
+        let b = rect(673, 1000)
+        #expect(SplitFill.frames(filling: holes, frames: [b], gap: gap) == [rect(0, 1000)])
+        #expect(SplitFill.frames(filling: holes.reversed(), frames: [b], gap: gap) == [rect(0, 1000)])
+        #expect(SplitFill.frames(filling: [rect(0, 100)], frames: [rect(600, 1000)], gap: gap) == nil)
+    }
+
     @Test func nothingBesideTheSpaceLeavesTheWindowsAlone() {
         #expect(fill(rect(600, 1000), [rect(0, 300)]) == nil)
         #expect(fill(rect(0, 500), []) == nil)
