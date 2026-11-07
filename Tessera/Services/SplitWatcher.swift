@@ -17,6 +17,7 @@ final class SplitWatcher {
     static let settle: Duration = .milliseconds(300)
 
     var onLearned: ((String) -> Void)?
+    var onHelpEvent: ((HelpEvent) -> Void)?
     /// The watched group changed (a window joined, left or closed) and the watch ended; `SplitWatchers` re-arms.
     var onEnded: (() -> Void)?
 
@@ -197,8 +198,21 @@ final class SplitWatcher {
         baseline = visible
         // An arrangement that can't be learned (say, windows overlapping) is skipped, and so is one that only repeats
         // the stored split (a slow app's late notification); the next adjustment tries again.
-        guard learns, case .success((_, true)) = save(visible, display: display, onlyIfChanged: true) else { return }
-        onLearned?("Learned split · \(SplitLabel.apps(key)) · \(SplitLabel.display(key, displays: [display]))")
+        guard learns else { return }
+        let previous = SplitMemory.lookup(key, in: model.settings.learnedSplits)
+        let ordered = onScreenOrder(visible, portrait: display.range.isPortrait)
+        switch save(visible, display: display, onlyIfChanged: true) {
+        case .failure(let rejection):
+            onHelpEvent?(.make(kind: .splitNotLearned(reason: rejection.message), source: .hand, display: display,
+                               group: ordered, split: nil, previous: nil))
+        case .success((_, false)):
+            return
+        case .success((_, true)):
+            onLearned?("Learned split · \(SplitLabel.apps(key)) · \(SplitLabel.display(key, displays: [display]))")
+            let split = SplitMemory.lookup(key, in: model.settings.learnedSplits)
+            onHelpEvent?(.make(kind: .splitLearned, source: .hand, display: display, group: ordered, split: split,
+                               previous: previous))
+        }
     }
 
     /// The watched display as it is now (so a gap or padding edited since the watch began counts) and the windows on
@@ -244,7 +258,19 @@ final class SplitWatcher {
         }
         await windows.mergeMoves(batch)  // one ⌃⌥Z puts the neighbours back
         if generation == self.generation {
-            baseline = visible.indices.map { (window: visible[$0].window, frame: landed[$0] ?? visible[$0].frame) }
+            let finals = visible.indices.map { (window: visible[$0].window, frame: landed[$0] ?? visible[$0].frame) }
+            baseline = finals
+            let moved = Set(moves.map(\.index))
+            let changedIndex = visible.indices.first { !moved.contains($0) && visible[$0].frame != before[$0] }
+                ?? visible.indices.first { !moved.contains($0) }
+            if let changedIndex {
+                let kind = HelpEventKind.neighboursFollowed(
+                    changed: HelpEvent.appName(visible[changedIndex].window),
+                    followers: moves.map { HelpEvent.appName($0.window) })
+                onHelpEvent?(.make(kind: kind, source: .hand, display: display,
+                                   group: onScreenOrder(finals, portrait: display.range.isPortrait),
+                                   split: nil, previous: nil))
+            }
         }
         return true
     }
