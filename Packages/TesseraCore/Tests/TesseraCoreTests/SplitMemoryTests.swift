@@ -104,6 +104,38 @@ import Testing
         #expect(SplitMemory.forget(SplitKey(display: "d", bundleIDs: ["z"]), in: [a, b]) == [a, b])
     }
 
+    @Test func restoreNilForgetsKey() {
+        let a = Self.split(["a", "b"]), b = Self.split(["c"])
+        let k = a.key
+        #expect(SplitMemory.restore(nil, for: k, in: [a]).isEmpty)
+        #expect(SplitMemory.restore(nil, for: k, in: [a, b]) == [b])
+    }
+
+    @Test func restorePutsPreviousBack() {
+        let old = Self.split(["k"], at: 1)
+        let newer = Self.split(["k"], at: 3)
+        let memory = SplitMemory.upsert(newer, into: SplitMemory.upsert(old, into: []))
+        let restored = SplitMemory.restore(old, for: old.key, in: memory)
+        #expect(SplitMemory.lookup(old.key, in: restored) == old)
+        #expect(SplitMemory.lookup(old.key, in: restored)?.updated == Date(timeIntervalSince1970: 1))
+        #expect(restored.filter { $0.key == old.key }.count == 1)
+    }
+
+    @Test func restoreAtCapacityKeepsOthers() {
+        var memory: [LearnedSplit] = []
+        for i in 0..<SplitMemory.capacity {
+            memory = SplitMemory.upsert(Self.split(["app\(i)"], at: Double(i)), into: memory)
+        }
+        let old = Self.split(["app10"], at: 10)
+        memory = SplitMemory.upsert(Self.split(["app10"], at: 100), into: memory)
+        let restored = SplitMemory.restore(old, for: old.key, in: memory)
+        #expect(restored.count == SplitMemory.capacity)
+        #expect(SplitMemory.lookup(old.key, in: restored) == old)
+        for i in 0..<SplitMemory.capacity where i != 10 {
+            #expect(SplitMemory.lookup(SplitKey(display: "d", bundleIDs: ["app\(i)"]), in: restored) != nil)
+        }
+    }
+
     // MARK: Codable
 
     @Test func splitRoundTripsThroughJSON() throws {
