@@ -3,6 +3,19 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.5</title>
+            <pubDate>Sat, 07 Nov 2026 08:48:06 +0000</pubDate>
+            <sparkle:version>20261107.084715</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.5</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- New: What Just Happened? Press ⌃⌥/ (or choose What Just Happened? in the menu bar) and a card explains Tessera's last move: which windows it tiled, whether it used your learned split, and what to press to change it. ‹ and › step through the last 10 events. From the command line: `tessera explain`.
+- New: tips that appear on their own. The first time you tile, and when Tessera does something you might not expect (such as tiling with a split you taught it), a card points at the windows and explains what happened. The first Tile card can walk you through dragging an edge: the neighbours follow, Tessera saves the split, and Undo puts the old split back.
+- New: buttons on the card for Tile Evenly Instead, Forget This Split and Undo.
+- Turn tips off, or stop the screen dimming behind them, in Settings › General › Help.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.5/Tessera-0.2.0-beta.5.zip" length="4320242" type="application/octet-stream" sparkle:edSignature="YZ22ZEvFUMVhaGfbtyn0WKpvPy117MOH23JVBruTFwMH2JIsrzMvYYDEFWnYUsHJDCNtbJq+/ylLO0yfDOElBg==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.4</title>
             <pubDate>Thu, 05 Nov 2026 13:47:39 +0000</pubDate>
             <sparkle:version>20261105.133800</sparkle:version>
