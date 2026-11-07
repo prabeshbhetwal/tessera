@@ -52,6 +52,8 @@ public actor SettingsStore {
     /// The one path from file bytes to usable settings: migrate, decode, validate. Throws
     /// `SettingsError.invalid` with a message safe to show. Used by `load`, `importSettings` and the UI.
     public static func decode(_ data: Data) throws -> (settings: TesseraSettings, migratedFrom: Int?) {
+        // A file with no "help" key predates help settings: offer it the ⌃⌥/ default once.
+        let predatesHelp = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["help"] == nil
         let migration = try SettingsMigration.migrate(data)
         let settings: TesseraSettings
         do {
@@ -60,7 +62,7 @@ public actor SettingsStore {
             throw SettingsError.invalid("Not a valid Tessera settings file, or one from a newer version.")
         }
         try SettingsValidation.validate(settings)
-        return (HelpDefaults.offeringExplainHotkey(settings), migration.migratedFrom)
+        return (predatesHelp ? HelpDefaults.offeringExplainHotkey(settings) : settings, migration.migratedFrom)
     }
 
     /// Atomic write; creates the folder if needed. Invalid settings are refused so a bad value can
