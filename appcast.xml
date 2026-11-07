@@ -3,6 +3,17 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.8</title>
+            <pubDate>Sat, 07 Nov 2026 15:00:51 +0000</pubDate>
+            <sparkle:version>20261107.145712</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.8</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- Fixed: windows that sit with a gap between them (for example after macOS restores them at login) now close it the first time you drag an edge. Before, "Resize neighbours to fill the display" did nothing across a gap, and Tessera saved the gap as part of your split.
+- Splits already saved with a gap stay until your next adjustment, or until you forget them in Settings › Splits.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.8/Tessera-0.2.0-beta.8.zip" length="4375709" type="application/octet-stream" sparkle:edSignature="dc+JcBi+T9Dda0MYL9G0H6qhKQFCKjJA/wKMsZ+l2nCuji2XRwgEOJxc7giHjPUokNel8DJG9J8KytqwGYxbBA==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.7</title>
             <pubDate>Sat, 07 Nov 2026 14:50:06 +0000</pubDate>
             <sparkle:version>20261107.144733</sparkle:version>
