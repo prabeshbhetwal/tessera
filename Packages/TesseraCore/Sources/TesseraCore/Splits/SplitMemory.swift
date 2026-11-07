@@ -14,4 +14,11 @@ public enum SplitMemory {
     public static func forget(_ key: SplitKey, in splits: [LearnedSplit]) -> [LearnedSplit] {
         splits.filter { $0.key != key }
     }
+
+    /// Forgets `key`, then re-inserts `previous` when present. `previous.updated` is kept as stored.
+    public static func restore(_ previous: LearnedSplit?, for key: SplitKey, in splits: [LearnedSplit]) -> [LearnedSplit] {
+        let remaining = forget(key, in: splits)
+        guard let previous else { return remaining }
+        return upsert(previous, into: remaining)
+    }
 }

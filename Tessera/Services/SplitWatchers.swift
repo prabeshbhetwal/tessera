@@ -10,6 +10,9 @@ final class SplitWatchers {
     var onLearned: ((String) -> Void)? {
         didSet { for watcher in watchers.values { watcher.onLearned = onLearned } }
     }
+    var onHelpEvent: ((HelpEvent) -> Void)? {
+        didSet { for watcher in watchers.values { watcher.onHelpEvent = onHelpEvent } }
+    }
 
     private let windows: WindowService
     private let displays: DisplayService
@@ -97,6 +100,7 @@ final class SplitWatchers {
         if let existing = watchers[id] { return existing }
         let watcher = SplitWatcher(windows: windows, displays: displays, model: model)
         watcher.onLearned = onLearned
+        watcher.onHelpEvent = onHelpEvent
         // A window joined, left or closed: watch whatever the display holds now.
         watcher.onEnded = { [weak self] in self?.armSoon() }
         // Moves already in flight count for the new watcher too; `endOwnMove` balances them.

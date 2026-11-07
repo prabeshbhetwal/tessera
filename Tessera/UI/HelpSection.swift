@@ -1,0 +1,30 @@
+import SwiftUI
+import TesseraCore
+
+/// General › Help: whether tips appear on their own, whether they dim the screen, and seeing them all again.
+struct HelpSection: View {
+    @Bindable var model: SettingsModel
+    /// Set by Show Tips Again; the confirmation stays until the pane is left.
+    @State private var tipsReset = false
+
+    var body: some View {
+        Section {
+            Toggle("Show tips on their own", isOn: $model.settings.help.autoShow)
+            Toggle("Dim the screen behind tips", isOn: $model.settings.help.dimScreen)
+            HStack {
+                Button("Show Tips Again") {
+                    model.settings.help.seenMoments = []
+                    tipsReset = true
+                }
+                .disabled(model.settings.help.seenMoments.isEmpty)
+                if tipsReset { Caption("Tips will show again.") }
+                Spacer()
+            }
+            .onDisappear { tipsReset = false }
+        } header: {
+            Text("Help")
+        } footer: {
+            Footer("What Just Happened? in the menu bar, or its hotkey in Shortcuts, explains the last thing Tessera did. The dimming uses the colour and strength in Overlay › Dimming.")
+        }
+    }
+}

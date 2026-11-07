@@ -20,6 +20,9 @@ struct WindowUndoHistory {
 
     private var steps: [Step] = []
     private var nextBatch = 0
+    /// Bumped whenever the steps change (a push, a merge that joins steps, a pop), so a caller can tell whether the
+    /// latest step is still the one it saw.
+    private(set) var marker = 0
 
     /// A fresh tag for moves that should undo together; pass it to `push`, then `merge` once they are done.
     mutating func newBatch() -> Int {
@@ -29,14 +32,18 @@ struct WindowUndoHistory {
 
     /// Records `frame` as where `ref` was before a move, as its own step tagged `batch`.
     mutating func push(_ frame: CGRect, for ref: WindowRef, key: Key, batch: Int?) {
+        marker += 1
         steps.append(Step(moves: [(key, ref, frame)], batch: batch))
         if steps.count > Self.maxSteps { steps.removeFirst(steps.count - Self.maxSteps) }
     }
 
     /// Joins the steps tagged `batch` into the first of them. A tagged step for a window that another step moved in
     /// the meantime (a hotkey during a glide) stays separate, so every window still undoes in the order it moved.
-    mutating func merge(batch: Int) {
-        guard let first = steps.firstIndex(where: { $0.batch == batch }) else { return }
+    /// Returns `marker` when the merged step is the latest in the history, so the next undo takes back exactly this
+    /// batch; nil when no step carries `batch` (every move failed) or another step came after it.
+    @discardableResult
+    mutating func merge(batch: Int) -> Int? {
+        guard let first = steps.firstIndex(where: { $0.batch == batch }) else { return nil }
         var movedSince = Set<Key>()
         var joined: [Int] = []
         for index in steps.indices.dropFirst(first + 1) {
@@ -47,12 +54,18 @@ struct WindowUndoHistory {
                 movedSince.formUnion(keys)
             }
         }
-        steps[first].moves += joined.flatMap { steps[$0].moves }
-        for index in joined.reversed() { steps.remove(at: index) }
+        if !joined.isEmpty {
+            steps[first].moves += joined.flatMap { steps[$0].moves }
+            for index in joined.reversed() { steps.remove(at: index) }
+            marker += 1
+        }
+        return first == steps.count - 1 ? marker : nil
     }
 
     /// Takes the most recent step: each of its windows with the frame to restore. Nil when there are no steps left.
     mutating func popStep() -> [Move]? {
-        steps.popLast()?.moves
+        guard let step = steps.popLast() else { return nil }
+        marker += 1
+        return step.moves
     }
 }

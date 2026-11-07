@@ -17,6 +17,7 @@ final class SplitWatcher {
     static let settle: Duration = .milliseconds(300)
 
     var onLearned: ((String) -> Void)?
+    var onHelpEvent: ((HelpEvent) -> Void)?
     /// The watched group changed (a window joined, left or closed) and the watch ended; `SplitWatchers` re-arms.
     var onEnded: (() -> Void)?
 
@@ -25,7 +26,7 @@ final class SplitWatcher {
 
     private let windows: WindowService
     private let displays: DisplayService
-    private let model: SettingsModel
+    let model: SettingsModel
     /// One observer per app, with the window elements registered on it.
     private var observers: [(observer: AXObserver, elements: [AXUIElement])] = []
     private(set) var key: SplitKey?
@@ -127,25 +128,6 @@ final class SplitWatcher {
         refreshBaseline()
     }
 
-    /// Learns how `found` sit on `display` and saves that as the split for these apps there. With `onlyIfChanged`, a
-    /// split within a point of the stored one is not written again and comes back with `changed` false.
-    func save(_ found: [(window: WindowRef, frame: CGRect)], display: DisplayContext, onlyIfChanged: Bool = false)
-        -> Result<(key: SplitKey, changed: Bool), SplitRejection> {
-        let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
-        let frames = found.map { (bundleID: $0.window.bundleID, frame: $0.frame) }
-        let learned = SplitLearner.learn(frames, usable: usable, gap: display.profile.gap)
-        return learned.map { slots -> (key: SplitKey, changed: Bool) in
-            let key = SplitKey(found, on: display)
-            if onlyIfChanged, let stored = SplitMemory.lookup(key, in: model.settings.learnedSplits),
-               stored.matches(slots, usable: usable) {
-                return (key, false)
-            }
-            let split = LearnedSplit(key: key, slots: slots, updated: Date())
-            model.settings.learnedSplits = SplitMemory.upsert(split, into: model.settings.learnedSplits)
-            return (key, true)
-        }
-    }
-
     fileprivate func handle(_ notification: String) {
         guard key != nil else { return }  // queued before stop()
         if notification == kAXUIElementDestroyedNotification {
@@ -216,8 +198,22 @@ final class SplitWatcher {
         baseline = visible
         // An arrangement that can't be learned (say, windows overlapping) is skipped, and so is one that only repeats
         // the stored split (a slow app's late notification); the next adjustment tries again.
-        guard learns, case .success((_, true)) = save(visible, display: display, onlyIfChanged: true) else { return }
-        onLearned?("Learned split · \(SplitLabel.apps(key)) · \(SplitLabel.display(key, displays: [display]))")
+        guard learns else { return }
+        let previous = SplitMemory.lookup(key, in: model.settings.learnedSplits)
+        switch save(visible, display: display, onlyIfChanged: true) {
+        case .failure(let rejection):
+            onHelpEvent?(.make(kind: .splitNotLearned(reason: rejection.message), source: .hand, display: display,
+                               group: onScreenOrder(visible, portrait: display.range.isPortrait),
+                               split: nil, previous: nil))
+        case .success((_, false)):
+            return
+        case .success((_, true)):
+            let split = SplitMemory.lookup(key, in: model.settings.learnedSplits)
+            onLearned?("Learned split · \(SplitLabel.apps(key)) · \(SplitLabel.display(key, displays: [display]))")
+            onHelpEvent?(.make(kind: .splitLearned, source: .hand, display: display,
+                               group: onScreenOrder(visible, portrait: display.range.isPortrait), split: split,
+                               previous: previous))
+        }
     }
 
     /// The watched display as it is now (so a gap or padding edited since the watch began counts) and the windows on
@@ -261,9 +257,23 @@ final class SplitWatcher {
             for await (index, frame) in group { frames[index] = frame }
             return frames
         }
-        await windows.mergeMoves(batch)  // one ⌃⌥Z puts the neighbours back
+        let undoMarker = await windows.mergeMoves(batch)  // one ⌃⌥Z puts the neighbours back
         if generation == self.generation {
-            baseline = visible.indices.map { (window: visible[$0].window, frame: landed[$0] ?? visible[$0].frame) }
+            let finals = visible.indices.map { (window: visible[$0].window, frame: landed[$0] ?? visible[$0].frame) }
+            baseline = finals
+            let moved = Set(moves.map(\.index))
+            let changedIndex = visible.indices.first {
+                !moved.contains($0) && !CommandExecutor.sameFrame(visible[$0].frame, before[$0])
+            }
+            let followed = moves.filter { landed[$0.index] != nil }  // a follower whose app refused didn't follow
+            if !followed.isEmpty, let changedIndex {
+                let kind = HelpEventKind.neighboursFollowed(
+                    changed: HelpEvent.appName(visible[changedIndex].window),
+                    followers: followed.map { HelpEvent.appName($0.window) })
+                onHelpEvent?(.make(kind: kind, source: .hand, display: display,
+                                   group: onScreenOrder(finals, portrait: display.range.isPortrait),
+                                   split: nil, previous: nil, undoMarker: undoMarker))
+            }
         }
         return true
     }

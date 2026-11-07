@@ -29,6 +29,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var icon: MenuBarIcon = .grid
     private let status = NSMenuItem()
+    private let explainItem = NSMenuItem(title: "What Just Happened?", action: #selector(explain), keyEquivalent: "")
     private let statusSeparator = NSMenuItem.separator()
     private let snapItem = NSMenuItem(title: "Snap Front Window", action: nil, keyEquivalent: "")
     private let columnsItem = NSMenuItem(title: "Columns", action: nil, keyEquivalent: "")
@@ -49,7 +50,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.autoenablesItems = false
         menu.delegate = self
         status.isEnabled = false
-        for entry in [settingsItem, shortcutsItem, undoItem, checkItem] { entry.target = self }
+        for entry in [explainItem, settingsItem, shortcutsItem, undoItem, checkItem] { entry.target = self }
         snapItem.submenu = Self.submenu(
             [("Tile All Windows", .tileWindows(display: .current)), ("Remember Split", .rememberSplit(display: .current)),
              ("Tile Evenly", .tileEvenly(display: .current))]
@@ -61,7 +62,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 + (2...8).map { ("\($0) Columns", .columns(.set($0), display: .current)) },
             target: self, separatorAfter: 1)
         let quit = NSMenuItem(title: "Quit Tessera", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        for entry in [status, statusSeparator, snapItem, columnsItem, actionsSeparator,
+        for entry in [status, explainItem, statusSeparator, snapItem, columnsItem, actionsSeparator,
                       settingsItem, shortcutsItem, undoItem, checkItem, .separator(), quit] {
             menu.addItem(entry)
         }
@@ -90,7 +91,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             : "Accessibility not granted"
         // The status line always shows when setup is unfinished: it says why the rest is greyed out.
         status.isHidden = granted && !items.statusLine
-        statusSeparator.isHidden = status.isHidden
+        explainItem.isHidden = !items.explain
+        statusSeparator.isHidden = status.isHidden && explainItem.isHidden
         snapItem.isHidden = !items.snapSubmenu
         columnsItem.isHidden = !items.columnsSubmenu
         actionsSeparator.isHidden = snapItem.isHidden && columnsItem.isHidden
@@ -98,7 +100,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         settingsItem.title = granted ? "Settings…" : "Finish Setup…"
         shortcutsItem.isHidden = !items.shortcuts
         undoItem.isHidden = !items.undo
-        for entry in [snapItem, columnsItem, shortcutsItem, undoItem] { entry.isEnabled = granted }
+        for entry in [explainItem, snapItem, columnsItem, shortcutsItem, undoItem] { entry.isEnabled = granted }
         // A waiting update shows its item even when hidden in settings, so the cue can reach the person;
         // clicking it brings Sparkle's alert forward.
         checkItem.title = updateWaiting ? "Update Available…" : "Check for Updates…"
@@ -161,6 +163,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func openSettings() { presenter()?.showSettings() }
     @objc private func openShortcuts() { presenter()?.showSettings(pane: .shortcuts) }
+    @objc private func explain() { run(.explain) }
     @objc private func undoLastMove() { run(.undo) }
     @objc private func checkForUpdates() { updates.checkForUpdates() }
 }

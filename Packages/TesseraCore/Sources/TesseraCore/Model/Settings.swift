@@ -315,6 +315,7 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     /// Oldest first, at most `SplitMemory.capacity`.
     public var learnedSplits: [LearnedSplit] = []
     public var updates = UpdateSettings()
+    public var help = HelpSettings()
 
     public init() {}
     public static let defaults = TesseraSettings()

@@ -53,6 +53,10 @@ public enum Command: Codable, Equatable, Sendable {
     case tileEvenly(display: DisplaySelector)
     /// Saves how the windows on the display are arranged now, so Tile reuses it.
     case rememberSplit(display: DisplaySelector)
+    /// Forgets the learned split for the display's current apps, so Tile returns to equal shares.
+    case forgetSplit(display: DisplaySelector)
+    /// Opens the help coach on request.
+    case explain
     case undo
     case openSettings
     case listDisplays
@@ -207,6 +211,7 @@ public struct HotkeyBinding: Codable, Equatable, Sendable, Identifiable {
             HotkeyBinding(id: "undo", hotkey: Hotkey(keyCode: 6, modifiers: co), command: .undo),
             HotkeyBinding(id: "tile-windows", hotkey: Hotkey(keyCode: 17, modifiers: co),
                           command: .tileWindows(display: .current)),
+            HotkeyBinding(id: "explain", hotkey: HelpDefaults.explainHotkey, command: .explain),
             HotkeyBinding(id: "open-settings", hotkey: Hotkey(keyCode: 43, modifiers: [.control, .option, .command]),
                           command: .openSettings),
         ]

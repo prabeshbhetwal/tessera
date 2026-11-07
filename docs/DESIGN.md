@@ -39,6 +39,7 @@ System font (SF Pro) throughout. One family.
 - `ResetSection`: trailing "Restore Defaults" button, last section of each pane, with an optional line saying what is kept. It is the only reset verb in the app.
 - `RingDiagram`: the ring drawn with the overlay's own geometry (`RingLayer` paths). In the Ring pane it is the wedge picker: click or ← → to focus a wedge, one Picker below edits it. The Overlay pane's sample reuses it with the right-half wedge lit.
 - Overlay (on screen): the ring is a vibrant `NSVisualEffectView` (`.hudWindow`, behind-window blending) cut to the wedges, with a theme tint, hairline edges, white glyphs and the accent wedge on top. Grid lines and the "from" outline carry a dark halo so they read on light wallpapers. The HUD is the same material in a capsule.
+- Coach (on screen): a card beside the windows an event was about, on a dim with those windows cut out. The card is the one overlay that takes clicks; the dim stays click-through. The dim uses Overlay › Dimming's colour and strength. The spotlight outline and the "try it" seam use the theme accent, deliberately: they mark the live element. Reduce Motion stops the seam's pulse; the card and dim keep their 0.2 s fades, because a cross-fade isn't motion. With General › Help › Dim the screen behind tips off, every card shows without the dim, except that a "try it" step keeps its pulsing seam on a clear layer.
 - Diagrams (`MiniGrid`, `ZoneDiagram`, `PreviewSample`, `FlickDemo`): `Canvas` drawings on a `.quinary` rounded panel, accent for the live element.
 
 ## Layout
@@ -59,14 +60,14 @@ Every behaviour the user can see has its own switch, and switches never change e
 - Ring pane, Colours: ring, tint, lines and icons, highlighted wedge, grid. A setting lives where the user looks for it: ring colours are in the Ring pane, and also in Overlay with the rest of the theme. Restore Defaults keeps them.
 - Ring pane, Size and zones: radius, thickness, point threshold, and the top and bottom bands (while pointing, they decide where a window snaps to half height). Bands are ring settings, not display settings, so Restore Defaults resets them with the rest of the pane.
 - Overlay pane: theme, every colour (ring, lines and icons, highlight, snap preview, grid, label, label text, outline, dimming); Preview (fill style, opacity, border, corners) as one section; label parts (size, slot); dimming and the "from" outline as two switches.
-- General: Appearance; Menu bar (show, icon, and which items: status line, Snap Front Window, Columns, Shortcuts…, Undo; Settings… and Quit always); Messages (on/off, position, duration); Updates (check and install automatically, frequency, betas), after Messages because it is rarely changed.
+- General: Appearance; Menu bar (show, icon, and which items: status line, What Just Happened?, Snap Front Window, Columns, Shortcuts…, Undo; Settings… and Quit always); Messages (on/off, position, duration); Help (tips on their own, dim behind tips, Show Tips Again); Updates (check and install automatically, frequency, betas), after Help because it is rarely changed.
 - Shortcuts: a master hotkeys switch above the per-hotkey switches.
 - Theme colours are edited through `SettingsModel.editTheme` / `themeColor`: a built-in theme is copied to "Custom" first and never changed itself.
 A new setting only needs a default value in `TesseraSettings` (or a nested struct, or `Theme`): `SettingsMigration` fills missing keys in older files, including inside each custom theme.
 
 ## Motion
 
-Follows Reduce Motion. Animations are the onboarding flick demo (paused under Reduce Motion), permission symbol replacement, the overlay's own morph and brief Ring selection/shortcut confirmation fades. No page transitions.
+Follows Reduce Motion. Animations are the onboarding flick demo (paused under Reduce Motion), permission symbol replacement, the overlay's own morph, brief Ring selection/shortcut confirmation fades, the coach's 0.2 s fades (kept under Reduce Motion) and its pulsing "try it" seam (still under Reduce Motion). No page transitions.
 
 ## Ring feedback
 

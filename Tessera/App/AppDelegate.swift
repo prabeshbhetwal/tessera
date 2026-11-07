@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let updates = UpdateService.shared
     private(set) var coordinator: Coordinator?
     private var statusItem: StatusItemController?
+    private var helpCenter: HelpCenter?
     private var permissionObserver: NSObjectProtocol?
     /// URLs that arrive before the coordinator exists (app launched by a `tessera://` link).
     private var pendingURLs: [URL] = []
@@ -34,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             presenter: { [weak self] in self?.coordinator?.presenter },
             run: { [weak self] command in
                 guard let coordinator = self?.coordinator else { return }
-                Task { await coordinator.run(command) }
+                Task { await coordinator.run(command, source: .menu) }
             }
         )
         guard let fileURL = Self.settingsURL() else {
@@ -52,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let coordinator = Coordinator(model: model, store: store)
             coordinator.onSettingsChange = { [weak self] in self?.applyAppSettings($0) }
             self.coordinator = coordinator
+            wireHelp(coordinator)
             CommandBridge.executor = coordinator.executor
             let queued = pendingURLs
             pendingURLs = []
@@ -111,8 +113,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             log.notice("refused settings file command from URL")
             coordinator.showHUD("Settings import/export isn't available from URLs")
         default:
-            await coordinator.run(command)
+            await coordinator.run(command, source: .automation)
         }
+    }
+
+    /// The coach hears every command result, split watcher event and What Just Happened? request.
+    private func wireHelp(_ coordinator: Coordinator) {
+        let help = HelpCenter(
+            model: model, displays: coordinator.displays, executor: coordinator.executor,
+            presenter: coordinator.presenter,
+            showHUD: { [weak coordinator] in coordinator?.showHUD($0) },
+            isRingOpen: { [weak coordinator] in coordinator?.isRingOpen ?? false })
+        helpCenter = help
+        coordinator.executor.onEvent = { [weak help] in help?.record($0) }
+        coordinator.executor.splitWatcher.onHelpEvent = { [weak help] in help?.record($0) }
+        coordinator.executor.onExplain = { [weak help] in help?.explainLatest() }
     }
 
     /// App-level settings that live outside the coordinator: the menu bar item, the windows' appearance and updates.

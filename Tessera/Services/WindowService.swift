@@ -121,7 +121,11 @@ actor WindowService {
     func newBatch() -> Int { undo.newBatch() }
 
     /// Joins the moves tagged `batch` into one undo step; moves made meanwhile by anything else stay their own steps.
-    func mergeMoves(_ batch: Int) { undo.merge(batch: batch) }
+    /// Returns `undoMarker()` when the next undo takes back exactly this batch, nil otherwise (`WindowUndoHistory.merge`).
+    @discardableResult func mergeMoves(_ batch: Int) -> Int? { undo.merge(batch: batch) }
+
+    /// Changes with every recorded move, merge and undo, so a caller can tell whether the latest step is still its own.
+    func undoMarker() -> Int { undo.marker }
 
     /// On-screen normal-layer windows of other apps, in AppKit coordinates.
     func neighbourFrames(excluding window: WindowRef, primaryHeight: CGFloat) -> [CGRect] {
@@ -238,17 +242,6 @@ actor WindowService {
         var pid: pid_t = 0
         guard AXUIElementGetPid(app, &pid) == .success, pid > 0 else { return nil }
         return pid
-    }
-
-    /// True when the goal sits nearer the right edge of its display than the left
-    /// (right half, right quarters, right-hand columns), so a constrained window keeps its right edge.
-    private static func anchorsRight(_ goal: CGRect) -> Bool {
-        var display: CGDirectDisplayID = 0
-        var count: UInt32 = 0
-        let centre = CGPoint(x: goal.midX, y: goal.midY)
-        let found = CGGetDisplaysWithPoint(centre, 1, &display, &count) == .success && count > 0
-        let bounds = CGDisplayBounds(found ? display : CGMainDisplayID())
-        return bounds.maxX - goal.maxX < goal.minX - bounds.minX
     }
 }
 

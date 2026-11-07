@@ -49,6 +49,11 @@ import Testing
         #expect(try Self.cli("remember") == .rememberSplit(display: .current))
         #expect(try Self.cli("remember --display 2") == .rememberSplit(display: .index(2)))
         #expect(try Self.url("tessera://remember?display=cursor") == .rememberSplit(display: .cursor))
+        #expect(try Self.cli("explain") == .explain)
+        #expect(try Self.cli("forget") == .forgetSplit(display: .current))
+        #expect(try Self.cli("forget --display 2") == .forgetSplit(display: .index(2)))
+        #expect(try Self.url("tessera://explain") == .explain)
+        Self.expectInvalid("'forget' is not available via URL") { try Self.url("tessera://forget") }
         Self.expectInvalid("unexpected argument") { try Self.cli("remember now") }
     }
 
