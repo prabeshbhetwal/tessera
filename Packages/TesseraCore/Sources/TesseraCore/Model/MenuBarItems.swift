@@ -10,6 +10,8 @@ public struct MenuBarItems: Codable, Equatable, Sendable {
     public var undo = true
     /// "Check for Updates…". It still shows while an update waits, so the person can reach it.
     public var checkForUpdates = true
+    /// "Explain", which opens the help coach.
+    public var explain = true
 
     public init() {}
 }

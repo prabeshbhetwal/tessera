@@ -60,7 +60,7 @@ public actor SettingsStore {
             throw SettingsError.invalid("Not a valid Tessera settings file, or one from a newer version.")
         }
         try SettingsValidation.validate(settings)
-        return (settings, migration.migratedFrom)
+        return (HelpDefaults.offeringExplainHotkey(settings), migration.migratedFrom)
     }
 
     /// Atomic write; creates the folder if needed. Invalid settings are refused so a bad value can
