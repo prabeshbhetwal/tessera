@@ -87,14 +87,14 @@ public enum CoachScript {
                     actions: [.skip], spotlight: .seam, waitsForLearn: true),
                 CoachStep(
                     title: "\(followers) followed",
-                    body: "Tessera saved this as \(saved) for these \(n) apps. Press ⌃⌥T any time to get it back.",
+                    body: "Tessera saved this as \(saved) for these \(n) apps. Tile All Windows (⌃⌥T by default) brings it back any time.",
                     actions: [.done, .undoSplitChange]),
             ]
         case .tiledEvenly(let hasSplit):
             if hasSplit {
                 return [CoachStep(
                     title: "Tiled evenly",
-                    body: "Each window got \(CoachCopy.equalShare(n)). Your split for these apps is kept for the next Tile All Windows (⌃⌥T), and adjustments now aren't saved.",
+                    body: "Each window got \(CoachCopy.equalShare(n)). Your split for these apps is kept for the next Tile All Windows. Adjustments now aren't saved.",
                     actions: [.done])]
             }
             return [CoachStep(
@@ -123,12 +123,12 @@ public enum CoachScript {
         case .splitLearned:
             return [CoachStep(
                 title: "Saved as your split",
-                body: "Next time \(CoachCopy.list(apps)) are on \(event.displayName), Tile All Windows (⌃⌥T) puts them back like this.",
+                body: "Next time \(CoachCopy.list(apps)) are on \(event.displayName), Tile All Windows (⌃⌥T by default) puts them back like this.",
                 actions: [.done, .forgetSplit])]
         case .splitNotLearned(let reason):
             return [CoachStep(
                 title: "Not saved as a split",
-                body: "\(reason). Tile All Windows (⌃⌥T) lines the windows up.",
+                body: "\(reason). Tile All Windows (⌃⌥T by default) lines the windows up.",
                 actions: [.tileAll, .done])]
         case .splitForgotten:
             return [forgotten(event)]
@@ -139,7 +139,7 @@ public enum CoachScript {
     public static func forgotten(_ event: HelpEvent) -> CoachStep {
         CoachStep(
             title: "Split forgotten",
-            body: "Tessera forgot its split for \(CoachCopy.list(event.apps)) on \(event.displayName). The next Tile All Windows (⌃⌥T) gives each window an equal share.",
+            body: "Tessera forgot its split for \(CoachCopy.list(event.apps)) on \(event.displayName). The next Tile All Windows (⌃⌥T by default) gives each window an equal share.",
             actions: [.undoSplitChange, .done])
     }
 }

@@ -52,11 +52,21 @@ struct RingPane: View {
                     Picker("Layout icons", selection: ring.iconStyle) {
                         ForEach(RingIconStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
+                    .pickerStyle(.segmented)
                     Toggle("Dashed circle where pointing begins", isOn: ring.showBoundary)
                         .disabled(!(r.directions && r.pointing))
                     Toggle("Frosted background", isOn: ring.frosted)
                 }
                 .disabled(!r.showRing)
+            } header: {
+                Text("Appearance")
+            } footer: {
+                Footer(r.showRing
+                    ? "Move towards a layout icon. Your selection lights up; its name appears below."
+                    : "The ring stays hidden, but every gesture still works: the preview shows what you'll get.")
+            }
+
+            Section {
                 // Not tied to Pointing: the arrow keys pick columns too, and show the grid while they do.
                 Toggle("Grid lines while picking a column", isOn: ring.showGrid)
                 Toggle("Number the grid's columns", isOn: ring.showColumnNumbers)
@@ -66,11 +76,9 @@ struct RingPane: View {
                 Button("Show the hint again") { model.settings.ring.pointingHintsSeen = nil }
                     .disabled(!r.pointing || !r.showPointingHint || r.pointingHintDue)
             } header: {
-                Text("Appearance")
+                Text("Grid and hints")
             } footer: {
-                Footer(r.showRing
-                    ? "Move towards a layout icon. Your selection lights up; its name appears below."
-                    : "The ring stays hidden, but every gesture still works: the preview shows what you'll get.")
+                Footer("The grid also shows when the arrow keys pick a column.")
             }
 
             Section {
@@ -104,7 +112,7 @@ struct RingPane: View {
             } header: {
                 Text("Size and zones")
             } footer: {
-                Footer("Releasing in the ring's empty middle (\(Int(r.cancelRadius)) pt) cancels. The ring always stays inside the point threshold; past it the grid takes over, so raise it if you slip into pointing by accident. While pointing, the top and bottom bands of the screen snap a window to half height; the middle is full height.")
+                Footer("Releasing within \(Int(r.cancelRadius)) pt of the centre cancels, and the ring always stays inside the point threshold. Raise the threshold if flicks land as points. While pointing, the top and bottom bands snap a window to half height.")
             }
 
             ResetSection(keeps: "Keeps your theme colours.") {

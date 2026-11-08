@@ -20,10 +20,11 @@ struct SplitsPane: View {
                     Text("Stays in place").tag(SplitGapPlacement.staysInPlace)
                     Text("Follows its neighbour").tag(SplitGapPlacement.followsNeighbour)
                 }
+                .pickerStyle(.radioGroup)
             } header: {
                 Text("Learning")
             } footer: {
-                Footer("Closing a window: the apps left go back to their split if you've taught one; otherwise the window beside it you used last grows into the space. Resizing and filling need Learn from my adjustments. Restore last order off: windows keep their current order and take their app's learned size.")
+                Footer("Closing a window: the apps left go back to their split if you've taught one; otherwise the window beside it you used last grows into the space. Resizing and filling need Learn from my adjustments.")
             }
 
             let groups = displayGroups
@@ -56,7 +57,7 @@ struct SplitsPane: View {
         }
         .formStyle(.grouped)
         .confirmationDialog(
-            "Forget all learned splits? Tile will use equal shares again.",
+            "Forget all learned splits? Tile All Windows will use equal shares again.",
             isPresented: $confirmingForgetAll, titleVisibility: .visible
         ) {
             Button("Forget All", role: .destructive) { model.settings.learnedSplits = [] }

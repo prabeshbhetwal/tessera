@@ -1,9 +1,11 @@
+import os
 import SwiftUI
 import TesseraCore
 
 /// Five-step first-run flow (spec §6.2): welcome, Accessibility, optional Screen Recording, tiling, try it.
 struct OnboardingView: View {
     static let stepCount = 5
+    private static let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "onboarding")
 
     let chord: TriggerChord
     let onFinish: () -> Void
@@ -12,7 +14,7 @@ struct OnboardingView: View {
     @State private var axObserver: NSObjectProtocol?
     @State private var showFix = false
     @State private var fixTimer: Task<Void, Never>?
-    @State private var fixError: String?
+    @State private var fixFailed = false
     @State private var screenAllowed = Permissions.isScreenCaptureAllowed
 
     init(startStep: Int = 0, chord: TriggerChord = .default, onFinish: @escaping () -> Void) {
@@ -114,7 +116,7 @@ struct OnboardingView: View {
                 .frame(height: 160)
             VStack(spacing: 8) {
                 Text("Snap windows with the ring").font(.largeTitle.weight(.bold))
-                Text("Hold the trigger, then move toward an edge for a half, a corner for a quarter, or up to fill the screen. Keep going further out to point at a column of your display's grid instead.")
+                Text("Hold the trigger, then move towards an edge for a half, a corner for a quarter, or up to fill the screen. Keep going further out to point at a column of your display's grid instead.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -126,7 +128,7 @@ struct OnboardingView: View {
 
     private var accessibility: some View {
         StepPage(
-            symbol: "accessibility", tint: .blue, title: "Allow Accessibility",
+            symbol: "accessibility", title: "Allow Accessibility",
             text: "Tessera moves and resizes other apps' windows through macOS Accessibility. The trigger does nothing until it's allowed."
         ) {
             PermissionRow(title: "Accessibility", granted: axTrusted, actionTitle: "Grant…") {
@@ -139,7 +141,12 @@ struct OnboardingView: View {
                         .multilineTextAlignment(.center)
                     Button("Fix permission", action: resetPermission)
                         .controlSize(.regular)
-                    if let fixError { Caption(fixError) }
+                    if fixFailed {
+                        Caption("Tessera couldn't reset the permission. Open System Settings, remove Tessera from Accessibility, then grant it again.")
+                            .multilineTextAlignment(.center)
+                        Button("Open System Settings") { Permissions.openPrivacyPane("Privacy_Accessibility") }
+                            .controlSize(.regular)
+                    }
                 }
                 .frame(maxWidth: 440)
             }
@@ -148,7 +155,7 @@ struct OnboardingView: View {
 
     private var screenRecording: some View {
         StepPage(
-            symbol: "rectangle.dashed.badge.record", tint: .teal, title: "Live window thumbnails",
+            symbol: "rectangle.dashed.badge.record", title: "Window snapshots",
             text: "Optional, and only used by the Window snapshot preview style. The preview is a tinted box by default; with Screen Recording allowed you can switch it to show a picture of the window you're moving. Tessera takes one still snapshot per gesture and never records or saves anything."
         ) {
             PermissionRow(title: "Screen Recording", granted: screenAllowed, actionTitle: "Allow…") {
@@ -163,15 +170,14 @@ struct OnboardingView: View {
 
     private var tryIt: some View {
         StepPage(
-            symbol: "hand.point.up.left.fill", tint: .indigo, title: "Try it",
+            symbol: "hand.point.up.left.fill", title: "Try it",
             text: "Click another app's window, then hold \(ModifierKey.describe(chord.keyCodes))."
         ) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 12) {
-                GestureHint("arrow.up.left.and.arrow.down.right", "Move a little: an edge is a half, a corner a quarter, up is full screen.")
+                GestureHint("arrow.up.left.and.arrow.down.right", "Move a little: an edge is a half, a corner a quarter, up maximises.")
                 GestureHint("rectangle.split.3x1", "Keep going further out to point at a column. Click to span several.")
-                GestureHint("xmark.circle", "Changed your mind? Release in the middle, press Esc or right-click.")
                 GestureHint("scroll", "Scroll while holding to change how many columns the display has.")
-                GestureHint("return", "Release to snap. Arrow keys and Return work too.")
+                GestureHint("return", "Release to snap. To cancel, release in the middle, press Esc or right-click.")
             }
             .frame(maxWidth: 480)
             if !axTrusted {
@@ -201,10 +207,11 @@ struct OnboardingView: View {
         }
         do {
             try process.run()
-            fixError = nil
+            fixFailed = false
             startFixTimer()
         } catch {
-            fixError = "Couldn't reset the permission: \(error.localizedDescription)"
+            Self.log.error("tccutil reset failed: \(error.localizedDescription, privacy: .private)")
+            fixFailed = true
         }
     }
 }
@@ -256,43 +263,6 @@ private struct StepIndicator: View {
         }
         .accessibilityElement()
         .accessibilityLabel("Step \(current + 1) of \(count)")
-    }
-}
-
-/// Looping sketch of a flick: a cursor dot leaves the centre and lights the wedge it heads for.
-private struct FlickDemo: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private let sequence = [6, 2, 0, 3, 7]
-
-    var body: some View {
-        // 30 fps is plenty for a decorative demo; the default follows the display (120 Hz on ProMotion)
-        // and cost ~25% CPU for as long as onboarding stayed open.
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { timeline in
-            Canvas { context, size in
-                let t = reduceMotion ? 0.6 : timeline.date.timeIntervalSinceReferenceDate
-                let cycle = Int(t / 1.6)
-                let phase = CGFloat(min(1, (t.truncatingRemainder(dividingBy: 1.6)) / 0.8))
-                let wedge = sequence[cycle % sequence.count]
-                let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                let outer = min(size.width, size.height) / 2 - 8
-                let inner = outer * 0.55
-
-                for i in 0..<8 {
-                    // RingLayer draws in y-up space; flip vertically for Canvas.
-                    let path = Path(RingLayer.wedgePath(index: i, center: .zero, inner: inner, outer: outer))
-                        .applying(CGAffineTransform(scaleX: 1, y: -1))
-                        .offsetBy(dx: center.x, dy: center.y)
-                    let lit = i == wedge && phase > 0.5
-                    context.fill(path, with: .color(lit ? .accentColor : .secondary.opacity(0.25)))
-                }
-                let angle = CGFloat(wedge) * .pi / 4
-                let distance = (inner + outer) / 2 * phase
-                let dot = CGPoint(x: center.x + sin(angle) * distance, y: center.y - cos(angle) * distance)
-                context.fill(Path(ellipseIn: CGRect(x: dot.x - 6, y: dot.y - 6, width: 12, height: 12)), with: .color(.primary))
-            }
-        }
-        .accessibilityElement()
-        .accessibilityLabel("Animation: the cursor moves outward and the ring highlights the wedge it heads for.")
     }
 }
 

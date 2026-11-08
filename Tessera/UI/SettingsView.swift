@@ -180,10 +180,9 @@ struct PaneIcon: View {
             .scaledToFit()
             .fontWeight(.semibold)
             .foregroundStyle(.white)
-            .shadow(color: .black.opacity(0.2), radius: size * 0.02, y: size * 0.02)
             .frame(width: size * 0.58, height: size * 0.58)
             .frame(width: size, height: size)
-            .background(tile.fill(pane.tint.gradient))
+            .background(tile.fill(pane.tint))
             .overlay(tile.strokeBorder(.white.opacity(0.2), lineWidth: 0.5))
             .accessibilityHidden(true)
     }

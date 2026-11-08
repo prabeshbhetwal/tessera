@@ -21,7 +21,7 @@ Precise, quiet, native. Tessera should feel like a part of macOS that Apple forg
 ## Anti-references
 
 - Classic System Preferences toolbar tabs (a row of eight icon tabs across the top). Dated and hides where a setting lives.
-- Loop's own look. Tessera is a clean-room implementation and must not read as a Loop clone.
+- Any other window manager's look. Tessera's visuals are its own and must not read as a copy.
 - Electron-style settings: cards inside cards, huge paddings, custom controls that mimic the web.
 - Permission screens that read like legal notices. Permissions are a two-line explanation and one button.
 
