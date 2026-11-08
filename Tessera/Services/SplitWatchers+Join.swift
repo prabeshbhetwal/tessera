@@ -15,17 +15,28 @@ extension SplitWatchers {
         let settings = model.settings
         guard settings.learnSplits, settings.splitTilesNewWindow, pid != ProcessInfo.processInfo.processIdentifier
         else { return }
+        // A just-launched app activates too: keep the launch's look (its retries, groups and scope).
+        if !launched, pendingJoinLaunch == pid { return }
         let tiled = watchers.filter { !$0.value.watched.isEmpty }.mapValues(\.watched)
         let anywhere = launched && settings.splitNewWindowScope == .rememberedSplits
         guard !tiled.isEmpty || anywhere else { return }
         pendingJoin?.cancel()
+        pendingJoinLaunch = launched ? pid : nil
         pendingJoin = Task { [weak self] in
+            defer { if self?.pendingJoinLaunch == pid { self?.pendingJoinLaunch = nil } }
             for delay in launched ? [500, 1000, 1500] : [500] {
                 do { try await Task.sleep(for: .milliseconds(delay)) } catch { return }
                 guard let self else { return }
+                if !launched, self.wasUnhidden(pid) { return }
                 if await self.join(pid: pid, tiled: tiled, anywhere: anywhere) { return }
             }
         }
+    }
+
+    /// An app unhidden in the last few seconds brings back windows it already had; none of them is joining.
+    private func wasUnhidden(_ pid: pid_t) -> Bool {
+        unhidden = unhidden.filter { $0.value.timeIntervalSinceNow > -3 }
+        return unhidden[pid] != nil
     }
 
     /// True once a group was tiled, or the setting went off.

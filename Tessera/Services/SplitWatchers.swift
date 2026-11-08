@@ -25,6 +25,10 @@ final class SplitWatchers {
     var pendingFills: [String: Task<Void, Never>] = [:]
     /// Tiling a newly opened window in (see `joinSoon`).
     var pendingJoin: Task<Void, Never>?
+    /// The app whose launch `pendingJoin` is still looking for, so its own activation doesn't cut the look short.
+    var pendingJoinLaunch: pid_t?
+    /// When each app was last unhidden: its windows reappearing are not new windows joining.
+    var unhidden: [pid_t: Date] = [:]
     /// Groups last arranged by Tile Evenly: a re-arm keeps them from learning, so the stored split survives.
     private var noLearn: Set<SplitKey> = []
 
@@ -50,6 +54,12 @@ final class SplitWatchers {
                 let launched = note.name == NSWorkspace.didLaunchApplicationNotification
                 MainActor.assumeIsolated { self?.joinSoon(pid: pid, launched: launched) }
             }
+        }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didUnhideApplicationNotification, object: nil, queue: .main) { [weak self] note in
+            guard let pid = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.processIdentifier
+            else { return }
+            MainActor.assumeIsolated { self?.unhidden[pid] = Date() }
         }
     }
 
