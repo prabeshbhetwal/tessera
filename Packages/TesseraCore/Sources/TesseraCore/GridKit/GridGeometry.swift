@@ -101,8 +101,8 @@ public enum GridGeometry {
         let bottom = y.lowerBound > 0 ? h : 0, top = y.upperBound < 1 ? h : 0
         let w = usable.width, ht = usable.height
         return CGRect(
-            x: usable.minX + x.lowerBound * w + left,
-            y: usable.minY + y.lowerBound * ht + bottom,
+            x: min(usable.maxX, usable.minX + x.lowerBound * w + left),
+            y: min(usable.maxY, usable.minY + y.lowerBound * ht + bottom),
             width: max(0, (x.upperBound - x.lowerBound) * w - left - right),
             height: max(0, (y.upperBound - y.lowerBound) * ht - bottom - top))
     }

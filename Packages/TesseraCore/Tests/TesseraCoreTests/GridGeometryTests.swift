@@ -109,6 +109,21 @@ import Testing
 
     // MARK: actions
 
+    @Test func oversizedGapKeepsFramesWithinUsableDisplay() {
+        let display = Self.context(CGRect(x: -40, y: 20, width: 100, height: 100),
+                                   columns: 3, gap: 400, padding: 0)
+        let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
+        let frames = [
+            GridGeometry.frame(for: .rightHalf, display: display, current: .zero),
+            GridGeometry.frame(for: .topHalf, display: display, current: .zero),
+            GridGeometry.frame(for: ColumnSpan(columns: 1...1, band: .top), display: display),
+        ]
+        for frame in frames {
+            #expect(frame.minX >= usable.minX && frame.maxX <= usable.maxX)
+            #expect(frame.minY >= usable.minY && frame.maxY <= usable.maxY)
+        }
+    }
+
     @Test func leftHalfMacBook() {
         let f = GridGeometry.frame(for: .leftHalf, display: Self.macbook, current: .zero)
         // usable = (8, 8, 1496, 933); right edge inset by gap/2.
