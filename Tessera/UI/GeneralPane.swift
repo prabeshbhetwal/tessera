@@ -129,6 +129,7 @@ struct GeneralPane: View {
                 model.settings.menuBarIcon = .grid
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
+                model.settings.searchUsesAppleIntelligence = TesseraSettings.defaults.searchUsesAppleIntelligence
                 model.settings.updates = UpdateSettings()
                 model.settings.help.autoShow = true
                 model.settings.help.dimScreen = true

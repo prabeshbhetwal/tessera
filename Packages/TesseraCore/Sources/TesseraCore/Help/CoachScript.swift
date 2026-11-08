@@ -120,6 +120,14 @@ public enum CoachScript {
             return [CoachStep(
                 title: "Space filled", body: body + " You can turn this off in Settings › Splits.",
                 actions: [.done, .undoMove, .openSplitsSettings])]
+        case .windowJoined(let joined, let usedSplit):
+            let opened = CoachCopy.list(joined)
+            let body = usedSplit
+                ? "\(opened) opened, so \(CoachCopy.list(apps)) went back to your split for these apps."
+                : "\(opened) opened, so each window got \(CoachCopy.equalShare(n)). Adjust them by hand and Tessera remembers it for these apps."
+            return [CoachStep(
+                title: "Made room for \(opened)", body: body + " You can turn this off in Settings › Splits.",
+                actions: [.done, .undoMove, .openSplitsSettings])]
         case .splitLearned:
             return [CoachStep(
                 title: "Saved as your split",

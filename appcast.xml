@@ -3,6 +3,26 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.12</title>
+            <pubDate>Sun, 08 Nov 2026 08:53:25 +0000</pubDate>
+            <sparkle:version>20261108.085207</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.12</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Opening a window makes room
+
+When an app opens a window beside windows that are already tiled side by side, Tessera tiles them again with the new window. If you've taught a split for those apps, they go back to it. Otherwise each window gets an equal share. Adjust them by hand, and Tessera remembers that split for those apps next time.
+
+- A "Made room for …" card explains what happened. ⌃⌥Z undoes it.
+- Settings › Splits › **Make room when a window opens** turns this on or off. It's on by default.
+- **Make room on** has two options:
+  - **Displays already tiled** is the default.
+  - **Also wherever the apps have a split** also arranges a display when you open an app you've taught a split for.
+- Unhiding an app or switching Spaces never rearranges your windows.
+- A window opened inside an app that's already in front (⌘N) isn't tiled in yet.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.12/Tessera-0.2.0-beta.12.zip" length="4492089" type="application/octet-stream" sparkle:edSignature="7OLNTRgVJJ4F/PADvd8pSLY/wk4s+BsZ6leMJmpg671S/jq+YdD51XsG8753f098Q5Fx2tgbr2oh4A1bSU5CDA==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.11</title>
             <pubDate>Sun, 08 Nov 2026 03:47:43 +0000</pubDate>
             <sparkle:version>20261108.034626</sparkle:version>

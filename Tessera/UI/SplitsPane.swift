@@ -15,6 +15,16 @@ struct SplitsPane: View {
                     .disabled(!model.settings.learnSplits)
                 Toggle("Fill the space when a window closes", isOn: $model.settings.splitFillsClosedGap).settingAnchor("Fill the space when a window closes")
                     .disabled(!model.settings.learnSplits)
+                Toggle("Make room when a window opens", isOn: $model.settings.splitTilesNewWindow)
+                    .disabled(!model.settings.learnSplits)
+                    .settingAnchor("Make room when a window opens")
+                Picker("Make room on", selection: $model.settings.splitNewWindowScope) {
+                    Text("Displays already tiled").tag(SplitNewWindowScope.tiledDisplays)
+                    Text("Also wherever the apps have a split").tag(SplitNewWindowScope.rememberedSplits)
+                }
+                .pickerStyle(.radioGroup)
+                .disabled(!model.settings.learnSplits || !model.settings.splitTilesNewWindow)
+                .settingAnchor("Make room on")
                 Toggle("Restore last order", isOn: $model.settings.splitRestoresOrder).settingAnchor("Restore last order")
                 Picker("Empty space when order changes", selection: $model.settings.splitGapPlacement) {
                     Text("Stays in place").tag(SplitGapPlacement.staysInPlace)
@@ -25,7 +35,7 @@ struct SplitsPane: View {
             } header: {
                 Text("Learning")
             } footer: {
-                Footer("Closing a window: the apps left go back to their split if you've taught one; otherwise the window beside it you used last grows into the space. Resizing and filling need Learn from my adjustments.")
+                Footer("Closing a window: the apps left go back to their split if you've taught one; otherwise the window beside it you used last grows into the space. Opening one: it joins the tiles, in your split for those apps if you've taught one, otherwise in equal shares. Displays already tiled acts only where the windows already sit side by side; Also wherever the apps have a split also arranges a display whose apps have a split you've taught. Resizing, filling and making room need Learn from my adjustments.")
             }
 
             let groups = displayGroups
@@ -52,6 +62,8 @@ struct SplitsPane: View {
                 model.settings.learnSplits = defaults.learnSplits
                 model.settings.splitReflowsNeighbours = defaults.splitReflowsNeighbours
                 model.settings.splitFillsClosedGap = defaults.splitFillsClosedGap
+                model.settings.splitTilesNewWindow = defaults.splitTilesNewWindow
+                model.settings.splitNewWindowScope = defaults.splitNewWindowScope
                 model.settings.splitRestoresOrder = defaults.splitRestoresOrder
                 model.settings.splitGapPlacement = defaults.splitGapPlacement
             }

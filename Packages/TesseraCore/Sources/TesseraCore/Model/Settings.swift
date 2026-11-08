@@ -256,6 +256,11 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     /// When a window of a side-by-side group closes, the rest cover its space: the learned split for the apps left
     /// when there is one, otherwise the most recently used window beside the space grows into it. Needs `learnSplits`.
     public var splitFillsClosedGap = true
+    /// When a new window opens beside a side-by-side group, the group is tiled again with it: the learned split for
+    /// the apps now there when there is one, otherwise equal shares. Needs `learnSplits`.
+    public var splitTilesNewWindow = true
+    /// Which displays `splitTilesNewWindow` acts on.
+    public var splitNewWindowScope: SplitNewWindowScope = .tiledDisplays
     /// Oldest first, at most `SplitMemory.capacity`.
     public var learnedSplits: [LearnedSplit] = []
     public var updates = UpdateSettings()

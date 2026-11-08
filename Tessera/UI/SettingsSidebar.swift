@@ -32,7 +32,8 @@ struct SettingsSidebar: View {
                 .padding(.bottom, 4)
             if trimmed.isEmpty { panes } else { results }
         }
-        .task(id: trimmed) {
+        // The switch is part of the identity: turning it off cancels a model request and drops its picks.
+        .task(id: SearchRun(query: trimmed, usesAppleIntelligence: usesAppleIntelligence)) {
             local = SettingsSearch.results(for: trimmed)
             if let selected = selection, !ordered.contains(where: { $0.id == selected }) { selection = nil }
             guard usesAppleIntelligence, SettingsAssistant.isAvailable, SettingsAssistant.shouldAsk(trimmed, localResults: local.count)
@@ -99,6 +100,12 @@ struct SettingsSidebar: View {
         selection = id
         navigation.reveal(entry)
     }
+}
+
+/// What a search depends on; a change to either restarts it.
+private struct SearchRun: Equatable {
+    let query: String
+    let usesAppleIntelligence: Bool
 }
 
 /// A result: the setting's name over where it lives, with that pane's icon.
