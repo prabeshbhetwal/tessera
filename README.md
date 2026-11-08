@@ -124,6 +124,16 @@ bash scripts/verify-ring-rendering.sh /tmp/tessera-ring-preview.png
 bash scripts/verify-app-packaging.sh "$app"
 ```
 
+### Releasing
+
+Pushing to `main` doesn't publish an update. From a clean checkout of `main` that matches `origin/main`:
+
+```bash
+scripts/release.sh 0.2.0 --notes /absolute/path/to/release-notes.md
+```
+
+Use a version newer than every entry in `appcast.xml`; add `--beta` for a beta and `--dry-run` to rehearse. The script builds the app, signs the zip with the Sparkle key from the login keychain, uploads a GitHub release and pushes the updated feed. Never commit private keys.
+
 ### Project layout
 
 - `Packages/TesseraCore`: pure Swift logic with no AppKit, covered by unit tests. Grid sizing, selection, the trigger state machine, the preview model, commands and settings.
