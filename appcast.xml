@@ -3,6 +3,18 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.11</title>
+            <pubDate>Sun, 08 Nov 2026 03:47:43 +0000</pubDate>
+            <sparkle:version>20261108.034626</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.11</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Fixed
+- The Settings title bar is now the same height on every pane. Switching away from Excluded Apps no longer leaves the sidebar partly hidden under the title bar.
+- The Excluded Apps filter now sits at the top of the app list and appears once at least one app is excluded.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.11/Tessera-0.2.0-beta.11.zip" length="4443690" type="application/octet-stream" sparkle:edSignature="Ev9f1oetOWElECgxA5zFWljfyDoVYQZ0WLhwTMozTaGRv/oXWV+ogbXazz2KdRtViE5d3EFIIvoZ9ogLvdSjBw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.10</title>
             <pubDate>Sun, 08 Nov 2026 02:57:20 +0000</pubDate>
             <sparkle:version>20261108.025434</sparkle:version>
