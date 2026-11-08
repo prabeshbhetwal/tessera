@@ -22,7 +22,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
     private var waitingSubscription: AnyCancellable?
 
-    /// Mirrors Settings › Shortcuts › master switch, so the icon shows when hotkeys are paused.
+    /// Mirrors Settings › Shortcuts › master switch, so the icon carries a pause badge while hotkeys are paused.
     private var hotkeysOn = true {
         didSet { if hotkeysOn != oldValue { updateIcon() } }
     }
@@ -32,7 +32,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let run: (Command) -> Void
     private let updates: UpdateService
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    private var icon: MenuBarIcon = .grid
+    private var icon: MenuBarIcon = .tiles
     private let status = NSMenuItem()
     private let hotkeysOffItem = NSMenuItem(title: "Hotkeys Off", action: #selector(openShortcuts), keyEquivalent: "")
     private let explainItem = NSMenuItem(title: "What Just Happened?", action: #selector(explain), keyEquivalent: "")
@@ -126,39 +126,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func updateIcon() {
-        let image: NSImage?
-        if accessibilityGranted {
-            // Paused hotkeys swap the chosen symbol for a pause mark; the trigger itself still works.
-            let symbol = hotkeysOn ? icon.rawValue : "pause.circle"
-            image = updateWaiting
-                ? Self.badged(symbol: symbol)
-                : NSImage(systemSymbolName: symbol, accessibilityDescription: hotkeysOn ? "Tessera" : "Tessera, hotkeys off")
-            image?.isTemplate = true
-        } else {
-            image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "Tessera needs permission")?
+        item.button?.image = accessibilityGranted
+            // Paused hotkeys badge the chosen picture rather than replace it, so the picker always shows its effect;
+            // the trigger itself still works.
+            ? icon.image(paused: !hotkeysOn, updateWaiting: updateWaiting)
+            : NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "Tessera needs permission")?
                 .withSymbolConfiguration(.init(paletteColors: [.systemOrange]))
-        }
-        item.button?.image = image
-    }
-
-    /// The menu bar symbol with a dot at its top-right corner, cut out of the symbol so it reads on its own.
-    /// Drawn in one colour, so it stays a template image that follows light and dark menu bars.
-    private static func badged(symbol: String) -> NSImage? {
-        guard let size = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.size else { return nil }
-        // AppKit may run the handler on any thread, so it captures only the symbol name.
-        let image = NSImage(size: size, flipped: false) { @Sendable rect in
-            NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.draw(in: rect)
-            let diameter = rect.height * 0.45
-            let dot = NSRect(x: rect.maxX - diameter, y: rect.maxY - diameter, width: diameter, height: diameter)
-            NSGraphicsContext.current?.compositingOperation = .clear
-            NSBezierPath(ovalIn: dot.insetBy(dx: -1.5, dy: -1.5)).fill()
-            NSGraphicsContext.current?.compositingOperation = .sourceOver
-            NSColor.black.setFill()
-            NSBezierPath(ovalIn: dot).fill()
-            return true
-        }
-        image.accessibilityDescription = "Tessera, update available"
-        return image
     }
 
     /// A submenu whose items run commands. Each item carries its command; `separatorsAfter` splits the list into groups.

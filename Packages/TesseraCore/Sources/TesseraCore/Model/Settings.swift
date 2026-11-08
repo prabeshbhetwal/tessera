@@ -103,25 +103,23 @@ public enum RingIconStyle: String, Codable, CaseIterable, Sendable {
     case layouts, arrows
 }
 
-/// The menu bar item's picture. Raw values are SF Symbol names.
+/// The menu bar item's picture: one of Tessera's own glyphs, drawn by the app.
 public enum MenuBarIcon: String, Codable, CaseIterable, Sendable {
-    case grid = "square.grid.3x2"
-    case columns = "rectangle.split.3x1"
-    case halves = "rectangle.split.2x1"
-    case quarters = "square.grid.2x2"
-    case window = "macwindow"
-    case ring = "circle.dashed"
+    case tiles, badge, slot, mosaic, ring, split, columns, quarters
 
-    public var displayName: String {
-        switch self {
-        case .grid: "Grid"
-        case .columns: "Columns"
-        case .halves: "Halves"
-        case .quarters: "Quarters"
-        case .window: "Window"
-        case .ring: "Ring"
-        }
+    public var displayName: String { rawValue.capitalized }
+
+    /// Files from before the glyphs stored SF Symbol names; each loads as its nearest glyph. An unknown name loads as
+    /// Tiles rather than failing, since one stale picture must never set the whole settings file aside.
+    public init(from decoder: any Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: raw) ?? Self.symbolNames[raw] ?? .tiles
     }
+
+    static let symbolNames: [String: MenuBarIcon] = [
+        "square.grid.3x2": .tiles, "rectangle.split.3x1": .columns, "rectangle.split.2x1": .split,
+        "square.grid.2x2": .quarters, "macwindow": .badge, "circle.dashed": .ring,
+    ]
 }
 
 /// Where the short messages appear on the screen under the mouse.
@@ -234,7 +232,7 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     public var hudPosition: HUDPosition = .bottom
     /// Seconds a message stays before it fades.
     public var hudSeconds = 1.2
-    public var menuBarIcon: MenuBarIcon = .grid
+    public var menuBarIcon: MenuBarIcon = .tiles
     public var menuBarItems = MenuBarItems()
     /// Light or dark for Tessera's own windows (Settings, setup); `.system` follows macOS.
     public var appearance: AppearanceMode = .system
