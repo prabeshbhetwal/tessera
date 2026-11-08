@@ -42,7 +42,7 @@
 	<key>NSAppleScriptEnabled</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>© 2026 Prabesh Bhetwal</string>
+	<string>© 2026 Prabesh Bhetwal. Free software under the GNU GPL v3, with no warranty.</string>
 	<key>OSAScriptingDefinition</key>
 	<string>Tessera.sdef</string>
 	<key>SUEnableAutomaticChecks</key>

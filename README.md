@@ -1,10 +1,10 @@
 # Tessera
 
-A macOS window manager that adapts to every display.
+A macOS window manager that fits its grid to each display's size.
 
-Hold a trigger key, then **flick** or **point** to snap the frontmost window:
+Hold the trigger chord, then **flick** or **point** to snap the frontmost window:
 
-- **Flick:** a short flick picks a wedge from the ring (halves, quarters, maximize, center).
+- **Flick:** a short flick picks a wedge from the ring (halves, quarters, maximise, centre).
 - **Point:** move further and point at a column. Each display gets its own grid, sized from its usable resolution. A 14" MacBook gets halves and quarters. A 49" 32:9 ultrawide gets 5 columns by default.
   - **Scroll** while holding to change the column count. Tessera remembers it per monitor.
   - **Click** while holding to span a window across several columns.
@@ -15,9 +15,33 @@ The preview shows:
 - dimming on the windows it will cover
 - an outline of where the window was
 
-Everything is customisable. Settings export and import as one JSON file.
+Tile All Windows and Tile Evenly arrange every window on a display at once, and Tessera learns the splits you adjust by hand. ⌃⌥Z undoes any move, and **What Just Happened?** in the menu bar explains the last one.
 
-**New to Tessera?** Read the [User Guide](docs/USER-GUIDE.md). It covers every feature with examples.
+You can change the trigger, hotkeys, cycles, column counts, theme and motion. Settings export and import as one JSON file.
+
+**New to Tessera?** Read the [User Guide](docs/USER-GUIDE.md). It covers the features and settings with examples.
+
+## Install
+
+Tessera is free and in public beta.
+
+1. Download the latest `Tessera-….zip` from [Releases](https://github.com/prabeshbhetwal/tessera/releases) and move `Tessera.app` to Applications.
+2. The beta is not yet notarised by Apple, so macOS blocks the first launch. Open it once, then go to System Settings › Privacy & Security and choose **Open Anyway**.
+3. Grant Accessibility when asked. Updates install from the menu bar after that.
+
+## Privacy
+
+Tessera has no analytics, no accounts and no telemetry. Settings stay on your Mac.
+
+- **Update checks:** Tessera fetches its update feed from GitHub (`raw.githubusercontent.com`). GitHub sees your IP address and Tessera's version, as with any download.
+- **Screen Recording:** window thumbnails are drawn on this Mac for the preview and discarded. They are never saved or sent.
+- **Accessibility:** used only to read and move windows.
+
+## Licence
+
+Tessera is free software under the [GNU General Public License v3.0](LICENSE). It comes with no warranty. The ring-based interaction is inspired by [Loop](https://github.com/MrKai77/Loop), which is also GPL-3.0. Bundled components are listed in [Third-party notices](THIRD-PARTY-NOTICES.md).
+
+To report a security issue, see [SECURITY.md](SECURITY.md).
 
 ## Keyboard-only use
 
@@ -36,20 +60,20 @@ Everything works without a mouse.
 | Return | Apply |
 | Esc | Cancel |
 
-**Hotkeys.** These work without the ring, and you can rebind all of them in Settings → Shortcuts:
+**Hotkeys.** These work without the ring, and you can rebind all of them in Settings › Shortcuts:
 
 | Key | Action |
 |---|---|
 | ⌃⌥← / ⌃⌥→ | Cycle: half, edge column, two columns |
-| ⌃⌥↑ | Maximize |
-| ⌃⌥↓ | Center |
+| ⌃⌥↑ | Maximise |
+| ⌃⌥↓ | Centre |
 | ⌃⌥1–9 | Column N |
 | ⌃⌥= / ⌃⌥− | Columns ±1 |
 | ⌃⌥N / ⌃⌥P | Next / previous display |
 | ⌃⌥Z | Undo |
 | ⌃⌥⌘, | Settings |
 
-**Settings window.** ⌘1–9 switches panes (General, Excluded Apps, Shortcuts, Cycles, Splits, Displays, Ring, Overlay, Motion) and ⌘0 opens About, and every control can be reached with Tab. Settings → Overlay has a **Show on Screen** button that shows the real ring and preview for three seconds, so a theme can be judged without holding the trigger.
+**Settings window.** ⌘1–9 switches panes (General, Excluded Apps, Shortcuts, Cycles, Splits, Displays, Ring, Overlay, Motion) and ⌘0 opens About, and every control can be reached with Tab. Settings › Overlay has a **Show on Screen** button that shows the real ring and preview for three seconds, so you can judge a theme without holding the trigger.
 
 ## Automation
 
@@ -66,7 +90,7 @@ tessera displays --json
 tessera settings export ~/tessera.json
 ```
 
-**Install the CLI.** In Settings → General, choose **Install Command-Line Tool**. It links the tool into `~/.local/bin/tessera`.
+**Install the CLI.** In Settings › General, choose **Install Command-Line Tool**. It links the tool into `~/.local/bin/tessera`.
 
 **URL scheme.** For example, `open "tessera://apply?cols=2-4&band=top"`. URLs cannot read or write files.
 
@@ -78,8 +102,8 @@ tessera settings export ~/tessera.json
 
 | # | Milestone | Status |
 |---|---|---|
-| 1 | Engine, radial ring, display profiles, rich preview | built, awaiting hands-on test |
-| 2 | Full keyboard control and automation (hotkeys, cycles, CLI, URL, AppleScript, Shortcuts) | built, awaiting hands-on test |
+| 1 | Engine, radial ring, display profiles, rich preview | in public beta (0.2.0) |
+| 2 | Full keyboard control and automation (hotkeys, cycles, CLI, URL, AppleScript, Shortcuts) | in public beta (0.2.0) |
 | 3 | Drag-to-snap | planned |
 | 4 | Saved layouts with auto-restore on dock | planned |
 | 5 | Multi-display throw and Spaces | planned |
@@ -110,7 +134,7 @@ app="$(scripts/build-app.sh)"
 open "$app"
 ```
 
-Complete Accessibility setup, focus a window in another app, then hold the default trigger and flick towards a Ring glyph. Choose **Quit Tessera** in its menu bar menu to stop the event tap and CLI socket.
+Complete Accessibility setup, focus a window in another app, then hold the default trigger and flick towards a wedge icon. Choose **Quit Tessera** in its menu bar menu to stop the event tap and CLI socket.
 
 **Checks without moving desktop windows:**
 
@@ -131,7 +155,7 @@ CI's native automation smoke refuses existing app data and verifies real CLI/set
 
 ## Default trigger
 
-Hold **Left Control + Left Option + Left Command**. You can change it in Settings → General.
+Hold **Left Control + Left Option + Left Command**. You can change it in Settings › General.
 
 ## Layout
 

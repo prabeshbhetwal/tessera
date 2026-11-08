@@ -22,6 +22,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
     private var waitingSubscription: AnyCancellable?
 
+    /// Mirrors Settings › Shortcuts › master switch, so the icon shows when hotkeys are paused.
+    private var hotkeysOn = true {
+        didSet { if hotkeysOn != oldValue { updateIcon() } }
+    }
+
     private let model: SettingsModel
     private let presenter: () -> WindowPresenter?
     private let run: (Command) -> Void
@@ -29,6 +34,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var icon: MenuBarIcon = .grid
     private let status = NSMenuItem()
+    private let hotkeysOffItem = NSMenuItem(title: "Hotkeys Off", action: #selector(openShortcuts), keyEquivalent: "")
     private let explainItem = NSMenuItem(title: "What Just Happened?", action: #selector(explain), keyEquivalent: "")
     private let statusSeparator = NSMenuItem.separator()
     private let snapItem = NSMenuItem(title: "Snap Front Window", action: nil, keyEquivalent: "")
@@ -50,19 +56,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.autoenablesItems = false
         menu.delegate = self
         status.isEnabled = false
-        for entry in [explainItem, settingsItem, shortcutsItem, undoItem, checkItem] { entry.target = self }
+        for entry in [hotkeysOffItem, explainItem, settingsItem, shortcutsItem, undoItem, checkItem] { entry.target = self }
         snapItem.submenu = Self.submenu(
             [("Tile All Windows", .tileWindows(display: .current)), ("Remember Split", .rememberSplit(display: .current)),
              ("Tile Evenly", .tileEvenly(display: .current))]
                 + WindowAction.allCases.map { action in (action.displayName, .apply(.action(action), display: .current)) },
-            target: self, separatorAfter: 2)
+            target: self, separatorsAfter: [2, 4, 8])
         columnsItem.submenu = Self.submenu(
             [("One More Column", .columns(.delta(1), display: .current)),
              ("One Fewer Column", .columns(.delta(-1), display: .current))]
                 + (2...8).map { ("\($0) Columns", .columns(.set($0), display: .current)) },
-            target: self, separatorAfter: 1)
+            target: self, separatorsAfter: [1])
         let quit = NSMenuItem(title: "Quit Tessera", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        for entry in [status, explainItem, statusSeparator, snapItem, columnsItem, actionsSeparator,
+        for entry in [status, hotkeysOffItem, explainItem, statusSeparator, snapItem, columnsItem, actionsSeparator,
                       settingsItem, shortcutsItem, undoItem, checkItem, .separator(), quit] {
             menu.addItem(entry)
         }
@@ -76,6 +82,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// One-way from settings: AppKit's own hiding (crowded or notched menu bars) is never written back.
     func apply(_ settings: TesseraSettings) {
         if item.isVisible != settings.showMenuBarIcon { item.isVisible = settings.showMenuBarIcon }
+        hotkeysOn = settings.hotkeysEnabled
         if icon != settings.menuBarIcon {
             icon = settings.menuBarIcon
             updateIcon()
@@ -91,8 +98,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             : "Accessibility not granted"
         // The status line always shows when setup is unfinished: it says why the rest is greyed out.
         status.isHidden = granted && !items.statusLine
+        hotkeysOffItem.isHidden = s.hotkeysEnabled
         explainItem.isHidden = !items.explain
-        statusSeparator.isHidden = status.isHidden && explainItem.isHidden
+        statusSeparator.isHidden = status.isHidden && hotkeysOffItem.isHidden && explainItem.isHidden
         snapItem.isHidden = !items.snapSubmenu
         columnsItem.isHidden = !items.columnsSubmenu
         actionsSeparator.isHidden = snapItem.isHidden && columnsItem.isHidden
@@ -120,9 +128,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func updateIcon() {
         let image: NSImage?
         if accessibilityGranted {
+            // Paused hotkeys swap the chosen symbol for a pause mark; the trigger itself still works.
+            let symbol = hotkeysOn ? icon.rawValue : "pause.circle"
             image = updateWaiting
-                ? Self.badged(symbol: icon.rawValue)
-                : NSImage(systemSymbolName: icon.rawValue, accessibilityDescription: "Tessera")
+                ? Self.badged(symbol: symbol)
+                : NSImage(systemSymbolName: symbol, accessibilityDescription: hotkeysOn ? "Tessera" : "Tessera, hotkeys off")
             image?.isTemplate = true
         } else {
             image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "Tessera needs permission")?
@@ -147,19 +157,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             NSBezierPath(ovalIn: dot).fill()
             return true
         }
-        image.accessibilityDescription = "Tessera — update available"
+        image.accessibilityDescription = "Tessera, update available"
         return image
     }
 
-    /// A submenu whose items run commands. Each item carries its command; `separatorAfter` splits the list.
-    private static func submenu(_ entries: [(String, Command)], target: StatusItemController, separatorAfter: Int? = nil) -> NSMenu {
+    /// A submenu whose items run commands. Each item carries its command; `separatorsAfter` splits the list into groups.
+    private static func submenu(_ entries: [(String, Command)], target: StatusItemController, separatorsAfter: Set<Int> = []) -> NSMenu {
         let menu = NSMenu()
         for (index, entry) in entries.enumerated() {
             let item = NSMenuItem(title: entry.0, action: #selector(runCommand(_:)), keyEquivalent: "")
             item.target = target
             item.representedObject = CommandBox(entry.1)
             menu.addItem(item)
-            if index == separatorAfter { menu.addItem(.separator()) }
+            if separatorsAfter.contains(index) { menu.addItem(.separator()) }
         }
         return menu
     }

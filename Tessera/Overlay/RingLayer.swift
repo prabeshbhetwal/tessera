@@ -47,9 +47,8 @@ final class RingLayer {
         boundaryHalo.lineWidth = 3
         boundaryHalo.lineDashPattern = [4, 5]
         boundaryHalo.strokeColor = CGColor(gray: 0, alpha: 0.35)
-        highlight.shadowOpacity = 0.35
-        highlight.shadowRadius = 4
-        highlight.shadowOffset = CGSize(width: 0, height: -1)
+        // No glow on the live wedge: the accent fill alone marks it (DESIGN.md).
+        highlight.shadowOpacity = 0
         root.addSublayer(hub.root)
     }
 
@@ -81,7 +80,6 @@ final class RingLayer {
         edges.path = nil
         edges.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 0.16)
         highlight.fillColor = HexColor.cgColor(theme.accentHex)
-        highlight.shadowColor = HexColor.cgColor(theme.accentHex)
 
         glyphOutlines.lineWidth = ring.iconStyle == .arrows ? 1.8 : 1.25
         activeGlyphOutlines.lineWidth = glyphOutlines.lineWidth + 0.25

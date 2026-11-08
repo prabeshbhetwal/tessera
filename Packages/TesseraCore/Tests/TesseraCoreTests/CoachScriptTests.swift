@@ -39,7 +39,7 @@ import Testing
         #expect(steps[1].body == "Make Dia narrower. Claude and Codex will move with it.")
         #expect(steps[2].title == "Claude and Codex followed")
         #expect(steps[2].actions == [.done, .undoSplitChange])
-        #expect(steps[2].body.hasPrefix("Tessera saved this as your new split for these 3 apps."))
+        #expect(steps[2].body == "Tessera saved this as your new split for these 3 apps. Tile All Windows (⌃⌥T by default) brings it back any time.")
     }
 
     @Test func tiledWithSplitButNoSplitFallsBackToEqualCopy() {
@@ -77,12 +77,13 @@ import Testing
     @Test func otherMoments() {
         let evenlyKept = CoachScript.steps(for: Self.event(.tiledEvenly(hasSplit: true)))
         #expect(evenlyKept.count == 1 && evenlyKept[0].actions == [.done])
+        #expect(evenlyKept[0].body == "Each window got a third. Your split for these apps is kept for the next Tile All Windows. Adjustments now aren't saved.")
         let evenly = CoachScript.steps(for: Self.event(.tiledEvenly(hasSplit: false)))[0]
         #expect(evenly.title == "Tiled evenly")
         #expect(evenly.body == "Each window got a third. Tile Evenly doesn't save what you change afterwards.")
         let learned = CoachScript.steps(for: Self.event(.splitLearned))[0]
         #expect(learned.actions == [.done, .forgetSplit])
-        #expect(learned.body == "Next time Dia, Claude and Codex are on CHG90, Tile All Windows (⌃⌥T) puts them back like this.")
+        #expect(learned.body == "Next time Dia, Claude and Codex are on CHG90, Tile All Windows (⌃⌥T by default) puts them back like this.")
         let notLearned = CoachScript.steps(for: Self.event(.splitNotLearned(reason: "Windows overlap")))[0]
         #expect(notLearned.body.hasPrefix("Windows overlap."))
         #expect(notLearned.actions == [.tileAll, .done])

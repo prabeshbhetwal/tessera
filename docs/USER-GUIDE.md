@@ -32,7 +32,7 @@ A short setup window walks you through five steps:
 |---|---|
 | Snap windows with the ring | An animation of the gesture. |
 | Allow Accessibility | **Required.** Tessera moves and resizes other apps' windows through macOS Accessibility. Nothing works until you allow it. Choose **Grant…** and turn Tessera on in System Settings. |
-| Live window thumbnails | **Optional.** Screen Recording, used only for the *Window snapshot* preview style. Tessera takes one still picture per gesture and never records or saves anything. |
+| Window snapshots | **Optional.** Screen Recording, used only for the *Window snapshot* preview style. Tessera takes one still picture per gesture and never records or saves anything. |
 | Tiling that remembers | How Tile All Windows learns your layout, and how closing a window fills its space (see [Splits](#7-learned-splits)). |
 | Try it | Practise the gesture on a real window. |
 
@@ -157,7 +157,7 @@ These work without the ring. You can rebind every one of them in **Settings › 
 | ⌃⌥/ | What Just Happened? (see [8a](#8a-what-just-happened)) |
 | ⌃⌥⌘, | Open Settings |
 
-**Adding a hotkey:** in **Settings › Shortcuts**, choose **Add Hotkey**, pick a command (Move window, Run cycle, Change columns, Move to display, Tile all windows, Tile windows evenly, Remember split, Undo, Open Settings, and others), then record the keys.
+**Adding a hotkey:** in **Settings › Shortcuts**, choose **Add Hotkey**, pick a command (Move Window, Run Cycle, Change Columns, Move to Display, Tile All Windows, Tile Evenly, Remember Split, Forget This Split, What Just Happened?, Undo Last Move or Open Settings), then record the keys.
 
 **Recording keys:** click the shortcut (or select it and press Space), then type the new one. Esc cancels; Delete clears.
 
@@ -412,7 +412,7 @@ Commands: apply columns, perform action, run cycle, set columns, change columns,
 
 ### Shortcuts and Spotlight
 
-Search for "Tessera" in the Shortcuts app. Actions: Apply Columns, Perform Action, Run Cycle, Set Columns, Change Columns, Move to Display, Tile All Windows, Tile Windows Evenly, Undo Move, List Displays, Describe Window, Open Settings.
+Search for "Tessera" in the Shortcuts app. Actions: Apply Columns, Perform Action, Run Cycle, Set Columns, Change Columns, Move to Display, Tile All Windows, Tile Evenly, Undo Move, List Displays, Describe Window, Open Settings.
 
 ---
 

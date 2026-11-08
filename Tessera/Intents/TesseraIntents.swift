@@ -149,7 +149,7 @@ struct TileWindowsIntent: AppIntent {
 }
 
 struct TileEvenlyIntent: AppIntent {
-    static let title: LocalizedStringResource = "Tile Windows Evenly"
+    static let title: LocalizedStringResource = "Tile Evenly"
     static let description = IntentDescription(
         "Puts every visible window on a display side by side in equal shares. Your learned split is kept for the next Tile.")
     static let openAppWhenRun = false
