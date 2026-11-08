@@ -14,12 +14,12 @@ struct RingPane: View {
         let theme = model.settings.activeTheme
         Form {
             Section {
-                Toggle("Directions: flick towards a layout", isOn: ring.directions)
-                Toggle("Pointing: a longer move picks a column of the grid", isOn: ring.pointing)
-                Toggle("Click while pointing to span several columns", isOn: ring.clickToSpan)
+                Toggle("Directions: flick towards a layout", isOn: ring.directions).settingAnchor("Directions: flick towards a layout")
+                Toggle("Pointing: a longer move picks a column of the grid", isOn: ring.pointing).settingAnchor("Pointing: a longer move picks a column of the grid")
+                Toggle("Click while pointing to span several columns", isOn: ring.clickToSpan).settingAnchor("Click while pointing to span several columns")
                     .disabled(!r.pointing)
-                Toggle("Scroll while holding to change the column count", isOn: ring.scrollChangesColumns)
-                Toggle("Press and release without moving to tile all windows", isOn: ring.tapTilesWindows)
+                Toggle("Scroll while holding to change the column count", isOn: ring.scrollChangesColumns).settingAnchor("Scroll while holding to change the column count")
+                Toggle("Press and release without moving to tile all windows", isOn: ring.tapTilesWindows).settingAnchor("Press and release without moving to tile all windows")
             } header: {
                 Text("Gestures")
             } footer: {
@@ -33,6 +33,7 @@ struct RingPane: View {
             Section {
                 WedgePicker(ring: r, theme: theme, focused: $focusedWedge)
                     .frame(height: 200)
+                    .settingAnchor("Directions")
                 Picker(Self.directions[focusedWedge % Self.directions.count], selection: ring.wedges[focusedWedge]) {
                     ForEach(WindowAction.allCases, id: \.self) { action in
                         Text(action.displayName).tag(action)
@@ -46,16 +47,17 @@ struct RingPane: View {
             .disabled(!r.directions)
 
             Section {
-                Toggle("Show the ring", isOn: ring.showRing)
+                Toggle("Show the ring", isOn: ring.showRing).settingAnchor("Show the ring")
                 Group {
-                    Toggle("Action name and input hints", isOn: ring.showActionLabels)
+                    Toggle("Action name and input hints", isOn: ring.showActionLabels).settingAnchor("Action name and input hints")
                     Picker("Layout icons", selection: ring.iconStyle) {
                         ForEach(RingIconStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    Toggle("Dashed circle where pointing begins", isOn: ring.showBoundary)
+                    .settingAnchor("Layout icons")
+                    Toggle("Dashed circle where pointing begins", isOn: ring.showBoundary).settingAnchor("Dashed circle where pointing begins")
                         .disabled(!(r.directions && r.pointing))
-                    Toggle("Frosted background", isOn: ring.frosted)
+                    Toggle("Frosted background", isOn: ring.frosted).settingAnchor("Frosted background")
                 }
                 .disabled(!r.showRing)
             } header: {
@@ -68,11 +70,12 @@ struct RingPane: View {
 
             Section {
                 // Not tied to Pointing: the arrow keys pick columns too, and show the grid while they do.
-                Toggle("Grid lines while picking a column", isOn: ring.showGrid)
-                Toggle("Number the grid's columns", isOn: ring.showColumnNumbers)
+                Toggle("Grid lines while picking a column", isOn: ring.showGrid).settingAnchor("Grid lines while picking a column")
+                Toggle("Number the grid's columns", isOn: ring.showColumnNumbers).settingAnchor("Number the grid's columns")
                     .disabled(!r.showGrid)
                 Toggle("Show \u{201C}click to add columns\u{201D} the first few times", isOn: ring.showPointingHint)
                     .disabled(!r.pointing)
+                    .settingAnchor("Pointing hint")
                 Button("Show the hint again") { model.settings.ring.pointingHintsSeen = nil }
                     .disabled(!r.pointing || !r.showPointingHint || r.pointingHintDue)
             } header: {
@@ -82,11 +85,11 @@ struct RingPane: View {
             }
 
             Section {
-                ColorPicker("Ring", selection: model.themeColor(\.ring.fillHex), supportsOpacity: false)
+                ColorPicker("Ring", selection: model.themeColor(\.ring.fillHex), supportsOpacity: false).settingAnchor("Ring")
                 SliderRow(title: "Ring tint", value: model.themeRingTint, range: 0...1, step: 0.05, format: SliderRow.percent)
-                ColorPicker("Lines and icons", selection: model.themeColor(\.ring.strokeHex), supportsOpacity: false)
-                ColorPicker("Selected layout", selection: model.themeColor(\.accentHex), supportsOpacity: false)
-                ColorPicker("Grid", selection: model.themeColor(\.ring.gridHex), supportsOpacity: false)
+                ColorPicker("Lines and icons", selection: model.themeColor(\.ring.strokeHex), supportsOpacity: false).settingAnchor("Lines and icons")
+                ColorPicker("Selected layout", selection: model.themeColor(\.accentHex), supportsOpacity: false).settingAnchor("Selected layout")
+                ColorPicker("Grid", selection: model.themeColor(\.ring.gridHex), supportsOpacity: false).settingAnchor("Grid")
             } header: {
                 Text("Colours")
             } footer: {

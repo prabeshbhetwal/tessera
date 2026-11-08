@@ -57,6 +57,7 @@ struct AdvancedSection: View {
                     EmptyView()
                 }
             }
+            .settingAnchor("Advanced")
         } footer: {
             Footer("Import replaces every setting; an invalid file changes nothing. The command-line tool links tessera into \(CLIInstaller.linkURL.deletingLastPathComponent().path(percentEncoded: false)) so scripts can run every Tessera command.")
         }

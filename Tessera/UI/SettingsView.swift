@@ -6,6 +6,14 @@ import TesseraCore
 enum SettingsPane: Int, CaseIterable, Hashable {
     case general, excludedApps, shortcuts, cycles, splits, displays, ring, overlay, motion, about
 
+    /// Case name, the pane key `SettingsCatalog` uses.
+    var key: String { "\(self)" }
+
+    init?(key: String) {
+        guard let pane = Self.allCases.first(where: { $0.key == key }) else { return nil }
+        self = pane
+    }
+
     /// The ⌘-digit that selects this pane: its position counting from 1, with About (the tenth) on 0.
     var shortcutKey: Character { self == .about ? "0" : Character("\(rawValue + 1)") }
 
@@ -98,6 +106,21 @@ enum SettingsGroup: CaseIterable {
 @MainActor @Observable
 final class SettingsNavigation {
     var pane: SettingsPane = .general
+    /// Id of the row a search result revealed; it is drawn highlighted until cleared.
+    var highlight: String?
+    /// Bumped on every reveal, so revealing the same row again scrolls to it again.
+    private(set) var reveals = 0
+    /// Bumped by ⌘F to focus the sidebar's search field.
+    var searchFocusRequests = 0
+
+    /// Opens the entry's pane and asks the pane to scroll to its row and highlight it.
+    func reveal(_ entry: SettingsEntry) {
+        if let target = SettingsPane(key: entry.pane) { pane = target }
+        highlight = entry.anchor.map { "\(entry.pane)/\($0)" }
+        reveals += 1
+        // The highlight is visual; VoiceOver hears where it went.
+        AccessibilityNotification.Announcement("\(entry.title), \(pane.title)").post()
+    }
 }
 
 /// Settings window root: sidebar of panes, grouped form on the right (spec §6.1, M2 §6).
@@ -112,30 +135,19 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: .constant(.all)) {
-            List(selection: $navigation.pane) {
-                ForEach(SettingsGroup.allCases, id: \.self) { group in
-                    Section {
-                        ForEach(group.panes, id: \.self) { pane in
-                            Label {
-                                Text(pane.title)
-                            } icon: {
-                                PaneIcon(pane: pane)
-                            }
-                            .tag(pane)
-                        }
-                    } header: {
-                        if let title = group.title { Text(title) }
-                    }
-                }
-            }
-            .listStyle(.sidebar)
+            SettingsSidebar(navigation: navigation, usesAppleIntelligence: model.settings.searchUsesAppleIntelligence)
             // A fixed sidebar that can't be collapsed or dragged, like System Settings.
             .navigationSplitViewColumnWidth(200)
             .toolbar(removing: .sidebarToggle)
         } detail: {
-            VStack(spacing: 0) {
-                if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
-                paneView
+            ScrollViewReader { proxy in
+                VStack(spacing: 0) {
+                    if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
+                    paneView
+                }
+                .environment(\.settingsPaneKey, navigation.pane.key)
+                .environment(\.settingsHighlight, navigation.highlight)
+                .task(id: navigation.reveals) { await scrollToHighlight(proxy) }
             }
             // idealHeight 0: the split view sizes itself from the detail's *ideal* height, which for a grouped
             // Form is its full content (up to ~1100 pt). That made the split taller than the window and AppKit
@@ -147,8 +159,25 @@ struct SettingsView: View {
             ForEach(SettingsPane.allCases, id: \.self) { pane in
                 KeyCommand(KeyEquivalent(pane.shortcutKey)) { navigation.pane = pane }
             }
+            KeyCommand("f") { navigation.searchFocusRequests += 1 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// After a search reveal: let the new pane lay out, bring the row to the middle, then fade the highlight.
+    private func scrollToHighlight(_ proxy: ScrollViewProxy) async {
+        guard let id = navigation.highlight else { return }
+        // Twice: a pane that takes longer to lay out than the first wait misses the first scroll.
+        for wait in [80, 250] {
+            try? await Task.sleep(for: .milliseconds(wait))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) { proxy.scrollTo(id, anchor: .center) }
+        }
+        try? await Task.sleep(for: .seconds(2.5))
+        guard !Task.isCancelled, navigation.highlight == id else { return }
+        navigation.highlight = nil
     }
 
     @ViewBuilder private var paneView: some View {

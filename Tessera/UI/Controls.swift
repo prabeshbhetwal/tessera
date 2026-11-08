@@ -8,6 +8,8 @@ struct SliderRow: View {
     let range: ClosedRange<Double>
     var step: Double = 1
     var format: (Double) -> String = { "\(Int($0.rounded())) pt" }
+    /// Search anchor: the title unless given; nil leaves the row untagged (a repeat of a tagged row).
+    var anchor: String? = ""
 
     var body: some View {
         LabeledContent(title) {
@@ -25,6 +27,7 @@ struct SliderRow: View {
                     .frame(width: 64, alignment: .trailing)
             }
         }
+        .settingAnchor(anchor == "" ? title : anchor)
     }
 
     static func percent(_ v: Double) -> String { "\(Int((v * 100).rounded())) %" }
@@ -37,6 +40,8 @@ struct StepperRow: View {
     @Binding var value: Int
     let range: ClosedRange<Int>
     var format: (Int) -> String = { "\($0)" }
+    /// Search anchor: the title unless given; nil leaves the row untagged (a repeat of a tagged row).
+    var anchor: String? = ""
 
     var body: some View {
         LabeledContent(title) {
@@ -45,6 +50,7 @@ struct StepperRow: View {
                 Stepper(title, value: $value, in: range).labelsHidden()
             }
         }
+        .settingAnchor(anchor == "" ? title : anchor)
     }
 }
 
@@ -229,7 +235,7 @@ struct ResetSection: View {
             HStack {
                 if let keeps { Caption(keeps) }
                 Spacer()
-                Button("Restore Defaults", action: action)
+                Button("Restore Defaults", action: action).settingAnchor("Restore Defaults")
             }
         }
     }

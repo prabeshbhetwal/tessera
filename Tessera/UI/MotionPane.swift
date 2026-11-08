@@ -25,6 +25,7 @@ struct MotionPane: View {
                     ForEach(SnapSpeed.allCases, id: \.self) { Text($0.displayName).tag(Optional($0)) }
                 }
                 .pickerStyle(.segmented)
+                .settingAnchor("Speed")
                 SliderRow(title: "Duration", value: $model.settings.snapSeconds, range: 0...SnapSpeed.maxSeconds,
                           step: 0.01, format: { $0 == 0 ? "Instant" : String(format: "%.2f s", $0) })
                 Caption(SnapSpeed(seconds: seconds) == nil
@@ -33,7 +34,7 @@ struct MotionPane: View {
             }
 
             Section("Preview morph") {
-                Toggle("Animate the preview between selections", isOn: p.morph)
+                Toggle("Animate the preview between selections", isOn: p.morph).settingAnchor("Animate the preview between selections")
                 SliderRow(title: "Spring response", value: p.springResponse, range: 0...0.4, step: 0.01, format: SliderRow.seconds)
                     .disabled(!s.morph)
                 Caption(s.morph ? "Lower is snappier. 0 turns the animation off." : "Turn on the morph to adjust its spring.")

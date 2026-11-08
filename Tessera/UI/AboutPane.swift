@@ -37,7 +37,7 @@ struct AboutPane: View {
             Section {
                 Button(copied ? "Copied" : "Copy version", action: copyVersion)
                     .help("Copies the version for bug reports")
-                Button("Check for Updates…") { updates.checkForUpdates() }
+                Button("Check for Updates…") { updates.checkForUpdates() }.settingAnchor("Check for Updates…")
                     .disabled(!updates.canCheckForUpdates)
             }
 

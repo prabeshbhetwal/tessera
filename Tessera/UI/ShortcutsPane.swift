@@ -14,7 +14,7 @@ struct ShortcutsPane: View {
         let cycleNames = model.settings.cycles.map(\.name)
         Form {
             Section {
-                Toggle("Use global hotkeys", isOn: $model.settings.hotkeysEnabled)
+                Toggle("Use global hotkeys", isOn: $model.settings.hotkeysEnabled).settingAnchor("Use global hotkeys")
             } header: {
                 Text("Hotkeys")
             } footer: {
@@ -41,7 +41,7 @@ struct ShortcutsPane: View {
             }
 
             Section {
-                Button("Add Hotkey", action: addHotkey)
+                Button("Add Hotkey", action: addHotkey).settingAnchor("Add Hotkey")
             } footer: {
                 if model.settings.hotkeysEnabled {
                     Footer("Click a shortcut, or select it and press Space, then type the new one. Esc cancels, Delete clears. A warning doesn't stop a hotkey from working.")
@@ -50,8 +50,8 @@ struct ShortcutsPane: View {
             .disabled(!model.settings.hotkeysEnabled)
 
             Section("Ring keyboard") {
-                Toggle("Navigate the open ring with the keyboard", isOn: $model.settings.ringKeyNavigation)
-                Toggle("Announce the selection with VoiceOver", isOn: $model.settings.announceSelection)
+                Toggle("Navigate the open ring with the keyboard", isOn: $model.settings.ringKeyNavigation).settingAnchor("Navigate the open ring with the keyboard")
+                Toggle("Announce the selection with VoiceOver", isOn: $model.settings.announceSelection).settingAnchor("Announce the selection with VoiceOver")
                 DisclosureGroup("Keys while the ring is open") {
                     ForEach(Self.ringKeys, id: \.key) { row in
                         LabeledContent(row.key, value: row.effect)

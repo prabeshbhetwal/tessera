@@ -65,6 +65,7 @@ struct ExcludedAppsPane: View {
                         }
                     Spacer()
                 }
+                .settingAnchor("Apps")
             } header: {
                 Text("Apps")
             } footer: {

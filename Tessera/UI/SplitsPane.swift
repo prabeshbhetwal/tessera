@@ -10,17 +10,18 @@ struct SplitsPane: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Learn from my adjustments", isOn: $model.settings.learnSplits)
-                Toggle("Resize neighbours to fill the display", isOn: $model.settings.splitReflowsNeighbours)
+                Toggle("Learn from my adjustments", isOn: $model.settings.learnSplits).settingAnchor("Learn from my adjustments")
+                Toggle("Resize neighbours to fill the display", isOn: $model.settings.splitReflowsNeighbours).settingAnchor("Resize neighbours to fill the display")
                     .disabled(!model.settings.learnSplits)
-                Toggle("Fill the space when a window closes", isOn: $model.settings.splitFillsClosedGap)
+                Toggle("Fill the space when a window closes", isOn: $model.settings.splitFillsClosedGap).settingAnchor("Fill the space when a window closes")
                     .disabled(!model.settings.learnSplits)
-                Toggle("Restore last order", isOn: $model.settings.splitRestoresOrder)
+                Toggle("Restore last order", isOn: $model.settings.splitRestoresOrder).settingAnchor("Restore last order")
                 Picker("Empty space when order changes", selection: $model.settings.splitGapPlacement) {
                     Text("Stays in place").tag(SplitGapPlacement.staysInPlace)
                     Text("Follows its neighbour").tag(SplitGapPlacement.followsNeighbour)
                 }
                 .pickerStyle(.radioGroup)
+                .settingAnchor("Empty space when order changes")
             } header: {
                 Text("Learning")
             } footer: {
@@ -42,7 +43,7 @@ struct SplitsPane: View {
             }
             if !groups.isEmpty {
                 Section {
-                    Button("Forget All…", role: .destructive) { confirmingForgetAll = true }
+                    Button("Forget All…", role: .destructive) { confirmingForgetAll = true }.settingAnchor("Forget All…")
                 }
             }
 

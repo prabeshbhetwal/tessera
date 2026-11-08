@@ -19,6 +19,7 @@ struct GeneralPane: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                 ChordRecorder(chord: $model.settings.trigger, recording: $recordingChord)
+                    .settingAnchor("Chord")
             } header: {
                 Text("Trigger")
             } footer: {
@@ -34,19 +35,27 @@ struct GeneralPane: View {
                     get: { model.settings.launchAtLogin },
                     set: { setLaunchAtLogin($0) }
                 ))
+                .settingAnchor("Launch at login")
                 if let loginError { Callout(.warning, loginError) { loginItemsButton } }
                 if loginNeedsApproval {
                     Callout(.warning, "Approve Tessera in System Settings › General › Login Items.") { loginItemsButton }
                 }
                 AppearancePicker(selection: $model.settings.appearance)
+                    .settingAnchor("Appearance")
+                Toggle("Understand searches with Apple Intelligence", isOn: $model.settings.searchUsesAppleIntelligence)
+                    .disabled(!SettingsAssistant.isAvailable)
+                    .settingAnchor("Apple Intelligence search")
             } header: {
                 Text("App")
             } footer: {
-                Footer("Light or dark applies to Tessera's windows. Match System follows macOS. The ring has its own colours in Ring and Overlay.")
+                Footer("Light or dark applies to Tessera's windows. Match System follows macOS. The ring has its own colours in Ring and Overlay. "
+                    + (SettingsAssistant.isAvailable
+                        ? "Settings search can ask Apple's on-device model what a search written as a sentence means; nothing leaves your Mac."
+                        : "Understanding searches needs Apple Intelligence, which is off or not ready on this Mac."))
             }
 
             Section {
-                Toggle("Show the menu bar icon", isOn: $model.settings.showMenuBarIcon)
+                Toggle("Show the menu bar icon", isOn: $model.settings.showMenuBarIcon).settingAnchor("Show the menu bar icon")
                 LabeledContent("Icon") {
                     Picker("Icon", selection: $model.settings.menuBarIcon) {
                         ForEach(MenuBarIcon.allCases, id: \.self) { icon in
@@ -61,7 +70,8 @@ struct GeneralPane: View {
                     .fixedSize()
                 }
                 .disabled(!model.settings.showMenuBarIcon)
-                Toggle("Show each item's shortcut", isOn: $model.settings.menuBarItems.shortcutKeys)
+                .settingAnchor("Icon")
+                Toggle("Show each item's shortcut", isOn: $model.settings.menuBarItems.shortcutKeys).settingAnchor("Show each item's shortcut")
                     .disabled(!model.settings.showMenuBarIcon)
             } header: {
                 Text("Menu bar")
@@ -72,13 +82,13 @@ struct GeneralPane: View {
             }
 
             Section {
-                Toggle("Status line (how to snap)", isOn: $model.settings.menuBarItems.statusLine)
-                Toggle("What Just Happened?", isOn: $model.settings.menuBarItems.explain)
-                Toggle("Snap Front Window submenu", isOn: $model.settings.menuBarItems.snapSubmenu)
-                Toggle("Columns submenu", isOn: $model.settings.menuBarItems.columnsSubmenu)
-                Toggle("Shortcuts…", isOn: $model.settings.menuBarItems.shortcuts)
-                Toggle("Undo Last Move", isOn: $model.settings.menuBarItems.undo)
-                Toggle("Check for Updates…", isOn: $model.settings.menuBarItems.checkForUpdates)
+                Toggle("Status line (how to snap)", isOn: $model.settings.menuBarItems.statusLine).settingAnchor("Status line (how to snap)")
+                Toggle("What Just Happened?", isOn: $model.settings.menuBarItems.explain).settingAnchor("What Just Happened?")
+                Toggle("Snap Front Window submenu", isOn: $model.settings.menuBarItems.snapSubmenu).settingAnchor("Snap Front Window submenu")
+                Toggle("Columns submenu", isOn: $model.settings.menuBarItems.columnsSubmenu).settingAnchor("Columns submenu")
+                Toggle("Shortcuts…", isOn: $model.settings.menuBarItems.shortcuts).settingAnchor("Shortcuts…")
+                Toggle("Undo Last Move", isOn: $model.settings.menuBarItems.undo).settingAnchor("Undo Last Move")
+                Toggle("Check for Updates…", isOn: $model.settings.menuBarItems.checkForUpdates).settingAnchor("Check for Updates…")
             } header: {
                 Text("Menu items")
             } footer: {
@@ -87,12 +97,13 @@ struct GeneralPane: View {
             .disabled(!model.settings.showMenuBarIcon)
 
             Section {
-                Toggle("Show messages", isOn: $model.settings.showHUD)
+                Toggle("Show messages", isOn: $model.settings.showHUD).settingAnchor("Show messages")
                 Group {
                     Picker("Position", selection: $model.settings.hudPosition) {
                         ForEach(HUDPosition.allCases, id: \.self) { Text($0.displayName).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                    .settingAnchor("Position")
                     SliderRow(title: "Stays for", value: $model.settings.hudSeconds, range: 0.5...5, step: 0.1,
                               format: { String(format: "%.1f s", $0) })
                 }
