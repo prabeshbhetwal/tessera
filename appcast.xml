@@ -3,6 +3,21 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.10</title>
+            <pubDate>Sun, 08 Nov 2026 02:57:20 +0000</pubDate>
+            <sparkle:version>20261108.025434</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.10</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Fixed
+- Grid layouts with a very large gap no longer place windows outside the usable area of the display.
+
+## Other
+- Tessera is now licensed under GPL-3.0, with privacy and security notices included.
+- README updated with screenshots and a short release procedure.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.10/Tessera-0.2.0-beta.10.zip" length="4437475" type="application/octet-stream" sparkle:edSignature="ecIrQvUUEj+0ErLfDFZ3XcEqmKrpxrx57BBI9Upca9mU/w4bXDB63+9xMYpbIkWzLSUz17Bivy62D39RfWMOAg==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.9</title>
             <pubDate>Sat, 07 Nov 2026 15:33:46 +0000</pubDate>
             <sparkle:version>20261107.153327</sparkle:version>
