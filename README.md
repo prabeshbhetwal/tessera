@@ -39,7 +39,7 @@ Tessera has no analytics, no accounts and no telemetry. Settings stay on your Ma
 
 ## Licence
 
-Tessera is free software under the [GNU General Public License v3.0](LICENSE). It comes with no warranty. The ring-based interaction is inspired by [Loop](https://github.com/MrKai77/Loop), which is also GPL-3.0. Bundled components are listed in [Third-party notices](THIRD-PARTY-NOTICES.md).
+Tessera is free software under the [GNU General Public License v3.0](LICENSE). It comes with no warranty. Bundled components are listed in [Third-party notices](THIRD-PARTY-NOTICES.md).
 
 To report a security issue, see [SECURITY.md](SECURITY.md).
 

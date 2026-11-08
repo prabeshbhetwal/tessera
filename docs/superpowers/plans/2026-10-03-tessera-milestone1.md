@@ -16,7 +16,7 @@
 
 - macOS deployment target is `15.0`. Swift language mode is 6, with `SWIFT_STRICT_CONCURRENCY = complete`.
 - There are no third-party dependencies.
-- Never copy code from `loop/`, which is GPL-3.0 and kept only as a read-only reference.
+- Never copy code from another window manager.
 - No force-unwraps, `try!` or `as!` on system calls. Keep files under 500 lines.
 - Load private APIs only through `dlsym`, wrapped in optionals. Never use `@_silgen_name`.
 - Bundle ID is `com.prabeshbhetwal.Tessera`, with `LSUIElement = YES`. Use ad-hoc signing (`CODE_SIGN_IDENTITY = -`), because no signing identity exists.
@@ -43,7 +43,7 @@ These are the input classes most likely to cause trouble. Each one has a test in
 ## File Structure
 
 ```
-LoopAlternative/
+tessera/
 ├── project.yml                         # XcodeGen spec (Track 0)
 ├── scripts/build-app.sh                # generate + build + ad-hoc sign (Track F)
 ├── .github/workflows/ci.yml            # (Track F)
@@ -323,7 +323,7 @@ The rule is spec §3.3, with `round_half_even` implemented as `.toNearestOrEven`
   - Scroll → `.step(deltaY > 0 ? +1 : -1)`, suppressed. A `deltaY` of 0 is ignored.
 - **While closed:** nothing is suppressed and no outputs are produced, except `.open`.
 
-The machine is a value type. It is **confined to the event-tap thread**, which owns it so it can decide synchronously whether to suppress. This refines spec §5.3 and removes the cross-thread state that Loop got wrong.
+The machine is a value type. It is **confined to the event-tap thread**, which owns it so it can decide synchronously whether to suppress. This refines spec §5.3 and removes cross-thread state.
 
 - [x] **Step 1:** Write the tests:
   - `testOpensOnlyWhenFullChord`: pressing in all 6 possible orders opens exactly once.
@@ -655,7 +655,7 @@ A dependent control is disabled and shows a caption explaining why.
   3. `codesign --force --deep -s - ~/Library/Caches/tessera-build/dd-main/Build/Products/Debug/Tessera.app`
   4. Print the app path.
 - **CI:** `macos-15` runner. Steps: `brew install xcodegen`, `swift test --package-path Packages/TesseraCore --scratch-path ~/Library/Caches/tessera-build/core-$TRACK`, then `scripts/build-app.sh`.
-- **README:** what Tessera is, how to build, the permissions it needs, the clean-room statement (inspired by Loop; no Loop code), and the milestone roadmap.
+- **README:** what Tessera is, how to build, the permissions it needs and the milestone roadmap.
 
 - [x] **Step 1:** Write the files.
 - [x] **Step 2:** Run `scripts/build-app.sh`. Expected: it prints `…/Tessera.app`.

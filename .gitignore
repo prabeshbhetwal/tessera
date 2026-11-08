@@ -1,6 +1,3 @@
-# Reference clone of upstream Loop (GPL-3.0) — never imported
-loop/
-
 # Build output
 .build/
 DerivedData/

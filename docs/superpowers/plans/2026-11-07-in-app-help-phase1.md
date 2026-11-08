@@ -32,7 +32,7 @@
   - Reduce Motion: no pulse, fades only.
   - Colours come from the theme (`Theme.accentHex`).
   - VoiceOver reads the card.
-- **Clean room:** never read `loop/`.
+- **Independent:** never read another window manager's source.
 - **Tests:** `swift test --package-path Packages/TesseraCore --scratch-path ~/Library/Caches/tessera-build/core-help`
 - **App build:** `TESSERA_DERIVED_DATA=~/Library/Caches/tessera-build/dd-help scripts/build-app.sh`
 - **Before each commit that touches Swift in `Tessera/`:** run `/tessera-verify` (per CLAUDE.md).

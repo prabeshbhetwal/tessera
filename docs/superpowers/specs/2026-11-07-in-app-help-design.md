@@ -205,7 +205,7 @@ The CLI, URL scheme, AppleScript and Shortcuts get these where they make sense. 
 - macOS 15, AppKit services and Core Animation overlays, as in the rest of `Tessera/`. Pure logic goes in `TesseraCore` with tests.
 - New Swift files stay under 300 lines. `Coordinator.swift` (501 lines) and `CommandExecutor.swift` (299) must not grow: the coach and journal get their own components.
 - **Ring and preview panels stay non-activating and mouse-transparent.** Only the coach card panel takes clicks, and AGENTS.md records that exception.
-- **Clean room:** nothing from `loop/`.
+- **Independent:** nothing from another window manager.
 - **Visible copy** follows `docs/DESIGN.md` and PRODUCT.md: Australian English, native controls, keyboard reachable (the card's buttons work with Tab and Return when the card is opened on request).
 
 ## Order of work

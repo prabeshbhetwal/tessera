@@ -4,11 +4,6 @@
 - **Status:** awaiting review
 - **Scope:** Milestone 1 of 5. This milestone covers the engine, the radial menu with flick + point, and display profiles.
 
-Background research, kept as reference only:
-- `docs/loop-research-2026-10-03.md`
-- `docs/loop-behaviour-teardown.md`
-- `docs/loop-technical-mechanics.md`
-
 ---
 
 ## 1. Purpose
@@ -49,9 +44,7 @@ Tessera adapts on its own when you dock or undock.
 ## 2. Constraints
 
 ### Legal
-Loop is GPL-3.0. We reuse ideas, behaviour and Apple API knowledge, but never Loop code.
-- The `loop/` clone is reference only. It is gitignored and never imported.
-- No Loop name or artwork.
+Tessera is an independent implementation. No other app's code, name or artwork.
 
 ### Platform and language
 - macOS 15 Sequoia or later.
@@ -193,7 +186,7 @@ Defaults:
 - **Reduce Motion:** when it is on, there are no animations.
 
 ### 4.6 Preview
-Loop's preview is a blurred, tinted rectangle. Ours has four layers, and each one can be switched on or off in Settings → Preview.
+The preview has four layers, and each one can be switched on or off in Settings → Preview.
 
 1. **Live window thumbnail**
    - When the session opens, take a **single** snapshot of the target window with ScreenCaptureKit (`SCScreenshotManager.captureImage` with `SCContentFilter(desktopIndependentWindow:)`).
@@ -294,7 +287,7 @@ Tessera must be heavily customisable. These rules apply:
    - It is stored at `~/Library/Application Support/Tessera/settings.json`.
    - Per-display profile overrides live inside it.
    - It is loaded once and cached in memory. Changes are pushed to services, never read on hot paths.
-3. **Import and export** of all settings as one `.json` file, from Settings → General. This is Loop's top unmet request.
+3. **Import and export** of all settings as one `.json` file, from Settings → General.
 4. **Themes**
    - Three built-in presets: *Default*, *Minimal* (outline only, no blur, no thumbnail) and *Glass* (blur, thumbnail, Liquid Glass on macOS 26+).
    - The user can save their current look as a custom theme.
@@ -391,8 +384,8 @@ GitHub Actions on a macOS runner, on every push:
 ---
 
 ## 9. Repository
-- The git repository root is `LoopAlternative/`.
-- `.gitignore` covers `loop/`, `.build/`, `DerivedData/`, `xcuserdata/`, `.env*` and `.DS_Store`.
+- The git repository root is `tessera/`.
+- `.gitignore` covers `.build/`, `DerivedData/`, `xcuserdata/`, `.env*` and `.DS_Store`.
 - `Package.resolved` **is** committed.
 - Remote: a private GitHub repo, created when the user decides.
 

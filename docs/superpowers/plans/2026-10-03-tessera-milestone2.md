@@ -25,7 +25,7 @@
 - No force-unwraps, `try!` or `as!` on system calls.
 - Files under 500 lines.
 - Private APIs via `dlsym` only.
-- Never copy from `loop/`.
+- Never copy another window manager's code.
 
 ### Commands
 - **Every `swift`, `xcodebuild` and `xcodegen` command runs with Bash `dangerouslyDisableSandbox: true`.**
