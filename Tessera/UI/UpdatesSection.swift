@@ -12,6 +12,7 @@ struct UpdatesSection: View {
             Picker("Frequency", selection: $model.settings.updates.interval) {
                 ForEach(UpdateInterval.allCases, id: \.self) { Text($0.displayName).tag($0) }
             }
+            .pickerStyle(.segmented)
             .disabled(!model.settings.updates.checkAutomatically)
             // Sparkle ignores it while checks are off.
             Toggle("Download and install automatically", isOn: $model.settings.updates.installAutomatically)

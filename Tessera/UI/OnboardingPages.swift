@@ -4,14 +4,14 @@ import SwiftUI
 struct OnboardingTilingStep: View {
     var body: some View {
         StepPage(
-            symbol: "rectangle.split.3x1.fill", tint: .mint, title: "Tiling that remembers",
-            text: "Tile All Windows (⌃⌥T) puts every window on a display side by side. Tessera then learns from how you arrange them."
+            symbol: "rectangle.split.3x1.fill", title: "Tiling that remembers",
+            text: "Tile All Windows (⌃⌥T by default) puts every window on a display side by side. Tessera then learns from how you arrange them."
         ) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 12) {
                 GestureHint("arrow.left.and.right", "Drag the edge between two windows: the one beside it follows, and Tessera saves the layout as your split for those apps.")
                 GestureHint("rectangle.3.group", "Tile All Windows again any time to put those apps back the way you left them.")
                 GestureHint("xmark.rectangle", "Close a window and the others fill its space: your split for the apps left, or the window beside it you used last.")
-                GestureHint("arrow.uturn.backward", "Not what you wanted? ⌃⌥Z puts the windows back. Settings › Splits turns any of this off.")
+                GestureHint("arrow.uturn.backward", "Not what you wanted? Undo (⌃⌥Z by default) puts the windows back. Settings › Splits turns any of this off.")
             }
             .frame(maxWidth: 480)
         }
@@ -20,10 +20,9 @@ struct OnboardingTilingStep: View {
 
 // MARK: - Building blocks shared by setup's steps
 
-/// Centred step layout: icon tile, title, body, then the step's controls.
+/// Centred step layout: neutral icon tile, title, body, then the step's controls.
 struct StepPage<Extra: View>: View {
     let symbol: String
-    let tint: Color
     let title: String
     let text: String
     @ViewBuilder let extra: Extra
@@ -32,9 +31,9 @@ struct StepPage<Extra: View>: View {
         VStack(spacing: 20) {
             Image(systemName: symbol)
                 .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(.secondary)
                 .frame(width: 64, height: 64)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(tint))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.quinary))
                 .accessibilityHidden(true)
             VStack(spacing: 8) {
                 Text(title).font(.title.weight(.bold))
@@ -50,7 +49,7 @@ struct StepPage<Extra: View>: View {
     }
 }
 
-/// Symbol in a tinted circle next to one gesture description.
+/// Plain secondary symbol next to one gesture description.
 struct GestureHint: View {
     let symbol: String
     let text: String
@@ -64,9 +63,8 @@ struct GestureHint: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.tint)
-                .frame(width: 26, height: 26)
-                .background(Circle().fill(.tint.opacity(0.12)))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, height: 20)
                 .accessibilityHidden(true)
             Text(text)
                 .font(.callout)

@@ -5,17 +5,25 @@ import UniformTypeIdentifiers
 struct ExcludedAppsPane: View {
     @Bindable var model: SettingsModel
     @State private var choosing = false
+    @State private var query = ""
+
+    /// The excluded apps whose name contains the search text; all of them while it is empty.
+    private var shown: [String] {
+        let text = query.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return model.settings.excludedBundleIDs }
+        return model.settings.excludedBundleIDs.filter { Self.name(for: $0).localizedCaseInsensitiveContains(text) }
+    }
 
     var body: some View {
         Form {
             Section {
-                if model.settings.excludedBundleIDs.isEmpty {
-                    Text("No excluded apps")
+                if shown.isEmpty {
+                    Text(model.settings.excludedBundleIDs.isEmpty ? "No excluded apps" : "No apps match \u{201C}\(query)\u{201D}")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
-                ForEach(model.settings.excludedBundleIDs, id: \.self) { bundleID in
+                ForEach(shown, id: \.self) { bundleID in
                     HStack {
                         AppIcon(bundleID: bundleID)
                         VStack(alignment: .leading) {
@@ -56,6 +64,7 @@ struct ExcludedAppsPane: View {
             ResetSection { model.settings.excludedBundleIDs = [] }
         }
         .formStyle(.grouped)
+        .searchable(text: $query, prompt: "Filter excluded apps")
     }
 
     private func add(_ bundleID: String) {

@@ -5,6 +5,7 @@ import TesseraCore
 struct CyclesEditor: View {
     @Binding var cycles: [Cycle]
     @FocusState private var focusedStep: StepID?
+    @State private var removingCycle: Int?
 
     private struct StepID: Hashable {
         let cycle: Int
@@ -23,9 +24,18 @@ struct CyclesEditor: View {
                 HStack {
                     Button("Add Step") { cycles[c].steps.append(.action(.maximize)) }
                     Spacer()
-                    Button("Remove Cycle", role: .destructive) { cycles.remove(at: c) }
                 }
                 if cycles[c].steps.isEmpty { Caption("A cycle with no steps does nothing.") }
+                Button("Remove Cycle…", role: .destructive) { removingCycle = c }
+                    .confirmationDialog(
+                        "Remove the cycle \u{201C}\(cycles.indices.contains(c) ? cycles[c].name : "")\u{201D}?",
+                        isPresented: Binding(get: { removingCycle == c }, set: { if !$0 { removingCycle = nil } }),
+                        titleVisibility: .visible
+                    ) {
+                        Button("Remove Cycle", role: .destructive) {
+                            if cycles.indices.contains(c) { cycles.remove(at: c) }
+                        }
+                    }
             }
         }
         Section {

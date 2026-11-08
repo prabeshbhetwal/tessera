@@ -1,6 +1,3 @@
-# Reference clone of upstream Loop (GPL-3.0) — never imported
-loop/
-
 # Build output
 .build/
 DerivedData/
@@ -18,11 +15,20 @@ logs/
 tmp/
 .remember/
 Tessera.xcodeproj/
-.claude/worktrees/
-.claude/*.lock
 
 # Superseded files kept on disk, never committed
 _trash/
 
 # Brainstorm mockups (local only)
 .superpowers/
+
+# Local development tooling (kept on disk, not published)
+.claude/
+.mcp.json
+AGENTS.md
+CLAUDE.md
+docs/superpowers/
+docs/ring-icon-only-*
+graphify-out/
+.codegraph/
+Tessera 2.xcodeproj/
