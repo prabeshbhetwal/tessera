@@ -17,6 +17,16 @@ struct ExcludedAppsPane: View {
     var body: some View {
         Form {
             Section {
+                // Inline rather than `.searchable`: a toolbar search field made this pane's title bar taller
+                // than every other pane's, and switching panes left the sidebar clipped under the title bar.
+                if !model.settings.excludedBundleIDs.isEmpty {
+                    HStack {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField("Filter excluded apps", text: $query)
+                            .textFieldStyle(.plain)
+                            .labelsHidden()
+                    }
+                }
                 if shown.isEmpty {
                     Text(model.settings.excludedBundleIDs.isEmpty ? "No excluded apps" : "No apps match \u{201C}\(query)\u{201D}")
                         .foregroundStyle(.secondary)
@@ -64,7 +74,6 @@ struct ExcludedAppsPane: View {
             ResetSection { model.settings.excludedBundleIDs = [] }
         }
         .formStyle(.grouped)
-        .searchable(text: $query, prompt: "Filter excluded apps")
     }
 
     private func add(_ bundleID: String) {
