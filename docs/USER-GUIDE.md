@@ -223,6 +223,14 @@ Close a window (or quit its app) while it sits side by side with others and the 
 
 Press **⌃⌥Z** to put the windows back. It needs **Learn from my adjustments** and **Fill the space when a window closes** on (both are on by default). Minimising or hiding an app doesn't count as closing.
 
+### Opening a window makes room
+
+Open an app (or switch to one whose window sits over them) on a display whose windows sit side by side, and Tessera tiles its window in a moment later:
+- **Your split first.** If you've taught Tessera a split for the apps now on that display, they go to it.
+- **Otherwise equal shares.** Adjust them by hand and Tessera learns it, so the next time those apps meet they get your split.
+
+A card explains what moved. Press **⌃⌥Z** to put the windows back. Under **Make room on**, choose **Displays already tiled** (the default) or **Also wherever the apps have a split**, which also arranges a display that wasn't tiled when you open an app and the apps now on it have a split. A new window opened in the app you're already using (⌘N) isn't tiled in.
+
 ### How a split is learned
 
 About **1 second** after you stop adjusting, Tessera saves the arrangement as a **split**. A split is keyed by:
@@ -238,6 +246,8 @@ The next **Tile All Windows** with the same apps on the same display reuses it. 
 | Learn from my adjustments | On | Off: Tessera stops watching windows, so it learns nothing new and neighbours no longer follow your edits. Splits you already saved (or save with Remember Split) are still used by Tile. To get equal shares, forget them or use Tile Evenly. |
 | Resize neighbours to fill the display | On | Neighbours follow a resized window's edges. Needs **Learn from my adjustments** on. |
 | Fill the space when a window closes | On | The apps left go back to their split, or the window beside the space you used last grows into it. Needs **Learn from my adjustments** on. |
+| Make room when a window opens | On | A new window joins the side-by-side group: in your split for those apps, or equal shares. Needs **Learn from my adjustments** on. |
+| Make room on | Displays already tiled | **Also wherever the apps have a split** also arranges an untiled display when the apps on it have a split. |
 | Restore last order | Off | Off: windows keep their current order and take their app's learned **size**. On: each app goes back to its exact learned **position**. |
 | Empty space when order changes | Stays in place | When windows are in a new order, a learned gap either stays where it was or follows the window it sat beside. |
 

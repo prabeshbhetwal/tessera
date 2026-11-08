@@ -104,6 +104,13 @@ public enum SplitGapPlacement: String, Codable, CaseIterable, Equatable, Sendabl
 }
 
 /// How a gap behaves when a neighbouring slot grows.
+/// Where a newly opened window is tiled in: only beside windows already side by side, or also wherever the apps now on
+/// the display have a learned split.
+public enum SplitNewWindowScope: String, Codable, CaseIterable, Equatable, Sendable {
+    case tiledDisplays, rememberedSplits
+}
+
+/// How a gap behaves when a neighbouring slot grows.
 public enum SplitGapWhenGrowing: String, Codable, CaseIterable, Equatable, Sendable {
     case fixed, shrinks
 }

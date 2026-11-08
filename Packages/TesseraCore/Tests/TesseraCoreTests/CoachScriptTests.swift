@@ -96,6 +96,12 @@ import Testing
         #expect(grew[0].body.hasPrefix("WhatsApp closed, so Dia grew into the space."))
         let split = CoachScript.steps(for: Self.event(.gapFilled(closed: ["WhatsApp"], filled: ["Dia"], usedSplit: true)))[0]
         #expect(split.body.contains("went back to your split"))
+        let joined = CoachScript.steps(for: Self.event(.windowJoined(joined: ["Codex"], usedSplit: false)))
+        #expect(joined.count == 1 && joined[0].actions == [.done, .undoMove, .openSplitsSettings])
+        #expect(joined[0].title == "Made room for Codex")
+        #expect(joined[0].body.hasPrefix("Codex opened, so each window got"))
+        let rejoined = CoachScript.steps(for: Self.event(.windowJoined(joined: ["Codex"], usedSplit: true)))[0]
+        #expect(rejoined.body.contains("went back to your split"))
         let gone = CoachScript.steps(for: Self.event(.splitForgotten))
         #expect(gone.count == 1 && gone[0].actions == [.undoSplitChange, .done])
         #expect(CoachScript.forgotten(Self.event(.splitForgotten)) == gone[0])
@@ -109,6 +115,7 @@ import Testing
             .neighboursFollowed(changed: "Dia", followers: ["Claude"]),
             .gapFilled(closed: ["WhatsApp"], filled: ["Dia"], usedSplit: false),
             .gapFilled(closed: ["WhatsApp"], filled: [], usedSplit: true),
+            .windowJoined(joined: ["Codex"], usedSplit: false), .windowJoined(joined: ["Codex"], usedSplit: true),
             .splitLearned, .splitNotLearned(reason: "Windows overlap"), .splitForgotten,
         ]
         for kind in kinds {
