@@ -33,7 +33,7 @@ final class SplitWatcher {
     private var observers: [(observer: AXObserver, elements: [AXUIElement])] = []
     private(set) var key: SplitKey?
     /// The windows themselves: another Space can hold the same apps (the same `key`) in different windows.
-    private var watched: [WindowRef] = []
+    private(set) var watched: [WindowRef] = []
     /// False for Tile Evenly: neighbours still follow a hand adjustment, but the arrangement is never saved.
     private var learns = true
     /// Tessera moves in flight, and when the notifications of the last one to end stop counting as Tessera's.

@@ -21,13 +21,16 @@ public enum HelpEventKind: Equatable, Sendable {
     /// `closed` left a side-by-side group; `filled` grew into its space, or the apps left went back to their learned
     /// split (`usedSplit`).
     case gapFilled(closed: [String], filled: [String], usedSplit: Bool)
+    /// `joined` opened beside a side-by-side group, and the group was tiled again with it: in the learned split for the
+    /// apps now there (`usedSplit`), otherwise in equal shares.
+    case windowJoined(joined: [String], usedSplit: Bool)
     case splitLearned
     case splitNotLearned(reason: String)
     case splitForgotten
 }
 
 public enum CoachMoment: String, CaseIterable, Sendable {
-    case tiledWithSplit, tiledEqual, tiledEvenly, tilePartial, neighboursFollowed, gapFilled, splitLearned, splitNotLearned, splitForgotten
+    case tiledWithSplit, tiledEqual, tiledEvenly, tilePartial, neighboursFollowed, gapFilled, windowJoined, splitLearned, splitNotLearned, splitForgotten
 }
 
 /// One thing the coach can explain: what happened, to which apps, and where they sit.
@@ -94,6 +97,7 @@ public struct HelpEvent: Equatable, Sendable, Identifiable {
         case .tilePartial: .tilePartial
         case .neighboursFollowed: .neighboursFollowed
         case .gapFilled: .gapFilled
+        case .windowJoined: .windowJoined
         case .splitLearned: .splitLearned
         case .splitNotLearned: .splitNotLearned
         case .splitForgotten: .splitForgotten
