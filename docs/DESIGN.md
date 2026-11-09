@@ -45,7 +45,7 @@ System font (SF Pro) throughout. One family.
 
 ## Layout
 
-- Settings: `NavigationSplitView` with a fixed 200 pt sidebar that can't collapse. The window is a fixed 820 × 720 pt (smaller only on a screen that can't fit it): never resized, zoomed or full screen. It remembers its position.
+- Settings: `NavigationSplitView` with a sidebar that can't collapse: 230 pt by default, never narrower than 220 pt so the search field shows its whole placeholder, at most 280 pt. The window is a fixed 820 × 720 pt (smaller only on a screen that can't fit it): never resized, zoomed or full screen. It remembers its position.
 - Explanations go in section footers (`Footer`), under the rounded group, never as rows inside it. Inline captions are only for live validation (a name already taken, a hotkey conflict).
 - Sliders never show tick marks; `SliderRow` rounds to its step in the binding.
 - Appearance (General): Match System, Light or Dark for Tessera's own windows, chosen from window thumbnails.

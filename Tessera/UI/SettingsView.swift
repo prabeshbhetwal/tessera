@@ -155,8 +155,12 @@ struct SettingsView: View {
     var body: some View {
         NavigationSplitView(columnVisibility: .constant(.all)) {
             SettingsSidebar(navigation: navigation, usesAppleIntelligence: model.settings.searchUsesAppleIntelligence)
-            // A fixed sidebar that can't be collapsed or dragged, like System Settings.
-            .navigationSplitViewColumnWidth(200)
+            // A sidebar that can't be collapsed, like System Settings. Narrower, the search field cut off the
+            // first letter of its "Search settings" placeholder, so it never gets narrower than 220 pt. It can
+            // widen to 280 pt, which still leaves the detail 540 pt. The column width alone was ignored (the
+            // sidebar opened at ~140 pt); the frame's minimum is what holds it.
+            .frame(minWidth: 220)
+            .navigationSplitViewColumnWidth(min: 220, ideal: 230, max: 280)
             .toolbar(removing: .sidebarToggle)
         } detail: {
             ScrollViewReader { proxy in
