@@ -251,7 +251,7 @@ The next **Tile All Windows** with the same apps on the same display reuses it. 
 | Restore last order | Off | Off: windows keep their current order and take their app's learned **size**. On: each app goes back to its exact learned **position**. |
 | Empty space when order changes | Stays in place | When windows are in a new order, a learned gap either stays where it was or follows the window it sat beside. |
 
-The list below the settings shows every learned split. **Forget** removes one; **Forget All…** removes them all. A forgotten app set tiles in equal shares again.
+Below the settings, **Learned splits** lists each display once, with how many splits it holds. **Manage…** opens that display's splits: search by app, click a split's **⊖** to forget it, or select several and press Delete. **Forget All on This Display…** clears one display; **Forget All…** in the pane clears every display. A forgotten app set tiles in equal shares again.
 
 ---
 

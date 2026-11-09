@@ -97,26 +97,48 @@ struct RingPane: View {
     }
 }
 
-/// The diagram as a control: tap a wedge to focus it, ← → to move the focus. Draws the cancel area,
-/// the point threshold and every wedge with its layout glyph.
+/// The diagram as a control: tap a wedge to focus it, ← → to move the focus. A highlight follows the pointer
+/// (or the keyboard focus) around the ring on a spring, the short way round, lifting the tile under it.
 private struct WedgePicker: View {
     let ring: RingSettings
     let theme: Theme
     @Binding var focused: Int
     @FocusState private var hasFocus: Bool
+    @State private var hovered: Int?
+    /// Unwrapped wedge position of the highlight; see `RingDiagram.glide`.
+    @State private var glide: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var target: Int { hovered ?? focused }
+    private var hover: Double { hovered != nil ? 1 : hasFocus ? 0.6 : 0 }
 
     var body: some View {
         GeometryReader { geometry in
             RingDiagram(
                 ring: ring, fill: Color(hex: theme.ring.fillHex), tint: theme.ring.opacity,
                 stroke: Color(hex: theme.ring.strokeHex), accent: Color(hex: theme.accentHex),
-                active: nil, focused: focused, showBoundary: false, showFocusRing: hasFocus
+                active: nil, focused: focused, showBoundary: false, showFocusRing: hasFocus,
+                glide: glide, hover: hover
             )
             .contentShape(Rectangle())
             .onTapGesture { location in
                 if let hit = RingDiagram.wedge(at: location, size: geometry.size) { focused = hit }
             }
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let point): hovered = RingDiagram.wedge(at: point, size: geometry.size)
+                case .ended: hovered = nil
+                }
+            }
         }
+        .onAppear { glide = Double(focused) }
+        .onChange(of: target) { _, wedge in
+            // Take the short way round: from Up-left (7) to Up (0) is one step forward, not seven back.
+            var step = (Double(wedge) - glide).truncatingRemainder(dividingBy: 8)
+            if step > 4 { step -= 8 } else if step < -4 { step += 8 }
+            withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.78)) { glide += step }
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: hover)
         .focusable()
         .focused($hasFocus)
         .focusEffectDisabled()
@@ -127,88 +149,6 @@ private struct WedgePicker: View {
         .accessibilityValue("\(RingPane.directions[focused]): \(ring.wedges[focused].displayName)")
         .accessibilityAdjustableAction { direction in
             focused = (focused + (direction == .increment ? 1 : 7)) % 8
-        }
-    }
-}
-
-/// Scaled drawing of the ring with the same wedge geometry and glyphs as the overlay. `active` is filled
-/// in the accent colour like the live ring; `focused` is outlined for the Ring pane's picker.
-struct RingDiagram: View {
-    let ring: RingSettings
-    let fill: Color
-    let tint: Double
-    let stroke: Color
-    let accent: Color
-    let active: Int?
-    let focused: Int?
-    var showBoundary: Bool
-    var showFocusRing = false
-
-    /// Diagram scale: the ring itself fills the diagram. The point threshold is drawn at true proportion
-    /// and simply runs off the edge when it is far outside the ring, which is what it does on screen too.
-    private static func scale(_ ring: RingSettings, in size: CGSize, showBoundary: Bool) -> CGFloat {
-        let outer = RingGeometry.extent(ring)
-        let reach = showBoundary ? min(max(CGFloat(ring.flickDistance), outer), outer * 1.6) : outer
-        return (min(size.width, size.height) / 2 - 16) / max(reach, 1)
-    }
-
-    /// Wedge index in the direction of `point` (view coordinates, y down), or nil at the very centre.
-    static func wedge(at point: CGPoint, size: CGSize) -> Int? {
-        let center = CGPoint(x: size.width / 2, y: size.height / 2)
-        let dx = point.x - center.x, dy = center.y - point.y
-        guard hypot(dx, dy) > 4 else { return nil }
-        let deg = atan2(dx, dy) * 180 / .pi
-        let shifted = ((deg + 22.5).truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
-        return min(Int(shifted / 45), 7)
-    }
-
-    var body: some View {
-        Canvas { context, size in
-            let s = Self.scale(ring, in: size, showBoundary: showBoundary)
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            var scaled = ring
-            scaled.radius = ring.radius * s
-            scaled.thickness = ring.thickness * s
-            // RingLayer paths are y-up; flip into the Canvas.
-            func flipped(_ path: CGPath) -> Path {
-                Path(path).applying(CGAffineTransform(scaleX: 1, y: -1)).offsetBy(dx: center.x, dy: center.y)
-            }
-
-            if showBoundary {
-                let flick = CGFloat(ring.flickDistance) * s
-                let circle = Path(ellipseIn: CGRect(x: center.x - flick, y: center.y - flick, width: flick * 2, height: flick * 2))
-                context.fill(circle, with: .color(accent.opacity(0.06)))
-                context.stroke(circle, with: .color(.secondary), style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
-                let dead = CGFloat(ring.cancelRadius) * s  // the cancel area
-                context.fill(Path(ellipseIn: CGRect(x: center.x - dead, y: center.y - dead, width: dead * 2, height: dead * 2)),
-                             with: .color(.secondary.opacity(0.25)))
-            }
-
-            for i in 0..<8 {
-                let wedge = flipped(RingGeometry.tilePath(index: i, center: .zero, ring: scaled))
-                if ring.iconStyle == .layouts {
-                    context.fill(wedge, with: .color(fill.opacity(max(tint, 0.85))))
-                }
-            }
-            if let glyphs = RingLayer.glyphPaths(ring: scaled, center: .zero, aspect: 1.6) {
-                context.stroke(flipped(glyphs.outlines), with: .color(stroke.opacity(0.65)), lineWidth: 1.25)
-                context.fill(flipped(glyphs.fills), with: .color(stroke.opacity(0.28)))
-                if let active, let selected = RingLayer.glyphPaths(ring: scaled, center: .zero, aspect: 1.6, only: active) {
-                    context.stroke(flipped(selected.outlines), with: .color(stroke), lineWidth: 1.5)
-                    context.fill(flipped(selected.fills), with: .color(accent))
-                }
-            }
-            if let focused {
-                let wedge = flipped(RingGeometry.tilePath(index: focused, center: .zero, ring: scaled))
-                context.stroke(wedge, with: .color(accent), lineWidth: showFocusRing ? 3 : 2)
-            }
-            context.fill(Path(ellipseIn: CGRect(x: center.x - 1.25, y: center.y - 1.25, width: 2.5, height: 2.5)),
-                         with: .color(stroke.opacity(0.35)))
-        }
-        .background {
-            if showFocusRing {
-                RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.accentColor.opacity(0.5), lineWidth: 2)
-            }
         }
     }
 }
