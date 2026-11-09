@@ -105,8 +105,6 @@ struct GeneralPane: View {
 
             HelpSection(model: model)
 
-            UpdatesSection(model: model)
-
             AdvancedSection(model: model)
 
             ResetSection {
@@ -118,7 +116,6 @@ struct GeneralPane: View {
                 model.settings.menuBarIcon = .grid
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
-                model.settings.updates = UpdateSettings()
                 model.settings.help.autoShow = true
                 model.settings.help.dimScreen = true
                 if model.settings.launchAtLogin { setLaunchAtLogin(false) }
