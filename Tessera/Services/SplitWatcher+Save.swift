@@ -22,3 +22,10 @@ extension SplitWatcher {
         }
     }
 }
+
+extension SplitKey {
+    /// The key for `group` on `display`, shared by Tile, Remember and the watcher.
+    init(_ group: [(window: WindowRef, frame: CGRect)], on display: DisplayContext) {
+        self.init(display: display.id.storageKey, bundleIDs: group.map(\.window.bundleID))
+    }
+}

@@ -254,11 +254,13 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     /// When a window of a side-by-side group closes, the rest cover its space: the learned split for the apps left
     /// when there is one, otherwise the most recently used window beside the space grows into it. Needs `learnSplits`.
     public var splitFillsClosedGap = true
+    /// What the rest of a side-by-side group does when one of its windows is minimised (see `minimiseFillsGap`).
+    public var splitOnMinimise: SplitMinimiseAction = .retile
     /// When a new window opens beside a side-by-side group, the group is tiled again with it: the learned split for
     /// the apps now there when there is one, otherwise equal shares. Needs `learnSplits`.
     public var splitTilesNewWindow = true
-    /// Which displays `splitTilesNewWindow` acts on.
-    public var splitNewWindowScope: SplitNewWindowScope = .tiledDisplays
+    /// Which displays `splitTilesNewWindow` acts on. Files that already hold a value keep it.
+    public var splitNewWindowScope: SplitNewWindowScope = .rememberedSplits
     /// Oldest first, at most `SplitMemory.capacity`.
     public var learnedSplits: [LearnedSplit] = []
     public var updates = UpdateSettings()
@@ -266,4 +268,9 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
 
     public init() {}
     public static let defaults = TesseraSettings()
+
+    /// Minimising a window of a side-by-side group counts as closing it: the rest cover its space
+    /// (`splitFillsClosedGap`), and restoring it tiles it back in as a newly opened window (`splitTilesNewWindow`).
+    /// Otherwise nothing moves and the space waits for it.
+    public var minimiseFillsGap: Bool { learnSplits && splitFillsClosedGap && splitOnMinimise == .retile }
 }

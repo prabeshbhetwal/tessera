@@ -6,8 +6,9 @@ import TesseraCore
 /// into it (`SplitFill`). One ⌃⌥Z puts them back.
 extension SplitWatchers {
     /// Waits for the window list to drop the closed window, then fills its space; re-arms the watchers either way.
-    /// Each display fills on its own, so an app quitting with windows on two displays fills both.
-    func fillSoon(_ group: [(window: WindowRef, frame: CGRect)], displayKey: String) {
+    /// Each display fills on its own, so an app quitting with windows on two displays fills both. A `minimised` window
+    /// left the same way (`minimiseFillsGap`); only the help message differs.
+    func fillSoon(_ group: [(window: WindowRef, frame: CGRect)], displayKey: String, minimised: Bool = false) {
         pendingFills[displayKey]?.cancel()
         pendingFills[displayKey] = Task { [weak self] in
             var group = group
@@ -17,7 +18,7 @@ extension SplitWatchers {
             while looks < 3, busy < 100 {
                 do { try await Task.sleep(for: SplitWatcher.settle) } catch { return }
                 guard let self else { return }
-                switch await self.fill(group, displayKey: displayKey) {
+                switch await self.fill(group, displayKey: displayKey, minimised: minimised) {
                 case .moved(let finals):
                     // The watch ended with the close, so a window closed during the glide went unseen: look once more.
                     (group, looks) = (finals, 2)
@@ -39,7 +40,8 @@ extension SplitWatchers {
     /// `.busy` while Tessera is moving windows; `.notYet` while no window of `group` has left the window list;
     /// `.skipped` when the setting is off, a window joined or wandered onto the display since, or nothing beside the
     /// space can cover it.
-    private func fill(_ group: [(window: WindowRef, frame: CGRect)], displayKey: String) async -> FillOutcome {
+    private func fill(_ group: [(window: WindowRef, frame: CGRect)], displayKey: String, minimised: Bool) async
+        -> FillOutcome {
         let settings = model.settings
         guard settings.learnSplits, settings.splitFillsClosedGap, group.count > 1,
               let display = displays.displays.first(where: { $0.id.storageKey == displayKey }) else { return .skipped }
@@ -62,6 +64,13 @@ extension SplitWatchers {
         }
         let moves = left.indices.filter { !CommandExecutor.sameFrame(left[$0].frame, goals[$0]) }
         guard !moves.isEmpty else { return .skipped }
+        // A minimised window waits to be tiled back in beside the windows left (a closed one can't be watched, so
+        // `add` skips it). Taken from what left, not from the event, so one minimised while the watch was down counts.
+        if settings.minimiseFillsGap {
+            for entry in closed {
+                minimisedWindows.add(entry.window, others: left.map(\.window), displayKey: displayKey)
+            }
+        }
 
         beginOwnMove()
         let (landed, undoMarker) = await windows.moveTogether(
@@ -74,7 +83,7 @@ extension SplitWatchers {
         let grew = zip(moves, landed).filter { $0.1 != nil }.map { HelpEvent.appName(left[$0.0].window) }
         guard !grew.isEmpty else { return .skipped }
         let kind = HelpEventKind.gapFilled(closed: closed.map { HelpEvent.appName($0.window) }, filled: grew,
-                                           usedSplit: learned != nil)
+                                           usedSplit: learned != nil, minimised: minimised)
         let split = learned == nil ? nil : SplitMemory.lookup(SplitKey(left, on: display), in: settings.learnedSplits)
         onHelpEvent?(.make(kind: kind, source: .hand, display: display,
                            group: onScreenOrder(finals, portrait: display.range.isPortrait), split: split,

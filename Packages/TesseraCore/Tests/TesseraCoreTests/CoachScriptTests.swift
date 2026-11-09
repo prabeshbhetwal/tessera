@@ -100,6 +100,10 @@ import Testing
         #expect(joined.count == 1 && joined[0].actions == [.done, .undoMove, .openSplitsSettings])
         #expect(joined[0].title == "Made room for Codex")
         #expect(joined[0].body.hasPrefix("Codex opened, so each window got"))
+        let minimised = CoachScript.steps(for: Self.event(.gapFilled(closed: ["Cursor"], filled: ["Dia"], usedSplit: false, minimised: true)))[0]
+        #expect(minimised.body.hasPrefix("Cursor was minimised, so Dia grew into the space."))
+        let restored = CoachScript.steps(for: Self.event(.windowJoined(joined: ["Cursor"], usedSplit: true, restored: true)))[0]
+        #expect(restored.body.hasPrefix("Cursor came back, so"))
         let rejoined = CoachScript.steps(for: Self.event(.windowJoined(joined: ["Codex"], usedSplit: true)))[0]
         #expect(rejoined.body.contains("went back to your split"))
         let gone = CoachScript.steps(for: Self.event(.splitForgotten))

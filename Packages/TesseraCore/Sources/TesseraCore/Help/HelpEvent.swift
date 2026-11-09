@@ -18,12 +18,12 @@ public enum HelpEventKind: Equatable, Sendable {
     case tiledEvenly(hasSplit: Bool)
     case tilePartial(moved: Int, total: Int, stuck: [String])
     case neighboursFollowed(changed: String, followers: [String])
-    /// `closed` left a side-by-side group; `filled` grew into its space, or the apps left went back to their learned
-    /// split (`usedSplit`).
-    case gapFilled(closed: [String], filled: [String], usedSplit: Bool)
-    /// `joined` opened beside a side-by-side group, and the group was tiled again with it: in the learned split for the
-    /// apps now there (`usedSplit`), otherwise in equal shares.
-    case windowJoined(joined: [String], usedSplit: Bool)
+    /// `closed` left a side-by-side group (closed, or `minimised`); `filled` grew into its space, or the apps left went
+    /// back to their learned split (`usedSplit`).
+    case gapFilled(closed: [String], filled: [String], usedSplit: Bool, minimised: Bool = false)
+    /// `joined` opened (or was `restored` after a minimise) beside a side-by-side group, and the group was tiled again
+    /// with it: in the learned split for the apps now there (`usedSplit`), otherwise in equal shares.
+    case windowJoined(joined: [String], usedSplit: Bool, restored: Bool = false)
     case splitLearned
     case splitNotLearned(reason: String)
     case splitForgotten

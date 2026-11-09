@@ -112,19 +112,20 @@ public enum CoachScript {
                 title: "Neighbours followed",
                 body: "You resized \(changed), so \(CoachCopy.list(others)) moved to fill the space. You can turn this off in Settings › Splits.",
                 actions: [.done, .undoMove, .openSplitsSettings])]
-        case .gapFilled(let closed, let filled, let usedSplit):
-            let gone = CoachCopy.list(closed)
+        case .gapFilled(let closed, let filled, let usedSplit, let minimised):
+            let gone = CoachCopy.list(closed) + (minimised ? (closed.count == 1 ? " was minimised" : " were minimised") : " closed")
             let body = usedSplit
-                ? "\(gone) closed, so \(CoachCopy.list(apps)) went back to your split for these apps instead of leaving a gap."
-                : "\(gone) closed, so \(CoachCopy.list(filled)) grew into the space. Tessera picks the window beside it you used last."
+                ? "\(gone), so \(CoachCopy.list(apps)) went back to your split for these apps instead of leaving a gap."
+                : "\(gone), so \(CoachCopy.list(filled)) grew into the space. Tessera picks the window beside it you used last."
             return [CoachStep(
                 title: "Space filled", body: body + " You can turn this off in Settings › Splits.",
                 actions: [.done, .undoMove, .openSplitsSettings])]
-        case .windowJoined(let joined, let usedSplit):
+        case .windowJoined(let joined, let usedSplit, let restored):
             let opened = CoachCopy.list(joined)
+            let came = opened + (restored ? " came back" : " opened")
             let body = usedSplit
-                ? "\(opened) opened, so \(CoachCopy.list(apps)) went back to your split for these apps."
-                : "\(opened) opened, so each window got \(CoachCopy.equalShare(n)). Adjust them by hand and Tessera remembers it for these apps."
+                ? "\(came), so \(CoachCopy.list(apps)) went back to your split for these apps."
+                : "\(came), so each window got \(CoachCopy.equalShare(n)). Adjust them by hand and Tessera remembers it for these apps."
             return [CoachStep(
                 title: "Made room for \(opened)", body: body + " You can turn this off in Settings › Splits.",
                 actions: [.done, .undoMove, .openSplitsSettings])]

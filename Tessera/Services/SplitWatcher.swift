@@ -20,10 +20,12 @@ final class SplitWatcher {
     var onHelpEvent: ((HelpEvent) -> Void)?
     /// The watched group changed (a window joined or left) and the watch ended; `SplitWatchers` re-arms.
     var onEnded: (() -> Void)?
-    /// A watched window closed (see `closed`): the group as it last settled, and its display's storage key.
-    var onWindowClosed: ((_ group: [(window: WindowRef, frame: CGRect)], _ displayKey: String) -> Void)?
+    /// A watched window closed or was minimised (see `closed`): the group as it last settled, its display's storage
+    /// key, and whether a minimise rather than a close ended the watch.
+    var onWindowClosed: ((_ group: [(window: WindowRef, frame: CGRect)], _ displayKey: String, _ minimised: Bool) -> Void)?
 
-    private static let notifications = [kAXMovedNotification, kAXResizedNotification, kAXUIElementDestroyedNotification]
+    private static let notifications = [kAXMovedNotification, kAXResizedNotification, kAXUIElementDestroyedNotification,
+                                        kAXWindowMiniaturizedNotification]
     private static let timeout: Float = 0.3
 
     private let windows: WindowService
@@ -132,22 +134,27 @@ final class SplitWatcher {
 
     fileprivate func handle(_ notification: String) {
         guard key != nil else { return }  // queued before stop()
-        if notification == kAXUIElementDestroyedNotification {
+        switch notification {
+        case kAXUIElementDestroyedNotification:
             closed()
-            return
-        }
-        if quiet {
-            adjusting = true
-            schedule()
+        case kAXWindowMiniaturizedNotification:
+            // Leaving the space empty: nothing moves, and the watch ends at its next check, as before.
+            if model.settings.minimiseFillsGap { closed(minimised: true) }
+        default:
+            if quiet {
+                adjusting = true
+                schedule()
+            }
         }
     }
 
-    /// A watched window closed, or its app quit: the watch ends, and `onWindowClosed` gets the group as it last settled.
-    func closed() {
+    /// A watched window closed or was `minimised`, or its app quit: the watch ends, and `onWindowClosed` gets the group
+    /// as it last settled.
+    func closed(minimised: Bool = false) {
         guard let display = key?.display else { return }
         let group = baseline
         stop()
-        onWindowClosed?(group, display)
+        onWindowClosed?(group, display, minimised)
     }
 
     /// Watching a window of the app with this process ID.
@@ -277,13 +284,6 @@ final class SplitWatcher {
             }
         }
         return true
-    }
-}
-
-extension SplitKey {
-    /// The key for `group` on `display`, shared by Tile, Remember and the watcher.
-    init(_ group: [(window: WindowRef, frame: CGRect)], on display: DisplayContext) {
-        self.init(display: display.id.storageKey, bundleIDs: group.map(\.window.bundleID))
     }
 }
 
