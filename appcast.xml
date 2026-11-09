@@ -3,6 +3,26 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.16</title>
+            <pubDate>Mon, 09 Nov 2026 12:19:18 +0000</pubDate>
+            <sparkle:version>20261109.121747</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.16</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Splits, organised by display
+
+- **Settings › Splits** now shows one row per display: its name, how many splits Tessera has learned there, and **Manage…**. Stays tidy with one monitor or many; disconnected displays are marked "Not connected".
+- **Manage…** opens that display's splits in a sheet: app icons and names, when each was learned, and search by app.
+- Forget one split with its ⊖ button, select several and press Delete, or forget everything on that display. Forgetting several asks first.
+
+## Ring picker glides
+
+- In **Ring › Directions**, a soft highlight now glides around the ring as you hover between layouts, taking the short way round, and the layout under it lifts slightly.
+- The keyboard focus (← →) glides the same way.
+- With Reduce Motion on, the highlight moves without animating.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.16/Tessera-0.2.0-beta.16.zip" length="4935944" type="application/octet-stream" sparkle:edSignature="ovj4TBKHgilD6xMsEkSUSif7qcPrGDCKJADlIT2hiP5ZYwNK/qJkZ0aGkLJ/oqW41pVgBcYmoRovOYW3BO0HCg==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.15</title>
             <pubDate>Mon, 09 Nov 2026 08:35:46 +0000</pubDate>
             <sparkle:version>20261109.083406</sparkle:version>
