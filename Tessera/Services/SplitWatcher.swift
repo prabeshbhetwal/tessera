@@ -21,9 +21,8 @@ final class SplitWatcher {
     /// The watched group changed (a window joined or left) and the watch ended; `SplitWatchers` re-arms.
     var onEnded: (() -> Void)?
     /// A watched window closed or was minimised (see `closed`): the group as it last settled, its display's storage
-    /// key, and the window when it was minimised rather than closed.
-    var onWindowClosed: ((_ group: [(window: WindowRef, frame: CGRect)], _ displayKey: String, _ minimised: WindowRef?)
-        -> Void)?
+    /// key, and whether a minimise rather than a close ended the watch.
+    var onWindowClosed: ((_ group: [(window: WindowRef, frame: CGRect)], _ displayKey: String, _ minimised: Bool) -> Void)?
 
     private static let notifications = [kAXMovedNotification, kAXResizedNotification, kAXUIElementDestroyedNotification,
                                         kAXWindowMiniaturizedNotification]
@@ -133,13 +132,14 @@ final class SplitWatcher {
         refreshBaseline()
     }
 
-    fileprivate func handle(_ notification: String, element: AXUIElement) {
+    fileprivate func handle(_ notification: String) {
         guard key != nil else { return }  // queued before stop()
         switch notification {
         case kAXUIElementDestroyedNotification:
             closed()
         case kAXWindowMiniaturizedNotification:
-            minimised(element)
+            // Leaving the space empty: nothing moves, and the watch ends at its next check, as before.
+            if model.settings.minimiseFillsGap { closed(minimised: true) }
         default:
             if quiet {
                 adjusting = true
@@ -150,7 +150,7 @@ final class SplitWatcher {
 
     /// A watched window closed or was `minimised`, or its app quit: the watch ends, and `onWindowClosed` gets the group
     /// as it last settled.
-    func closed(minimised: WindowRef? = nil) {
+    func closed(minimised: Bool = false) {
         guard let display = key?.display else { return }
         let group = baseline
         stop()
@@ -288,12 +288,11 @@ final class SplitWatcher {
 }
 
 /// AX calls this on the main run loop, where `watch` adds every observer's source; `refcon` is the watcher.
-private func splitWatcherCallback(_: AXObserver, _ element: AXUIElement, _ notification: CFString, _ refcon: UnsafeMutableRawPointer?) {
+private func splitWatcherCallback(_: AXObserver, _: AXUIElement, _ notification: CFString, _ refcon: UnsafeMutableRawPointer?) {
     guard let refcon else { return }
     let watcher = Unmanaged<SplitWatcher>.fromOpaque(refcon)
     let name = notification as String
-    nonisolated(unsafe) let element = element  // never leaves the main thread this callback runs on
     MainActor.assumeIsolated {
-        watcher.takeUnretainedValue().handle(name, element: element)
+        watcher.takeUnretainedValue().handle(name)
     }
 }

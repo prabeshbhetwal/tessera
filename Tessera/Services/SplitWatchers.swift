@@ -146,12 +146,7 @@ final class SplitWatchers {
         // A window joined, left or closed: watch whatever the display holds now.
         watcher.onEnded = { [weak self] in self?.armSoon() }
         watcher.onWindowClosed = { [weak self] group, displayKey, minimised in
-            guard let self else { return }
-            self.fillSoon(group, displayKey: displayKey, minimised: minimised != nil)
-            guard let minimised else { return }
-            let others = group.map(\.window).filter { $0 != minimised }
-            // Empty while a new watch's baseline is still being read: nothing to tile it back beside.
-            if !others.isEmpty { self.minimisedWindows.add(minimised, others: others, displayKey: displayKey) }
+            self?.fillSoon(group, displayKey: displayKey, minimised: minimised)
         }
         // Moves already in flight count for the new watcher too; `endOwnMove` balances them.
         for _ in 0..<ownMoves { watcher.beginOwnMove() }

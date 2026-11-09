@@ -21,14 +21,6 @@ extension SplitWatcher {
             return (key, true)
         }
     }
-
-    /// A watched window was minimised. With `minimiseFillsGap` it counts as closed, and `onWindowClosed` names it so
-    /// it can be tiled back in when restored; otherwise nothing moves, and the watch ends at its next check, as before.
-    func minimised(_ element: AXUIElement) {
-        guard model.settings.minimiseFillsGap, let window = watched.first(where: { CFEqual($0.element, element) })
-        else { return }
-        closed(minimised: window)
-    }
 }
 
 extension SplitKey {

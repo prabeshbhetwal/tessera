@@ -64,6 +64,13 @@ extension SplitWatchers {
         }
         let moves = left.indices.filter { !CommandExecutor.sameFrame(left[$0].frame, goals[$0]) }
         guard !moves.isEmpty else { return .skipped }
+        // A minimised window waits to be tiled back in beside the windows left (a closed one can't be watched, so
+        // `add` skips it). Taken from what left, not from the event, so one minimised while the watch was down counts.
+        if settings.minimiseFillsGap {
+            for entry in closed {
+                minimisedWindows.add(entry.window, others: left.map(\.window), displayKey: displayKey)
+            }
+        }
 
         beginOwnMove()
         let (landed, undoMarker) = await windows.moveTogether(

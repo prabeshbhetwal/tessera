@@ -59,8 +59,10 @@ extension SplitWatchers {
             guard !Task.isCancelled, ownMoves == 0 else { return false }
             let joined = found.filter { $0.window.pid == pid && !watched.contains($0.window) }
             guard !joined.isEmpty, found.count > 1 else { continue }
-            // The whole group is still here (same Space), so the new window joins it.
-            let wasTiled = !watched.isEmpty && watched.allSatisfy { window in found.contains { $0.window == window } }
+            // The whole group is still here (same Space), so the new window joins it. A restored window rejoins what is
+            // left of the group it was minimised out of, even if some of it closed since.
+            let present = watched.filter { window in found.contains { $0.window == window } }
+            let wasTiled = !present.isEmpty && (restored || present.count == watched.count)
             guard wasTiled || anywhere else { continue }
             if await tileIn(found, joined: joined, display: display, wasTiled: wasTiled, restored: restored,
                             settings: settings) { done = true }
