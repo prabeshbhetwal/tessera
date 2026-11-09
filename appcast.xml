@@ -3,6 +3,33 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.13</title>
+            <pubDate>Mon, 09 Nov 2026 06:45:00 +0000</pubDate>
+            <sparkle:version>20261109.064324</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.13</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Search your settings
+
+A search field at the top of the Settings sidebar finds any setting from a rough description, such as "remove gap between tiled apps". Pick a result, or use ↑ ↓ and Return, and Settings opens the pane, scrolls to the setting and highlights it.
+
+- ⌘F focuses the field. Esc or the clear button brings the pane list back.
+- Typos, half-typed words and everyday words (spacing, gap, gutter) all work.
+- On Macs with Apple Intelligence turned on, a search written as a sentence is also read by Apple's on-device model. Nothing leaves your Mac. General › App › **Understand searches with Apple Intelligence** turns this off.
+
+## Updates have their own pane
+
+Settings › **Updates** holds every update control: Last checked, Check Now, how often to check, automatic install and beta versions. It has its own Restore Defaults.
+
+- If Tessera was replaced while it was open, a check now says to quit and reopen Tessera, instead of failing with "Update Error!".
+
+## Menu bar icons
+
+- The icon you pick now always shows. While hotkeys are paused, a small pause disc sits in its corner instead of replacing it.
+- Eight new icons drawn in the app icon's tile style: Tiles, Badge, Slot, Mosaic, Ring, Split, Columns and Quarters. Your saved choice carries over to the nearest new icon.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.13/Tessera-0.2.0-beta.13.zip" length="4818625" type="application/octet-stream" sparkle:edSignature="vM9oTLJ+KzsELtIpGIM8jmFp0GZtmBd2+loZUhJv8BX8SMjGJz2ppcEx5Oc97c+Y8A9kahed/8UIiq9jWzyoDA==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.12</title>
             <pubDate>Sun, 08 Nov 2026 08:53:25 +0000</pubDate>
             <sparkle:version>20261108.085207</sparkle:version>
