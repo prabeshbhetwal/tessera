@@ -73,7 +73,7 @@ Tessera has no analytics, no accounts and no telemetry. Settings stay on your Ma
 | ⌃⌥/ | What Just Happened? |
 | ⌃⌥⌘, | Open Settings |
 
-In Settings, ⌘1–9 and ⌘0 switch panes and every control is reachable with Tab.
+In Settings, ⌘1–9 and ⌘0 switch panes (all but Updates) and every control is reachable with Tab.
 
 ## Automation
 

@@ -3,7 +3,7 @@
 public enum SettingsCatalog {
     public typealias E = SettingsEntry
 
-    public static let entries: [SettingsEntry] = general + excludedApps + shortcuts + cycles + splits
+    public static let entries: [SettingsEntry] = general + updates + excludedApps + shortcuts + cycles + splits
         + displays + ring + overlay + motion + about
 
     static let general: [E] = [
@@ -28,14 +28,19 @@ public enum SettingsCatalog {
         E("general", "Help", "Show tips on their own", ["tips coach onboarding"]),
         E("general", "Help", "Dim the screen behind tips", ["tips darken"]),
         E("general", "Help", "Show Tips Again", ["tips reset seen"]),
-        E("general", "Updates", "Check for updates automatically", ["auto update"]),
-        E("general", "Updates", "Frequency", ["update how often daily weekly"]),
-        E("general", "Updates", "Download and install automatically", ["auto update install"]),
-        E("general", "Updates", "Include beta versions", ["beta prerelease early"]),
-        E("general", "Updates", "Check Now", ["update now latest version"]),
         E("general", "Advanced", "Advanced",
           ["export import backup settings file json cli terminal command line tool install"]),
         E("general", "", "Restore Defaults", ["reset general"]),
+    ]
+
+    static let updates: [E] = [
+        E("updates", "Updates", "Last checked", ["update when last time"]),
+        E("updates", "Updates", "Check Now", ["update now latest version new"]),
+        E("updates", "Automatic updates", "Check for updates automatically", ["auto update"]),
+        E("updates", "Automatic updates", "Frequency", ["update how often daily weekly"]),
+        E("updates", "Automatic updates", "Download and install automatically", ["auto update install"]),
+        E("updates", "Automatic updates", "Include beta versions", ["beta prerelease early"]),
+        E("updates", "", "Restore Defaults", ["reset updates"]),
     ]
 
     static let excludedApps: [E] = [

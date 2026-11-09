@@ -4,7 +4,7 @@ Tessera is a native SwiftUI macOS app. It has no palette of its own: colours, ty
 
 ## Visual Theme
 
-Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the left, grouped forms on the right, one header per pane that says what the pane controls. Panes, in ⌘1–9 order: General, Excluded Apps (Setup); Shortcuts, Cycles, Splits (Control); Displays, Ring, Overlay, Motion (Snapping); About on ⌘0. Spelling is en-AU throughout (Maximise, Centre, colour); command identifiers stay en-US.
+Quiet, native, System Settings-grade. A sidebar of coloured icon tiles on the left, grouped forms on the right, one header per pane that says what the pane controls. Panes, in sidebar order: General, Updates, Excluded Apps (Setup); Shortcuts, Cycles, Splits (Control); Displays, Ring, Overlay, Motion (Snapping); About. ⌘1–9 select them in that order, skipping Updates (rarely opened, so adding it moved no other pane's digit); ⌘0 selects About. Spelling is en-AU throughout (Maximise, Centre, colour); command identifiers stay en-US.
 
 The signature is the overlay: a vibrant material ring and a lifted preview frame, the one place Tessera looks like itself rather than like a form.
 
@@ -12,7 +12,7 @@ The signature is the overlay: a vibrant material ring and a lifted preview frame
 
 - Surfaces, text and separators: system semantic colours only (`windowBackground`, `.primary`, `.secondary`, `.separator`, `.quinary`).
 - Accent: the user's system accent (`Color.accentColor`). Used for selection, focus rings, the live wedge in diagrams and the primary button. Never decoration.
-- Pane icon tiles: one solid system colour per pane (gray, red, orange, green, blue, indigo, teal, mint), white symbol. This is the only place colour is used for identity.
+- Pane icon tiles: one solid system colour per pane, none shared (General gray, Updates cyan, Excluded Apps red, Shortcuts orange, Cycles green, Splits purple, Displays blue, Ring indigo, Overlay teal, Motion mint, About pink), white symbol. This is the only place colour is used for identity.
 - State: `.green` for granted permissions, `.orange` for warnings. Always paired with a symbol and text.
 
 ## Typography
@@ -48,7 +48,7 @@ System font (SF Pro) throughout. One family.
 - Explanations go in section footers (`Footer`), under the rounded group, never as rows inside it. Inline captions are only for live validation (a name already taken, a hotkey conflict).
 - Sliders never show tick marks; `SliderRow` rounds to its step in the binding.
 - Appearance (General): Match System, Light or Dark for Tessera's own windows, chosen from window thumbnails.
-- Forms: `.formStyle(.grouped)`; one `Section` per idea, sections in order of how often they are changed.
+- Forms: `.formStyle(.grouped)`; one `Section` per idea, sections in order of how often they are changed. Exception: a pane whose main job is a status and one action (Updates) puts that first, as System Settings › Software Update does.
 - Onboarding: fixed 600 × 500. Centred hero (demo or icon tile), title, 440 pt body column, step controls, footer with step dots and buttons.
 - Spacing scale: 4, 8, 12, 16, 20, 24, 36.
 
@@ -60,7 +60,8 @@ Every behaviour the user can see has its own switch, and switches never change e
 - Ring pane, Colours: ring, tint, lines and icons, highlighted wedge, grid. A setting lives where the user looks for it: ring colours are in the Ring pane, and also in Overlay with the rest of the theme. Restore Defaults keeps them.
 - Ring pane, Size and zones: radius, thickness, point threshold, and the top and bottom bands (while pointing, they decide where a window snaps to half height). Bands are ring settings, not display settings, so Restore Defaults resets them with the rest of the pane.
 - Overlay pane: theme, every colour (ring, lines and icons, highlight, snap preview, grid, label, label text, outline, dimming); Preview (fill style, opacity, border, corners) as one section; label parts (size, slot); dimming and the "from" outline as two switches.
-- General, in order: Trigger; App (launch at login, Appearance); Menu bar (show, icon, show each item's shortcut); Menu items (status line, What Just Happened?, Snap Front Window, Columns, Shortcuts…, Undo, Check for Updates…; Settings… and Quit always); Messages (on/off, position, duration); Help (tips on their own, dim behind tips, Show Tips Again); Updates (check and install automatically, frequency, betas), after Help because it is rarely changed; Advanced (settings export and import, command-line tool; collapsed). While hotkeys are paused the menu shows an enabled "Hotkeys Off" row that opens Settings › Shortcuts.
+- General, in order: Trigger; App (launch at login, Appearance); Menu bar (show, icon, show each item's shortcut); Menu items (status line, What Just Happened?, Snap Front Window, Columns, Shortcuts…, Undo, Check for Updates…; Settings… and Quit always); Messages (on/off, position, duration); Help (tips on their own, dim behind tips, Show Tips Again); Advanced (settings export and import, command-line tool; collapsed). While hotkeys are paused the menu shows an enabled "Hotkeys Off" row that opens Settings › Shortcuts.
+- Updates: Last checked and Check Now first; then Automatic updates (check automatically, frequency, download and install automatically, betas); Restore Defaults. While the app on disk is not the build that is running (rebuilt or replaced while open), checks are refused and a warning row under Last checked says to reopen Tessera. The one Settings home for updates: About shows the version, Copy version and links only, and the menu bar's Check for Updates… is the other way to check.
 - Shortcuts: a master hotkeys switch above the per-hotkey switches.
 - Theme colours are edited through `SettingsModel.editTheme` / `themeColor`: a built-in theme is copied to "Custom" first and never changed itself.
 A new setting only needs a default value in `TesseraSettings` (or a nested struct, or `Theme`): `SettingsMigration` fills missing keys in older files, including inside each custom theme.

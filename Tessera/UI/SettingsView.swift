@@ -2,9 +2,9 @@ import Observation
 import SwiftUI
 import TesseraCore
 
-/// Settings panes in sidebar order; ⌘1–9 select them and ⌘0 selects About.
-enum SettingsPane: Int, CaseIterable, Hashable {
-    case general, excludedApps, shortcuts, cycles, splits, displays, ring, overlay, motion, about
+/// Settings panes in sidebar order; ⌘1–9 select all but Updates and ⌘0 selects About.
+enum SettingsPane: CaseIterable, Hashable {
+    case general, updates, excludedApps, shortcuts, cycles, splits, displays, ring, overlay, motion, about
 
     /// Case name, the pane key `SettingsCatalog` uses.
     var key: String { "\(self)" }
@@ -14,12 +14,28 @@ enum SettingsPane: Int, CaseIterable, Hashable {
         self = pane
     }
 
-    /// The ⌘-digit that selects this pane: its position counting from 1, with About (the tenth) on 0.
-    var shortcutKey: Character { self == .about ? "0" : Character("\(rawValue + 1)") }
+    /// The ⌘-digit that selects this pane. Updates, rarely opened, has none, so every other pane kept the digit it
+    /// had before Updates got a pane of its own.
+    var shortcutKey: Character? {
+        switch self {
+        case .general: "1"
+        case .updates: nil
+        case .excludedApps: "2"
+        case .shortcuts: "3"
+        case .cycles: "4"
+        case .splits: "5"
+        case .displays: "6"
+        case .ring: "7"
+        case .overlay: "8"
+        case .motion: "9"
+        case .about: "0"
+        }
+    }
 
     var title: String {
         switch self {
         case .general: "General"
+        case .updates: "Updates"
         case .excludedApps: "Excluded Apps"
         case .shortcuts: "Shortcuts"
         case .cycles: "Cycles"
@@ -35,6 +51,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
     var symbol: String {
         switch self {
         case .general: "gearshape.fill"
+        case .updates: "arrow.down.circle.fill"
         case .excludedApps: "hand.raised.fill"
         case .shortcuts: "command"
         case .cycles: "arrow.triangle.2.circlepath"
@@ -50,6 +67,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
     var tint: Color {
         switch self {
         case .general: .gray
+        case .updates: .cyan
         case .excludedApps: .red
         case .shortcuts: .orange
         case .cycles: .green
@@ -66,6 +84,7 @@ enum SettingsPane: Int, CaseIterable, Hashable {
     var blurb: String {
         switch self {
         case .general: "The trigger chord, launch behaviour, settings files and the command-line tool."
+        case .updates: "How often Tessera looks for a new version, and whether it installs it on its own."
         case .excludedApps: "Apps in front of which the trigger and hotkeys stay off."
         case .shortcuts: "Global hotkeys and keyboard control of the open ring."
         case .cycles: "Named sequences a hotkey steps through on repeated presses."
@@ -94,7 +113,7 @@ enum SettingsGroup: CaseIterable {
 
     var panes: [SettingsPane] {
         switch self {
-        case .setup: [.general, .excludedApps]
+        case .setup: [.general, .updates, .excludedApps]
         case .control: [.shortcuts, .cycles, .splits]
         case .snapping: [.displays, .ring, .overlay, .motion]
         case .about: [.about]
@@ -157,7 +176,9 @@ struct SettingsView: View {
         }
         .background {
             ForEach(SettingsPane.allCases, id: \.self) { pane in
-                KeyCommand(KeyEquivalent(pane.shortcutKey)) { navigation.pane = pane }
+                if let key = pane.shortcutKey {
+                    KeyCommand(KeyEquivalent(key)) { navigation.pane = pane }
+                }
             }
             KeyCommand("f") { navigation.searchFocusRequests += 1 }
         }
@@ -183,6 +204,7 @@ struct SettingsView: View {
     @ViewBuilder private var paneView: some View {
         switch navigation.pane {
         case .general: GeneralPane(model: model)
+        case .updates: UpdatesPane(model: model)
         case .excludedApps: ExcludedAppsPane(model: model)
         case .shortcuts: ShortcutsPane(model: model)
         case .cycles: CyclesPane(model: model)
