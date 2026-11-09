@@ -29,7 +29,7 @@ Precise, quiet, native. Tessera should feel like a part of macOS that Apple forg
 
 1. Native first. Standard macOS controls, grouped forms, sidebar navigation, system fonts. Familiarity is the feature.
 2. Show the setting. Every numeric control that shapes the overlay (ring zones, grid, preview) has a live diagram next to it.
-3. Keyboard complete. Every control reachable with Tab, every pane with ⌘1 to ⌘9 and ⌘0, every recorder operated with Space, Return, Delete and Esc.
+3. Keyboard complete. Every control reachable with Tab, every pane from the sidebar, and every pane but Updates with ⌘1 to ⌘9 and ⌘0 (Updates is the named exception: rarely opened, and giving it a digit would have moved every other pane's), every recorder operated with Space, Return, Delete and Esc.
 4. Honest state. Permission and conflict states are always visible where they matter, never only in a dialog.
 5. Nothing hidden. No Terminal-only defaults, and no setting silently changes another.
 

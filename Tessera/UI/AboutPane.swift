@@ -3,7 +3,6 @@ import SwiftUI
 struct AboutPane: View {
     @State private var copied = false
     @State private var resetCopied: Task<Void, Never>?
-    @ObservedObject private var updates = UpdateService.shared
 
     private static let repo = "https://github.com/prabeshbhetwal/tessera"
 
@@ -37,8 +36,6 @@ struct AboutPane: View {
             Section {
                 Button(copied ? "Copied" : "Copy version", action: copyVersion)
                     .help("Copies the version for bug reports")
-                Button("Check for Updates…") { updates.checkForUpdates() }
-                    .disabled(!updates.canCheckForUpdates)
             }
 
             Section {

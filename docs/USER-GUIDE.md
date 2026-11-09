@@ -323,7 +323,7 @@ Choose which items show, and the icon's picture, in **Settings › General › M
 
 ## 10. Settings, pane by pane
 
-Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera again. **⌘1–⌘9** switch panes; **⌘0** opens About. Every control can be reached with Tab.
+Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera again. **⌘1–⌘9** switch panes (every pane but Updates); **⌘0** opens About. Every control can be reached with Tab.
 
 ### General
 - **Trigger:** click the chord, hold the modifier keys you want, and release. Delete resets it to the default. A single-key chord opens the ring every time you press that key.
@@ -332,9 +332,11 @@ Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera agai
 - **Menu bar:** show or hide the icon, pick its picture (Tiles, Badge, Slot, Mosaic, Ring, Split, Columns, Quarters; Tiles matches the app icon), and choose which menu items appear and whether each shows its shortcut.
 - **Messages:** short on-screen confirmations such as "5 columns". Choose the position (Top, Centre, Bottom) and how long they stay (1.2 s by default).
 - **Help:** tips that appear on their own, the dim behind them, and **Show Tips Again**. See [What Just Happened?](#8a-what-just-happened).
-- **Updates:** check automatically (daily, weekly, fortnightly or monthly), download and install automatically, include beta versions, or **Check Now**.
 - **Import and export:** saves all settings to one JSON file, or loads them. Import replaces every setting; an invalid file is rejected and nothing changes.
 - **Command line:** **Install Command-Line Tool** links `tessera` into `~/.local/bin`. See [Automation](#11-automation).
+
+### Updates
+Shows when Tessera last checked, with **Check Now** to check straight away. Below that: check automatically (daily, weekly, fortnightly or monthly), download and install automatically, and include beta versions.
 
 ### Excluded Apps
 While an excluded app is in front, the trigger and hotkeys do nothing. Its windows are also left out of Tile. Use **Choose App…** to add one.

@@ -76,6 +76,32 @@ final class UpdateService: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStan
     // SPUUpdaterDelegate is `NS_SWIFT_UI_ACTOR` (main-actor isolated), so no lock is needed.
     func allowedChannels(for updater: SPUUpdater) -> Set<String> { channels }
 
+    static let replacedMessage =
+        "Tessera was replaced while it was open. Quit Tessera and open it again, then check for updates."
+
+    /// True when the app on disk is not the build that is running (rebuilt in place, or a newer copy dragged over
+    /// it). Sparkle's check compares the appcast against the version loaded at launch, but its installer compares
+    /// against the app on disk, so they disagree: the check offers a release the installer then refuses as a
+    /// downgrade, which shows only "An error occurred while running the updater".
+    var replacedSinceLaunch: Bool {
+        guard let onDisk = Self.bundleVersionOnDisk() else { return false }
+        return onDisk != Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+    }
+
+    /// Refuses every check while `replacedSinceLaunch`: a manual check shows `replacedMessage`, a scheduled one
+    /// fails silently and Settings › Updates says why.
+    func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
+        guard replacedSinceLaunch else { return }
+        throw NSError(domain: "com.prabeshbhetwal.Tessera.updates", code: 1,
+                      userInfo: [NSLocalizedDescriptionKey: Self.replacedMessage])
+    }
+
+    /// Read from the file: `Bundle` keeps the Info.plist it loaded at launch for the life of the process.
+    private static func bundleVersionOnDisk() -> String? {
+        let plist = Bundle.main.bundleURL.appendingPathComponent("Contents/Info.plist")
+        return NSDictionary(contentsOf: plist)?["CFBundleVersion"] as? String
+    }
+
     // MARK: - SPUStandardUserDriverDelegate (called on the main thread; `@preconcurrency` checks it)
 
     var supportsGentleScheduledUpdateReminders: Bool { true }
