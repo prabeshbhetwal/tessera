@@ -110,6 +110,14 @@ public enum SplitNewWindowScope: String, Codable, CaseIterable, Equatable, Senda
     case tiledDisplays, rememberedSplits
 }
 
+/// What the rest of a side-by-side group does when one of its windows is minimised.
+public enum SplitMinimiseAction: String, Codable, CaseIterable, Equatable, Sendable {
+    /// The others cover its space, as when it closes; restoring it tiles it back in, as a newly opened window.
+    case retile
+    /// Nothing moves, so restoring it puts it back in the space it left.
+    case leaveSpace
+}
+
 /// How a gap behaves when a neighbouring slot grows.
 public enum SplitGapWhenGrowing: String, Codable, CaseIterable, Equatable, Sendable {
     case fixed, shrinks

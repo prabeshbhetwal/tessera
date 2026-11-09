@@ -7,28 +7,34 @@ import TesseraCore
 ///
 /// Only the launched or activated app's windows count as joining, so a Space switch or an unhidden app never re-tiles
 /// a display. `splitNewWindowScope` picks the displays: only ones whose windows already sat side by side (a watched
-/// group), or also, for an app just launched, any display where the apps now there have a learned split.
+/// group), or also, for an app just launched, any display where the apps now there have a learned split. A window
+/// restored after the rest covered its space (`minimiseFillsGap`) joins the windows it left the same way.
 extension SplitWatchers {
     /// The groups are read now, before anything awaits: the activation also re-arms the watchers (`Coordinator`), which
     /// stops a watch once a window overlaps it. A launch looks a few times, since its first window can take a while.
-    func joinSoon(pid: pid_t, launched: Bool) {
+    /// `restoring` is set for a window restored after the rest covered its space (`MinimisedWindows`): it joins the
+    /// windows it left, even when only one of them is left there (a lone window isn't watched).
+    func joinSoon(pid: pid_t, launched: Bool, restoring: (others: [WindowRef], displayKey: String)? = nil) {
         let settings = model.settings
         guard settings.learnSplits, settings.splitTilesNewWindow, pid != ProcessInfo.processInfo.processIdentifier
         else { return }
-        // A just-launched app activates too: keep the launch's look (its retries, groups and scope).
-        if !launched, pendingJoinLaunch == pid { return }
-        let tiled = watchers.filter { !$0.value.watched.isEmpty }.mapValues(\.watched)
+        let restored = restoring != nil
+        // A just-launched or restored app activates too: keep that look (its retries, groups and scope).
+        if !launched, !restored, pendingJoinLaunch == pid { return }
+        var tiled = watchers.filter { !$0.value.watched.isEmpty }.mapValues(\.watched)
+        if let restoring, tiled[restoring.displayKey] == nil { tiled[restoring.displayKey] = restoring.others }
         let anywhere = launched && settings.splitNewWindowScope == .rememberedSplits
         guard !tiled.isEmpty || anywhere else { return }
         pendingJoin?.cancel()
-        pendingJoinLaunch = launched ? pid : nil
+        pendingJoinLaunch = launched || restored ? pid : nil
         pendingJoin = Task { [weak self] in
-            defer { if self?.pendingJoinLaunch == pid { self?.pendingJoinLaunch = nil } }
-            for delay in launched ? [500, 1000, 1500] : [500] {
+            // A replaced look leaves the flag to the look that replaced it.
+            defer { if !Task.isCancelled, self?.pendingJoinLaunch == pid { self?.pendingJoinLaunch = nil } }
+            for delay in launched || restored ? [500, 1000, 1500] : [500] {
                 do { try await Task.sleep(for: .milliseconds(delay)) } catch { return }
                 guard let self else { return }
-                if !launched, self.wasUnhidden(pid) { return }
-                if await self.join(pid: pid, tiled: tiled, anywhere: anywhere) { return }
+                if !launched, !restored, self.wasUnhidden(pid) { return }
+                if await self.join(pid: pid, tiled: tiled, anywhere: anywhere, restored: restored) { return }
             }
         }
     }
@@ -40,7 +46,7 @@ extension SplitWatchers {
     }
 
     /// True once a group was tiled, or the setting went off.
-    private func join(pid: pid_t, tiled: [String: [WindowRef]], anywhere: Bool) async -> Bool {
+    private func join(pid: pid_t, tiled: [String: [WindowRef]], anywhere: Bool, restored: Bool) async -> Bool {
         let settings = model.settings
         guard settings.learnSplits, settings.splitTilesNewWindow, Permissions.isAccessibilityTrusted else { return true }
         guard ownMoves == 0 else { return false }
@@ -56,13 +62,14 @@ extension SplitWatchers {
             // The whole group is still here (same Space), so the new window joins it.
             let wasTiled = !watched.isEmpty && watched.allSatisfy { window in found.contains { $0.window == window } }
             guard wasTiled || anywhere else { continue }
-            if await tileIn(found, joined: joined, display: display, wasTiled: wasTiled, settings: settings) { done = true }
+            if await tileIn(found, joined: joined, display: display, wasTiled: wasTiled, restored: restored,
+                            settings: settings) { done = true }
         }
         return done
     }
 
     private func tileIn(_ found: [(window: WindowRef, frame: CGRect)], joined: [(window: WindowRef, frame: CGRect)],
-                        display: DisplayContext, wasTiled: Bool, settings: TesseraSettings) async -> Bool {
+                        display: DisplayContext, wasTiled: Bool, restored: Bool, settings: TesseraSettings) async -> Bool {
         let ordered = onScreenOrder(found, portrait: display.range.isPortrait)
         let learned = settings.learnedFrames(for: ordered, display: display)
         guard wasTiled || learned != nil else { return false }
@@ -79,7 +86,8 @@ extension SplitWatchers {
 
         var finals = ordered
         for (index, frame) in zip(moves, landed) { if let frame { finals[index].frame = frame } }
-        let kind = HelpEventKind.windowJoined(joined: joined.map { HelpEvent.appName($0.window) }, usedSplit: learned != nil)
+        let kind = HelpEventKind.windowJoined(joined: joined.map { HelpEvent.appName($0.window) }, usedSplit: learned != nil,
+                                              restored: restored)
         let split = learned == nil ? nil : SplitMemory.lookup(SplitKey(ordered, on: display), in: settings.learnedSplits)
         onHelpEvent?(.make(kind: kind, source: .hand, display: display,
                            group: onScreenOrder(finals, portrait: display.range.isPortrait), split: split,

@@ -15,6 +15,13 @@ struct SplitsPane: View {
                     .disabled(!model.settings.learnSplits)
                 Toggle("Fill the space when a window closes", isOn: $model.settings.splitFillsClosedGap).settingAnchor("Fill the space when a window closes")
                     .disabled(!model.settings.learnSplits)
+                Picker("When a window is minimised", selection: $model.settings.splitOnMinimise) {
+                    Text("Re-tile remaining windows").tag(SplitMinimiseAction.retile)
+                    Text("Leave the space empty").tag(SplitMinimiseAction.leaveSpace)
+                }
+                .pickerStyle(.radioGroup)
+                .disabled(!model.settings.learnSplits || !model.settings.splitFillsClosedGap)
+                .settingAnchor("When a window is minimised")
                 Toggle("Make room when a window opens", isOn: $model.settings.splitTilesNewWindow)
                     .disabled(!model.settings.learnSplits)
                     .settingAnchor("Make room when a window opens")
@@ -33,7 +40,7 @@ struct SplitsPane: View {
                 .pickerStyle(.radioGroup)
                 .settingAnchor("Empty space when order changes")
             } header: {
-                InfoHeader("Learning", info: "Tessera remembers how you arrange the same apps on each display and reuses it when windows open, close or get tiled. Most options here need Learn from my adjustments.")
+                InfoHeader("Learning", info: "Tessera remembers how you arrange the same apps on each display and reuses it when windows open, close or get tiled. A minimised window counts as closed; restoring it fits it back in unless its space is left empty. Most options here need Learn from my adjustments.")
             }
 
             let groups = displayGroups
@@ -60,6 +67,7 @@ struct SplitsPane: View {
                 model.settings.learnSplits = defaults.learnSplits
                 model.settings.splitReflowsNeighbours = defaults.splitReflowsNeighbours
                 model.settings.splitFillsClosedGap = defaults.splitFillsClosedGap
+                model.settings.splitOnMinimise = defaults.splitOnMinimise
                 model.settings.splitTilesNewWindow = defaults.splitTilesNewWindow
                 model.settings.splitNewWindowScope = defaults.splitNewWindowScope
                 model.settings.splitRestoresOrder = defaults.splitRestoresOrder

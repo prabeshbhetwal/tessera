@@ -5,7 +5,7 @@ import Testing
 @Suite struct SplitSettingsTests {
     private static let splitKeys = [
         "learnSplits", "splitRestoresOrder", "splitGapPlacement", "splitGapWhenGrowing", "splitReflowsNeighbours",
-        "splitFillsClosedGap", "splitTilesNewWindow", "splitNewWindowScope", "learnedSplits",
+        "splitFillsClosedGap", "splitOnMinimise", "splitTilesNewWindow", "splitNewWindowScope", "learnedSplits",
     ]
 
     private func split(
@@ -37,9 +37,35 @@ import Testing
         #expect(s.splitGapWhenGrowing == .fixed)
         #expect(s.splitReflowsNeighbours)
         #expect(s.splitFillsClosedGap)
+        #expect(s.splitOnMinimise == .retile)
+        #expect(s.minimiseFillsGap)
         #expect(s.splitTilesNewWindow)
-        #expect(s.splitNewWindowScope == .tiledDisplays)
+        #expect(s.splitNewWindowScope == .rememberedSplits)
         #expect(s.learnedSplits.isEmpty)
+    }
+
+    /// Minimising fills the space only when re-tiling is chosen and closing fills it too.
+    @Test func minimiseFillsGapFollowsCloseFill() {
+        for learn in [true, false] {
+            for fill in [true, false] {
+                for action in SplitMinimiseAction.allCases {
+                    var s = TesseraSettings.defaults
+                    (s.learnSplits, s.splitFillsClosedGap, s.splitOnMinimise) = (learn, fill, action)
+                    #expect(s.minimiseFillsGap == (learn && fill && action == .retile), "\(learn) \(fill) \(action)")
+                }
+            }
+        }
+    }
+
+    /// A file from before the minimise choice gains re-tile, and keeps the new-window scope it already held.
+    @Test func oldFileGainsMinimiseKeepsScope() throws {
+        var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(TesseraSettings.defaults)) as! [String: Any]
+        object["splitOnMinimise"] = nil
+        object["splitNewWindowScope"] = "tiledDisplays"
+        let migrated = try SettingsMigration.migrate(JSONSerialization.data(withJSONObject: object))
+        let decoded = try JSONDecoder().decode(TesseraSettings.self, from: migrated.data)
+        #expect(decoded.splitOnMinimise == .retile)
+        #expect(decoded.splitNewWindowScope == .tiledDisplays)
     }
 
     /// A v2 file written before learned splits existed must load with defaults, not be quarantined.
@@ -57,6 +83,7 @@ import Testing
         s.learnedSplits = [split()]
         s.splitGapPlacement = .followsNeighbour
         s.splitGapWhenGrowing = .shrinks
+        s.splitOnMinimise = .leaveSpace
         let decoded = try JSONDecoder().decode(TesseraSettings.self, from: JSONEncoder().encode(s))
         #expect(decoded == s)
     }
