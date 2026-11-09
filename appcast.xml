@@ -3,6 +3,32 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.15</title>
+            <pubDate>Mon, 09 Nov 2026 08:35:46 +0000</pubDate>
+            <sparkle:version>20261109.083406</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.15</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Settings, reorganised
+
+Settings is now grouped by what you're doing:
+
+- **General**
+- **Controls:** Ring, Shortcuts, Cycles, Excluded Apps
+- **Windows:** Displays, Splits
+- **Look:** Appearance (formerly Overlay), Motion
+- **Updates** and **About**
+
+⌘1–9 follow the new order; ⌘0 opens About.
+
+- The keys that open the ring now live at the top of **Ring**. Ring covers how the ring behaves; how it looks (show the ring, icons, grid lines) is in **Appearance**.
+- Ring colours have one home: **Appearance › Ring colours**.
+- Much less text. Short lines under each pane title, and an ⓘ beside a section when you want the details. Warnings still show where they matter.
+- **About:** a copy icon beside the version replaces the Copy version button.
+- Settings search finds every setting in its new place.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.15/Tessera-0.2.0-beta.15.zip" length="4838825" type="application/octet-stream" sparkle:edSignature="+AxZ6EfTbciFiTD/ViU8V4WHe4pH0lgqI0pTXWmVEzpry2grKwlKTRysqo+7ReGui9MDScTPDqXyGxYGwpAaCw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.14</title>
             <pubDate>Mon, 09 Nov 2026 07:06:04 +0000</pubDate>
             <sparkle:version>20261109.070419</sparkle:version>
