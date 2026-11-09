@@ -132,6 +132,20 @@ final class SettingsNavigation {
     private(set) var reveals = 0
     /// Bumped by ⌘F to focus the sidebar's search field.
     var searchFocusRequests = 0
+    /// The sidebar shows only pane icons. Remembered between launches.
+    var compactSidebar = UserDefaults.standard.bool(forKey: "SettingsCompactSidebar") {
+        didSet { UserDefaults.standard.set(compactSidebar, forKey: "SettingsCompactSidebar") }
+    }
+
+    /// Set when widening the sidebar to search: the field that creates takes focus once it is in the window.
+    var focusSearchOnShow = false
+
+    /// Focuses the sidebar's search field, widening the sidebar first if it shows only icons.
+    func focusSearch() {
+        guard compactSidebar else { searchFocusRequests += 1; return }
+        focusSearchOnShow = true
+        compactSidebar = false
+    }
 
     /// Opens the entry's pane and asks the pane to scroll to its row and highlight it.
     func reveal(_ entry: SettingsEntry) {
@@ -153,16 +167,32 @@ struct SettingsView: View {
     @Bindable var navigation: SettingsNavigation
     var displays: [DisplayContext]
 
+    /// Width of the icon-only sidebar's content. AppKit keeps the column itself as wide as the title bar's
+    /// window buttons and sidebar toggle (about 140 pt); the icons sit centred in it.
+    static let railWidth: CGFloat = 64
+
+    /// Always `.all`: the sidebar is never hidden, only narrowed to icons (`compactSidebar`).
+    @State private var columns: NavigationSplitViewVisibility = .all
+
     var body: some View {
-        NavigationSplitView(columnVisibility: .constant(.all)) {
+        let compact = navigation.compactSidebar
+        NavigationSplitView(columnVisibility: $columns) {
             SettingsSidebar(navigation: navigation, usesAppleIntelligence: model.settings.searchUsesAppleIntelligence)
-            // A sidebar that can't be collapsed, like System Settings. Narrower, the search field cut off the
-            // first letter of its "Search settings" placeholder, so it never gets narrower than 220 pt. It can
-            // widen to 280 pt, which still leaves the detail 540 pt. The column width alone was ignored (the
-            // sidebar opened at ~140 pt); the frame's minimum is what holds it.
-            .frame(minWidth: 220)
-            .navigationSplitViewColumnWidth(min: 220, ideal: 230, max: 280)
+            // Full, it never gets narrower than 220 pt: narrower, the search field cut off the first letter of
+            // its "Search settings" placeholder. It can widen to 280 pt, which still leaves the detail 540 pt.
+            // The column width alone was ignored (the sidebar opened at ~140 pt); the frame is what holds it.
+            .frame(minWidth: compact ? Self.railWidth : 220, maxWidth: compact ? Self.railWidth : 280)
+            .navigationSplitViewColumnWidth(min: compact ? Self.railWidth : 220, ideal: compact ? Self.railWidth : 230,
+                                            max: compact ? Self.railWidth : 280)
             .toolbar(removing: .sidebarToggle)
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Button { toggleSidebar() } label: { Label("Sidebar", systemImage: "sidebar.left") }
+                        .keyboardShortcut("s", modifiers: [.control, .command])
+                        .help(compact ? "Show pane names" : "Show icons only")
+                        .accessibilityLabel(compact ? "Show pane names" : "Show icons only")
+                }
+            }
         } detail: {
             ScrollViewReader { proxy in
                 VStack(spacing: 0) {
@@ -185,12 +215,24 @@ struct SettingsView: View {
                     KeyCommand(KeyEquivalent(key)) { navigation.pane = pane }
                 }
             }
-            KeyCommand("f") { navigation.searchFocusRequests += 1 }
+            KeyCommand("f") { navigation.focusSearch() }
+        }
+        // The split takes its column width only when it is created, so switching rebuilds it at the new width.
+        .id(compact)
+        // Dragging the divider shut narrows the sidebar to icons instead of hiding it with no way back.
+        .onChange(of: columns) { _, now in
+            guard now != .all else { return }
+            navigation.compactSidebar = true
+            columns = .all
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private func toggleSidebar() {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { navigation.compactSidebar.toggle() }
+    }
 
     /// After a search reveal: let the new pane lay out, bring the row to the middle, then fade the highlight.
     private func scrollToHighlight(_ proxy: ScrollViewProxy) async {
@@ -220,50 +262,6 @@ struct SettingsView: View {
         case .motion: MotionPane(model: model)
         case .about: AboutPane()
         }
-    }
-}
-
-/// Rounded, tinted tile with a white symbol: sidebar rows and pane headers.
-struct PaneIcon: View {
-    let pane: SettingsPane
-    var size: CGFloat = 20
-
-    var body: some View {
-        let tile = RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
-        // Fit every glyph into the same box so wide and tall symbols read at the same size.
-        Image(systemName: pane.symbol)
-            .resizable()
-            .scaledToFit()
-            .fontWeight(.semibold)
-            .foregroundStyle(.white)
-            .frame(width: size * 0.58, height: size * 0.58)
-            .frame(width: size, height: size)
-            .background(tile.fill(pane.tint))
-            .overlay(tile.strokeBorder(.white.opacity(0.2), lineWidth: 0.5))
-            .accessibilityHidden(true)
-    }
-}
-
-/// Title and purpose at the top of a pane, above its form.
-struct PaneHeader: View {
-    let pane: SettingsPane
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            PaneIcon(pane: pane, size: 40)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(pane.title).font(.title2.weight(.semibold))
-                Text(pane.blurb)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
     }
 }
 
