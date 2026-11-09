@@ -167,9 +167,9 @@ struct SettingsView: View {
     @Bindable var navigation: SettingsNavigation
     var displays: [DisplayContext]
 
-    /// Width of the icon-only sidebar's content. AppKit keeps the column itself as wide as the title bar's
-    /// window buttons and sidebar toggle (about 140 pt); the icons sit centred in it.
-    static let railWidth: CGFloat = 64
+    /// Width of the icon-only sidebar: as narrow as AppKit lets it go, which is the title bar's window buttons
+    /// plus the sidebar toggle above it. Narrower, it opened at that width but grew to it on the next layout.
+    static let railWidth: CGFloat = 140
 
     /// Always `.all`: the sidebar is never hidden, only narrowed to icons (`compactSidebar`).
     @State private var columns: NavigationSplitViewVisibility = .all
@@ -184,6 +184,8 @@ struct SettingsView: View {
             .frame(minWidth: compact ? Self.railWidth : 220, maxWidth: compact ? Self.railWidth : 280)
             .navigationSplitViewColumnWidth(min: compact ? Self.railWidth : 220, ideal: compact ? Self.railWidth : 230,
                                             max: compact ? Self.railWidth : 280)
+            // The column width above is read only when the split is built; this applies a change.
+            .background(SidebarWidth(range: compact ? Self.railWidth...Self.railWidth : 220...280))
             .toolbar(removing: .sidebarToggle)
             .toolbar {
                 ToolbarItem(placement: .navigation) {
@@ -217,8 +219,6 @@ struct SettingsView: View {
             }
             KeyCommand("f") { navigation.focusSearch() }
         }
-        // The split takes its column width only when it is created, so switching rebuilds it at the new width.
-        .id(compact)
         // Dragging the divider shut narrows the sidebar to icons instead of hiding it with no way back.
         .onChange(of: columns) { _, now in
             guard now != .all else { return }
