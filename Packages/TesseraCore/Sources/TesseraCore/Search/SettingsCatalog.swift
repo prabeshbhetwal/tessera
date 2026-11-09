@@ -59,7 +59,7 @@ public enum SettingsCatalog {
         E("splits", "Learning", "Make room on", ["new window which displays tiled remembered split"]),
         E("splits", "Learning", "Restore last order", ["window order arrangement"]),
         E("splits", "Learning", "Empty space when order changes", ["gap placement follows neighbour"]),
-        E("splits", "Learned splits", "Forget All…", ["clear delete learned splits"]),
+        E("splits", "Learned splits", "Forget All…", ["clear delete learned splits manage display monitor remembered layouts"]),
         E("splits", "", "Restore Defaults", ["reset splits"]),
     ]
 

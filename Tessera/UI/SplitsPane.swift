@@ -6,6 +6,8 @@ struct SplitsPane: View {
     @Bindable var model: SettingsModel
     let displays: [DisplayContext]
     @State private var confirmingForgetAll = false
+    /// Key of the display whose splits sheet is open.
+    @State private var managing: String?
 
     var body: some View {
         Form {
@@ -36,22 +38,25 @@ struct SplitsPane: View {
                 InfoHeader("Learning", info: "Tessera remembers how you arrange the same apps on each display and reuses it when windows open, close or get tiled. Most options here need Learn from my adjustments.")
             }
 
+            // One short row per display, so the pane stays short with any number of displays; each display's
+            // splits are listed, searched and forgotten in its own sheet.
             let groups = displayGroups
-            if groups.isEmpty {
-                Section {
-                    Caption("Nothing learned yet. Adjust tiled windows by hand, or choose Remember Split in the menu bar.")
+            Section {
+                ForEach(groups) { group in
+                    DisplaySplitsRow(group: group) { managing = group.id }
                 }
-            }
-            ForEach(groups) { group in
-                Section(group.title) {
-                    ForEach(group.splits, id: \.key) { split in
-                        SplitRow(split: split) { forget(split) }
+                if !groups.isEmpty {
+                    HStack {
+                        Spacer()
+                        Button("Forget All…", role: .destructive) { confirmingForgetAll = true }.settingAnchor("Forget All…")
                     }
                 }
-            }
-            if !groups.isEmpty {
-                Section {
-                    Button("Forget All…", role: .destructive) { confirmingForgetAll = true }.settingAnchor("Forget All…")
+            } header: {
+                InfoHeader("Learned splits", info: "Window layouts Tessera remembers, for each display. "
+                    + "Forget one and Tessera uses equal shares for those apps until it learns them again.")
+            } footer: {
+                if groups.isEmpty {
+                    Footer("Nothing learned yet. Adjust tiled windows by hand, or choose Remember Split in the menu bar.")
                 }
             }
 
@@ -67,6 +72,12 @@ struct SplitsPane: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: Binding(get: { managing != nil }, set: { if !$0 { managing = nil } })) {
+            let group = displayGroups.first { $0.id == managing }
+            LearnedSplitsSheet(title: group?.title ?? "", splits: group?.splits ?? []) { keys in
+                model.settings.learnedSplits = keys.reduce(model.settings.learnedSplits) { SplitMemory.forget($1, in: $0) }
+            }
+        }
         .confirmationDialog(
             "Forget all learned splits? Tile All Windows will use equal shares again.",
             isPresented: $confirmingForgetAll, titleVisibility: .visible
@@ -75,14 +86,11 @@ struct SplitsPane: View {
         }
     }
 
-    private func forget(_ split: LearnedSplit) {
-        model.settings.learnedSplits = SplitMemory.forget(split.key, in: model.settings.learnedSplits)
-    }
-
     /// One display's splits, newest first, titled with the display's name.
-    private struct DisplayGroup: Identifiable {
+    struct DisplayGroup: Identifiable {
         let id: String
         let title: String
+        let connected: Bool
         let splits: [LearnedSplit]
     }
 
@@ -93,29 +101,43 @@ struct SplitsPane: View {
         let connected = displays.map(\.id.storageKey).filter { seen.insert($0).inserted }
         let order = connected.filter { byDisplay[$0] != nil }
             + byDisplay.keys.filter { !connected.contains($0) }.sorted()
+        var disconnected = 0
         return order.compactMap { id in
             guard let splits = byDisplay[id]?.sorted(by: { $0.updated > $1.updated }), let first = splits.first else { return nil }
-            return DisplayGroup(id: id, title: SplitLabel.display(first.key, displays: displays), splits: splits)
+            let isConnected = connected.contains(id)
+            var title = SplitLabel.display(first.key, displays: displays)
+            // Several disconnected displays would all be "Disconnected display"; number them apart.
+            if !isConnected { disconnected += 1; if disconnected > 1 { title += " \(disconnected)" } }
+            return DisplayGroup(id: id, title: title, connected: isConnected, splits: splits)
         }
     }
 }
 
-/// One learned split: its apps, when it was learned, and a button to forget it.
-private struct SplitRow: View {
-    let split: LearnedSplit
-    let forget: () -> Void
+/// One display in the Learned splits list: its name, whether it's connected, how many splits, and Manage….
+private struct DisplaySplitsRow: View {
+    let group: SplitsPane.DisplayGroup
+    let manage: () -> Void
 
     var body: some View {
-        let apps = SplitLabel.apps(split.key)
         LabeledContent {
-            Button("Forget", action: forget)
-                .accessibilityLabel("Forget \(apps)")
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(apps)
-                Text("Learned \(split.updated, style: .date)")
-                    .font(.caption)
+            HStack(spacing: 12) {
+                Text(LearnedSplitsSheet.count(group.splits.count))
                     .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Button("Manage\u{2026}", action: manage)
+                    .accessibilityLabel("Manage splits on \(group.title)")
+            }
+        } label: {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(group.title)
+                    if !group.connected {
+                        Text("Not connected").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            } icon: {
+                Image(systemName: "display")
+                    .foregroundStyle(group.connected ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
             }
         }
     }
