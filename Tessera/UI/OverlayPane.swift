@@ -30,9 +30,11 @@ struct OverlayPane: View {
                         NotificationCenter.default.post(name: .tesseraPreviewOverlay, object: nil,
                                                         userInfo: ["shortcut": true])
                     }
+                    .settingAnchor("Preview Shortcut")
                     Button("Show on Screen") {
                         NotificationCenter.default.post(name: .tesseraPreviewOverlay, object: nil)
                     }
+                    .settingAnchor("Show on Screen")
                 }
             } footer: {
                 Footer("Show on Screen previews the ring for three seconds. Preview Shortcut shows the confirmation; neither moves a window.")
@@ -46,6 +48,7 @@ struct OverlayPane: View {
                 }) {
                     ForEach(model.settings.allThemes, id: \.name) { Text($0.name).tag($0.name) }
                 }
+                .settingAnchor("Theme")
                 HStack {
                     TextField("Save the current look as", text: $newThemeName, prompt: Text("Theme name"))
                     Button("Save") { saveTheme() }
@@ -78,23 +81,23 @@ struct OverlayPane: View {
             }
 
             Section {
-                ColorPicker("Ring", selection: colorBinding(\.ring.fillHex), supportsOpacity: false)
+                ColorPicker("Ring", selection: colorBinding(\.ring.fillHex), supportsOpacity: false).settingAnchor("Ring")
                 SliderRow(title: "Ring tint", value: Binding(
                     get: { theme.ring.opacity }, set: { v in edit { $0.ring.opacity = v } }
                 ), range: 0...1, step: 0.05, format: SliderRow.percent)
-                ColorPicker("Lines and icons", selection: colorBinding(\.ring.strokeHex), supportsOpacity: false)
-                ColorPicker("Selected layout", selection: colorBinding(\.accentHex), supportsOpacity: false)
-                ColorPicker("Grid", selection: colorBinding(\.ring.gridHex), supportsOpacity: false)
+                ColorPicker("Lines and icons", selection: colorBinding(\.ring.strokeHex), supportsOpacity: false).settingAnchor("Lines and icons")
+                ColorPicker("Selected layout", selection: colorBinding(\.accentHex), supportsOpacity: false).settingAnchor("Selected layout")
+                ColorPicker("Grid", selection: colorBinding(\.ring.gridHex), supportsOpacity: false).settingAnchor("Grid")
             } header: {
                 Text("Ring colours")
             }
 
             Section {
-                ColorPicker("Snap preview", selection: colorBinding(\.previewHex), supportsOpacity: false)
-                ColorPicker("Label", selection: colorBinding(\.labelHex), supportsOpacity: false)
-                ColorPicker("Label text", selection: colorBinding(\.labelTextHex), supportsOpacity: false)
-                ColorPicker("Outline of the current frame", selection: colorBinding(\.outlineHex), supportsOpacity: false)
-                ColorPicker("Dimming", selection: colorBinding(\.dimHex), supportsOpacity: false)
+                ColorPicker("Snap preview", selection: colorBinding(\.previewHex), supportsOpacity: false).settingAnchor("Snap preview")
+                ColorPicker("Label", selection: colorBinding(\.labelHex), supportsOpacity: false).settingAnchor("Label")
+                ColorPicker("Label text", selection: colorBinding(\.labelTextHex), supportsOpacity: false).settingAnchor("Label text")
+                ColorPicker("Outline of the current frame", selection: colorBinding(\.outlineHex), supportsOpacity: false).settingAnchor("Outline of the current frame")
+                ColorPicker("Dimming", selection: colorBinding(\.dimHex), supportsOpacity: false).settingAnchor("Dimming")
             } header: {
                 Text("Preview and label colours")
             }
@@ -104,6 +107,7 @@ struct OverlayPane: View {
                     ForEach(PreviewStyle.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
                 .pickerStyle(.radioGroup)
+                .settingAnchor("Fill the preview with")
                 Caption(Self.caption(for: s.style))
                 if s.style == .snapshot, !screenCaptureAllowed {
                     Callout(.warning, "Needs Screen Recording permission. Until then the preview stays a tinted box.") {
@@ -115,21 +119,22 @@ struct OverlayPane: View {
                 }
                 SliderRow(title: "Fill opacity", value: preview(\.opacity), range: 0...1, step: 0.05, format: SliderRow.percent)
                 SliderRow(title: "Border width", value: preview(\.borderWidth), range: 0...10, step: 0.5)
-                Toggle("Match the window's corner radius", isOn: preview(\.useWindowCornerRadius))
+                Toggle("Match the window's corner radius", isOn: preview(\.useWindowCornerRadius)).settingAnchor("Match the window's corner radius")
                 SliderRow(title: "Corner radius", value: preview(\.cornerRadius), range: 0...30)
                     .disabled(s.useWindowCornerRadius)
             }
 
             Section("Label") {
-                Toggle("Show a label on the preview", isOn: preview(\.showLabel))
+                Toggle("Show a label on the preview", isOn: preview(\.showLabel)).settingAnchor("Show a label on the preview")
                 Group {
-                    Toggle("Size in points", isOn: preview(\.labelShowsSize))
-                    Toggle("Slot name", isOn: preview(\.labelShowsSlot))
+                    Toggle("Size in points", isOn: preview(\.labelShowsSize)).settingAnchor("Size in points")
+                    Toggle("Slot name", isOn: preview(\.labelShowsSlot)).settingAnchor("Slot name")
                     Picker("Position", selection: preview(\.labelPosition)) {
                         Text("Centre").tag(LabelPosition.center)
                         Text("Bottom").tag(LabelPosition.bottom)
                     }
                     .pickerStyle(.segmented)
+                    .settingAnchor("Position")
                 }
                 .disabled(!s.showLabel)
                 if s.showLabel, !s.labelShowsSize, !s.labelShowsSlot {
@@ -138,10 +143,10 @@ struct OverlayPane: View {
             }
 
             Section("Around the preview") {
-                Toggle("Dim the windows the preview covers", isOn: preview(\.showNeighbours))
+                Toggle("Dim the windows the preview covers", isOn: preview(\.showNeighbours)).settingAnchor("Dim the windows the preview covers")
                 SliderRow(title: "Dim strength", value: preview(\.dimStrength), range: 0...1, step: 0.05, format: SliderRow.percent)
                     .disabled(!s.showNeighbours)
-                Toggle("Outline where the window is now (dashed)", isOn: preview(\.showCurrentOutline))
+                Toggle("Outline where the window is now (dashed)", isOn: preview(\.showCurrentOutline)).settingAnchor("Outline where the window is now (dashed)")
             }
 
             ResetSection(keeps: "Keeps your custom themes.") {

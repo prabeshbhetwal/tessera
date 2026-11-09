@@ -15,6 +15,7 @@ struct UpdatesPane: View {
                     LabeledContent("Last checked",
                                    value: updates.lastUpdateCheckDate?.formatted(.relative(presentation: .named)) ?? "Never")
                 }
+                .settingAnchor("Last checked")
                 // Read when the pane draws: checks are refused until the person reopens Tessera.
                 if updates.replacedSinceLaunch {
                     Label(UpdateService.replacedMessage, systemImage: "exclamationmark.triangle.fill")
@@ -23,21 +24,26 @@ struct UpdatesPane: View {
                 HStack {
                     Button("Check Now") { updates.checkForUpdates() }
                         .disabled(!updates.canCheckForUpdates)
+                        .settingAnchor("Check Now")
                     Spacer()
                 }
             }
 
             Section {
                 Toggle("Check for updates automatically", isOn: $model.settings.updates.checkAutomatically)
+                    .settingAnchor("Check for updates automatically")
                 Picker("Frequency", selection: $model.settings.updates.interval) {
                     ForEach(UpdateInterval.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .disabled(!model.settings.updates.checkAutomatically)
+                .settingAnchor("Frequency")
                 // Sparkle ignores it while checks are off.
                 Toggle("Download and install automatically", isOn: $model.settings.updates.installAutomatically)
                     .disabled(!model.settings.updates.checkAutomatically)
+                    .settingAnchor("Download and install automatically")
                 Toggle("Include beta versions", isOn: $model.settings.updates.includeBetas)
+                    .settingAnchor("Include beta versions")
             } header: {
                 Text("Automatic updates")
             } footer: {

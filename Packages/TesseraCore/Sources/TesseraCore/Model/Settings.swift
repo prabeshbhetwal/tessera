@@ -236,6 +236,8 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     public var menuBarItems = MenuBarItems()
     /// Light or dark for Tessera's own windows (Settings, setup); `.system` follows macOS.
     public var appearance: AppearanceMode = .system
+    /// Settings search also asks Apple's on-device model what a search written as a sentence means.
+    public var searchUsesAppleIntelligence = true
     /// Seconds a snapped window takes to glide to its new frame; 0 jumps straight there.
     /// Read and write it through `snapSeconds`, which clamps.
     public var snapDuration: Double = 0

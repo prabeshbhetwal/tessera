@@ -9,14 +9,15 @@ struct HelpSection: View {
 
     var body: some View {
         Section {
-            Toggle("Show tips on their own", isOn: $model.settings.help.autoShow)
-            Toggle("Dim the screen behind tips", isOn: $model.settings.help.dimScreen)
+            Toggle("Show tips on their own", isOn: $model.settings.help.autoShow).settingAnchor("Show tips on their own")
+            Toggle("Dim the screen behind tips", isOn: $model.settings.help.dimScreen).settingAnchor("Dim the screen behind tips")
             HStack {
                 Button("Show Tips Again") {
                     model.settings.help.seenMoments = []
                     tipsReset = true
                 }
                 .disabled(model.settings.help.seenMoments.isEmpty)
+                .settingAnchor("Show Tips Again")
                 if tipsReset { Caption("Tips will show again.") }
                 Spacer()
             }

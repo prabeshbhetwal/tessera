@@ -11,12 +11,13 @@ struct DisplaysPane: View {
                 Section { Caption("No displays detected yet.") }
             }
             ForEach(displays, id: \.id) { display in
-                DisplayRow(model: model, display: display)
+                // Only the first display's rows are search targets, so each result has one row to scroll to.
+                DisplayRow(model: model, display: display, tagged: display.id == displays.first?.id)
             }
 
             Section {
-                SliderRow(title: "Gap", value: $model.settings.defaultGap, range: 0...40)
-                SliderRow(title: "Padding", value: $model.settings.defaultPadding, range: 0...40)
+                SliderRow(title: "Gap", value: $model.settings.defaultGap, range: 0...40, anchor: "New displays gap")
+                SliderRow(title: "Padding", value: $model.settings.defaultPadding, range: 0...40, anchor: "New displays padding")
             } header: {
                 Text("New displays")
             } footer: {
@@ -58,6 +59,8 @@ struct DisplaysPane: View {
 private struct DisplayRow: View {
     @Bindable var model: SettingsModel
     let display: DisplayContext
+    /// Whether this display's rows carry the search anchors.
+    let tagged: Bool
 
     private var key: String { display.id.storageKey }
     private var override: DisplayProfile? { model.settings.displayOverrides[key] }
@@ -90,10 +93,11 @@ private struct DisplayRow: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
 
-            StepperRow(title: range.isPortrait ? "Rows" : "Columns", value: binding(\.columns), range: range.minCols...range.maxCols)
+            StepperRow(title: range.isPortrait ? "Rows" : "Columns", value: binding(\.columns),
+                       range: range.minCols...range.maxCols, anchor: tagged ? "Columns" : nil)
                 .disabled(range.minCols == range.maxCols)
-            SliderRow(title: "Gap", value: binding(\.gap), range: 0...40)
-            SliderRow(title: "Padding", value: binding(\.padding), range: 0...40)
+            SliderRow(title: "Gap", value: binding(\.gap), range: 0...40, anchor: tagged ? "Gap" : nil)
+            SliderRow(title: "Padding", value: binding(\.padding), range: 0...40, anchor: tagged ? "Padding" : nil)
         } header: {
             HStack {
                 Text(name)
