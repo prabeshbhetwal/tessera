@@ -25,6 +25,25 @@ else
 fi
 
 xcodegen generate --quiet >&2
+
+# Resolve packages up front, retrying: GitHub's download of Sparkle's binary zip fails in bursts (HTTP 5xx).
+# SwiftPM writes the failed response into its artifact cache, so its own retry then stops with
+# "... already exists in file system". Clearing that entry and the resolved packages, then waiting,
+# gives the next attempt a clean download.
+for attempt in 1 2 3; do
+  if xcodebuild -resolvePackageDependencies -project Tessera.xcodeproj -scheme Tessera \
+    -derivedDataPath "$DERIVED" -quiet >&2; then
+    break
+  fi
+  if ((attempt == 3)); then
+    echo "Package resolution failed 3 times; giving up." >&2
+    exit 1
+  fi
+  echo "Package resolution failed (attempt $attempt of 3); clearing Sparkle artifacts and retrying." >&2
+  rm -rf "$HOME"/Library/Caches/org.swift.swiftpm/artifacts/*Sparkle* "$DERIVED/SourcePackages"
+  sleep $((attempt * 20))
+done
+
 # A build number that always increases, so macOS launches this build rather than an older copy with the
 # same bundle ID (it picks the highest CFBundleVersion).
 BUILD_NUMBER="$(date -u +%Y%m%d.%H%M%S)"
