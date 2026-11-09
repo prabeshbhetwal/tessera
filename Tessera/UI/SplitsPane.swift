@@ -33,15 +33,13 @@ struct SplitsPane: View {
                 .pickerStyle(.radioGroup)
                 .settingAnchor("Empty space when order changes")
             } header: {
-                Text("Learning")
-            } footer: {
-                Footer("Closing a window: the apps left go back to their split if you've taught one; otherwise the window beside it you used last grows into the space. Opening one: it joins the tiles, in your split for those apps if you've taught one, otherwise in equal shares. Displays already tiled acts only where the windows already sit side by side; Also wherever the apps have a split also arranges a display whose apps have a split you've taught. Resizing, filling and making room need Learn from my adjustments.")
+                InfoHeader("Learning", info: "Tessera remembers how you arrange the same apps on each display and reuses it when windows open, close or get tiled. Most options here need Learn from my adjustments.")
             }
 
             let groups = displayGroups
             if groups.isEmpty {
                 Section {
-                    Caption("Nothing learned yet. Tile a display and adjust the windows by hand, or choose Remember Split from the menu bar.")
+                    Caption("Nothing learned yet. Adjust tiled windows by hand, or choose Remember Split in the menu bar.")
                 }
             }
             ForEach(groups) { group in

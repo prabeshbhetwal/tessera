@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AboutPane: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var copied = false
     @State private var resetCopied: Task<Void, Never>?
 
@@ -24,18 +25,25 @@ struct AboutPane: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Tessera").font(.title.bold())
-                        Text("Version \(version)")
+                        HStack(spacing: 6) {
+                            Text("Version \(version)")
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                                .textSelection(.enabled)
+                            // The copy action sits on the thing it copies.
+                            Button(action: copyVersion) {
+                                Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                                    .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+                            }
+                            .buttonStyle(.borderless)
                             .foregroundStyle(.secondary)
-                            .monospacedDigit()
+                            .help(copied ? "Copied" : "Copy version")
+                            .accessibilityLabel(copied ? "Copied" : "Copy version")
+                        }
                     }
                 }
             } footer: {
                 Footer("A window manager that fits its grid to each display.")
-            }
-
-            Section {
-                Button(copied ? "Copied" : "Copy version", action: copyVersion)
-                    .help("Copies the version for bug reports")
             }
 
             Section {
@@ -57,7 +65,7 @@ struct AboutPane: View {
 
     private static func link(_ path: String) -> URL { URL(string: repo + path)! }
 
-    /// Shows "Copied" for about two seconds, then goes back to "Copy version".
+    /// Shows a tick for about two seconds, then goes back to the copy icon.
     private func copyVersion() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString("Tessera \(version)", forType: .string)

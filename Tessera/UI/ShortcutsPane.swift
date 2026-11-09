@@ -16,10 +16,10 @@ struct ShortcutsPane: View {
             Section {
                 Toggle("Use global hotkeys", isOn: $model.settings.hotkeysEnabled).settingAnchor("Use global hotkeys")
             } header: {
-                Text("Hotkeys")
+                InfoHeader("Hotkeys", info: "Click a shortcut, or select it and press Space, then type the new one. Esc cancels, Delete clears. A warning means a clash, but the hotkey still works.")
             } footer: {
                 if !model.settings.hotkeysEnabled {
-                    Footer("All hotkeys are off; each keeps its own setting for when you turn them back on. The ring still works; its trigger is set in General › Trigger.")
+                    Footer("All hotkeys are off. The ring still works; set its trigger in Ring › Trigger.")
                 }
             }
 
@@ -42,10 +42,6 @@ struct ShortcutsPane: View {
 
             Section {
                 Button("Add Hotkey", action: addHotkey).settingAnchor("Add Hotkey")
-            } footer: {
-                if model.settings.hotkeysEnabled {
-                    Footer("Click a shortcut, or select it and press Space, then type the new one. Esc cancels, Delete clears. A warning doesn't stop a hotkey from working.")
-                }
             }
             .disabled(!model.settings.hotkeysEnabled)
 

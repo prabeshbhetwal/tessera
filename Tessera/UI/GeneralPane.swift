@@ -8,28 +8,11 @@ struct GeneralPane: View {
     @State private var loginError: String?
     /// Read once per appearance; `SMAppService.status` is IPC and must never run in `body`.
     @State private var loginNeedsApproval = false
-    @State private var recordingChord = false
 
     private static let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "settings-ui")
 
     var body: some View {
         Form {
-            Section {
-                KeycapRow(keys: ModifierKey.names(model.settings.trigger.keyCodes), prominent: true)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                ChordRecorder(chord: $model.settings.trigger, recording: $recordingChord)
-                    .settingAnchor("Chord")
-            } header: {
-                Text("Trigger")
-            } footer: {
-                Footer(recordingChord
-                    ? "Hold the modifier keys you want, then release them. Esc cancels."
-                    : model.settings.trigger.keyCodes.count == 1
-                        ? "A single-key chord opens the ring every time you press that key."
-                        : "Hold these keys to open the ring; release to snap. Click the chord to record a new one, or select it and press Delete for the default.")
-            }
-
             Section {
                 Toggle("Launch at login", isOn: Binding(
                     get: { model.settings.launchAtLogin },
@@ -46,12 +29,12 @@ struct GeneralPane: View {
                     .disabled(!SettingsAssistant.isAvailable)
                     .settingAnchor("Apple Intelligence search")
             } header: {
-                Text("App")
+                InfoHeader("App", info: "Light or dark changes Tessera's own windows; the ring's colours are in Appearance. "
+                    + "Apple Intelligence lets Settings search understand a whole sentence. It runs on your Mac, and nothing leaves it.")
             } footer: {
-                Footer("Light or dark applies to Tessera's windows. Match System follows macOS. The ring has its own colours in Ring and Overlay. "
-                    + (SettingsAssistant.isAvailable
-                        ? "Settings search can ask Apple's on-device model what a search written as a sentence means; nothing leaves your Mac."
-                        : "Understanding searches needs Apple Intelligence, which is off or not ready on this Mac."))
+                if !SettingsAssistant.isAvailable {
+                    Footer("Needs Apple Intelligence, which is off or not ready on this Mac.")
+                }
             }
 
             Section {
@@ -77,9 +60,9 @@ struct GeneralPane: View {
                 Text("Menu bar")
             } footer: {
                 if !model.settings.showMenuBarIcon {
-                    Footer("With the icon hidden, open Tessera from Finder or Spotlight to reach Settings.")
+                    Footer("To get back here, open Tessera from Spotlight or Finder.")
                 } else if !model.settings.hotkeysEnabled {
-                    Footer("Hotkeys are off, so the icon carries a pause badge. Turn them back on in Shortcuts.")
+                    Footer("Shortcuts are paused, so the icon shows a pause badge. Turn them back on in Shortcuts.")
                 }
             }
 
@@ -92,9 +75,7 @@ struct GeneralPane: View {
                 Toggle("Undo Last Move", isOn: $model.settings.menuBarItems.undo).settingAnchor("Undo Last Move")
                 Toggle("Check for Updates…", isOn: $model.settings.menuBarItems.checkForUpdates).settingAnchor("Check for Updates…")
             } header: {
-                Text("Menu items")
-            } footer: {
-                Footer("Choose what the menu shows. Settings… and Quit are always there.")
+                InfoHeader("Menu items", info: "Choose what the menu bar menu shows. Settings… and Quit are always there.")
             }
             .disabled(!model.settings.showMenuBarIcon)
 
@@ -111,9 +92,7 @@ struct GeneralPane: View {
                 }
                 .disabled(!model.settings.showHUD)
             } header: {
-                Text("Messages")
-            } footer: {
-                Footer("Shortcut confirmations and short results such as \u{201C}5 columns\u{201D}, shown on the screen under the mouse.")
+                InfoHeader("Messages", info: "Short notes such as \u{201C}5 columns\u{201D} that confirm what a shortcut did. They appear near the mouse.")
             }
 
             HelpSection(model: model)
@@ -121,7 +100,6 @@ struct GeneralPane: View {
             AdvancedSection(model: model)
 
             ResetSection {
-                model.settings.trigger = .default
                 model.settings.showMenuBarIcon = true
                 model.settings.showHUD = true
                 model.settings.hudPosition = .bottom
