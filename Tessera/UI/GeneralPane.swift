@@ -50,7 +50,7 @@ struct GeneralPane: View {
                 LabeledContent("Icon") {
                     Picker("Icon", selection: $model.settings.menuBarIcon) {
                         ForEach(MenuBarIcon.allCases, id: \.self) { icon in
-                            Image(systemName: icon.rawValue)
+                            Image(nsImage: icon.image())
                                 .accessibilityLabel(icon.displayName)
                                 .help(icon.displayName)
                                 .tag(icon)
@@ -68,6 +68,8 @@ struct GeneralPane: View {
             } footer: {
                 if !model.settings.showMenuBarIcon {
                     Footer("With the icon hidden, open Tessera from Finder or Spotlight to reach Settings.")
+                } else if !model.settings.hotkeysEnabled {
+                    Footer("Hotkeys are off, so the icon carries a pause badge. Turn them back on in Shortcuts.")
                 }
             }
 
@@ -113,7 +115,7 @@ struct GeneralPane: View {
                 model.settings.showHUD = true
                 model.settings.hudPosition = .bottom
                 model.settings.hudSeconds = TesseraSettings.defaults.hudSeconds
-                model.settings.menuBarIcon = .grid
+                model.settings.menuBarIcon = .tiles
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
                 model.settings.help.autoShow = true

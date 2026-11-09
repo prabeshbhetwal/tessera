@@ -179,7 +179,7 @@ private func makeDirectory() throws -> URL {
         object["ring"] = ring
 
         let decoded = try SettingsStore.decode(JSONSerialization.data(withJSONObject: object)).settings
-        #expect(decoded.menuBarIcon == .grid && decoded.hudPosition == .bottom && decoded.appearance == .system)
+        #expect(decoded.menuBarIcon == .tiles && decoded.hudPosition == .bottom && decoded.appearance == .system)
         #expect(decoded.hudSeconds == TesseraSettings.defaults.hudSeconds)
         #expect(decoded.ring.iconStyle == .layouts)
         #expect(decoded.menuBarItems.snapSubmenu == true, "a missing item gets its default")
