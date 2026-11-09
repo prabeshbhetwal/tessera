@@ -25,12 +25,18 @@ struct SettingsSidebar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SearchField(text: $query, focusRequests: navigation.searchFocusRequests,
-                        onMove: move, onSubmit: { reveal(selection ?? ordered.first?.id) })
-                .padding(.horizontal, 10)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
-            if trimmed.isEmpty { panes } else { results }
+            if navigation.compactSidebar {
+                rail
+            } else {
+                SearchField(text: $query, focusRequests: navigation.searchFocusRequests,
+                            focusOnShow: navigation.focusSearchOnShow,
+                            onMove: move, onSubmit: { reveal(selection ?? ordered.first?.id) })
+                    .onAppear { navigation.focusSearchOnShow = false }
+                    .padding(.horizontal, 10)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                if trimmed.isEmpty { panes } else { results }
+            }
         }
         // The switch is part of the identity: turning it off cancels a model request and drops its picks.
         .task(id: SearchRun(query: trimmed, usesAppleIntelligence: usesAppleIntelligence)) {
@@ -64,6 +70,34 @@ struct SettingsSidebar: View {
             }
         }
         .listStyle(.sidebar)
+    }
+
+    /// The icon-only sidebar: a search button over the pane icons, each named in its tooltip.
+    private var rail: some View {
+        VStack(spacing: 0) {
+            Button { navigation.focusSearch() } label: {
+                Image(systemName: "magnifyingglass").frame(width: 28, height: 22)
+            }
+            .buttonStyle(.borderless)
+            .help("Search settings (⌘F)")
+            .accessibilityLabel("Search settings")
+            .padding(.top, 10)
+            .padding(.bottom, 4)
+            List(selection: $navigation.pane) {
+                ForEach(SettingsGroup.allCases, id: \.self) { group in
+                    Section {
+                        ForEach(group.panes, id: \.self) { pane in
+                            Label { Text(pane.title) } icon: { PaneIcon(pane: pane, size: 24) }
+                                .labelStyle(.iconOnly)
+                                .frame(maxWidth: .infinity)
+                                .help(pane.title)
+                                .tag(pane)
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+        }
     }
 
     private var results: some View {
@@ -134,11 +168,14 @@ private struct SearchField: NSViewRepresentable {
     @Binding var text: String
     /// Bumped by ⌘F; each new value focuses the field.
     let focusRequests: Int
+    /// Focus the field as soon as it is in the window (the icon sidebar's search button and ⌘F).
+    var focusOnShow = false
     let onMove: (Int) -> Void
     let onSubmit: () -> Void
 
     func makeNSView(context: Context) -> NSSearchField {
         let field = NSSearchField()
+        if focusOnShow { DispatchQueue.main.async { field.window?.makeFirstResponder(field) } }
         field.placeholderString = "Search settings"
         field.sendsSearchStringImmediately = true
         field.delegate = context.coordinator

@@ -323,7 +323,7 @@ Choose which items show, and the icon's picture, in **Settings › General › M
 
 ## 10. Settings, pane by pane
 
-Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera again. The sidebar groups panes by task: General; Controls (Ring, Shortcuts, Cycles, Excluded Apps); Windows (Displays, Splits); Look (Appearance, Motion); then Updates and About. **⌘1–⌘9** switch panes in that order (every pane but Updates); **⌘0** opens About. Every control can be reached with Tab.
+Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera again. The sidebar groups panes by task: General; Controls (Ring, Shortcuts, Cycles, Excluded Apps); Windows (Displays, Splits); Look (Appearance, Motion); then Updates and About. **⌘1–⌘9** switch panes in that order (every pane but Updates); **⌘0** opens About. The sidebar button beside the window title (**⌃⌘S**) switches the sidebar between names and icons only; hover an icon to see its name. Every control can be reached with Tab.
 
 ### General
 - **App:** **Launch at login** (you may need to approve it in System Settings › General › Login Items); **Light or dark** (Light, Dark or Match System, for Tessera's own windows); and whether Settings search may use Apple Intelligence to understand what you type.
