@@ -31,7 +31,7 @@ System font (SF Pro) throughout. One family.
 ## Components
 
 - `PaneHeader`: icon tile, pane title, one line of purpose (at most 8 plain words). Top of every pane except About.
-- `PaneIcon`: 20 pt (sidebar), 24 pt (icon-only sidebar) or 40 pt (header) rounded tile, continuous corners, solid tint, white SF Symbol.
+- `PaneIcon`: 20 pt (sidebar), 24 pt (icon-only sidebar) or 40 pt (header) rounded tile, continuous corners, solid tint, white SF Symbol, no outline (a white rim read as Increase Contrast).
 - `KeycapRow` / `Keycap`: modifier and key names drawn as keycaps; used for the trigger chord.
 - `RecorderField`: shared focusable field for chord and hotkey recording. Space or Return records, Delete clears, Esc cancels.
 - `SliderRow`: labelled slider with its value right-aligned in monospaced digits.
@@ -46,7 +46,7 @@ System font (SF Pro) throughout. One family.
 
 ## Layout
 
-- Settings: `NavigationSplitView` whose sidebar is never hidden. Full, it is 230 pt by default, never narrower than 220 pt so the search field shows its whole placeholder, at most 280 pt. The title-bar sidebar button (⌃⌘S) narrows it to icons only, 140 pt, as narrow as the title bar's window buttons and toggle allow (a search button over the pane icons, each named in its tooltip) and back; the choice is remembered. Dragging the divider shut also lands on icons only. Switching sets the sidebar item's width range in AppKit (`SidebarWidth`): SwiftUI reads the column width only when it builds the split, and rebuilding it would reset the detail pane. ⌘F or the search button widens it and focuses search. The window is a fixed 820 × 720 pt (smaller only on a screen that can't fit it): never resized, zoomed or full screen. It remembers its position.
+- Settings: one compact title-bar strip (`.unifiedCompact`) over a sidebar and the pane. The strip holds the sidebar button (⌃⌘S) beside the window buttons and the search field ("Search settings", ⌘F) at its trailing end, the same in both sidebar modes. The sidebar is one hand-made column on the sidebar material, not a `NavigationSplitView`: that snaps its sidebar shut without animating, and AppKit won't make a sidebar narrower than the title bar's window buttons and toggle (140 pt). Full, it is the 230 pt pane list; icons only, a 56 pt rail docked to the window's leading edge (`SettingsRail`): 24 pt tiles in 40 × 32 pt cells, groups split by a short hairline, each icon named in its tooltip and to VoiceOver. The sidebar button glides the column between the two widths while names and icons cross-fade; the choice is remembered. The rail is one keyboard stop, like the list: clicking an icon gives it focus (its selection turns the accent colour) and ↑ ↓ step through the panes. Typing a search lists the matching settings in the sidebar, gliding it open from icons only and back when the search is cleared; ↑ ↓ and Return in the field step through and open them. The window is a fixed 820 × 720 pt (smaller only on a screen that can't fit it): never resized, zoomed or full screen. It remembers its position.
 - Text is short. A pane header line is at most 8 plain words. Section footers (`Footer`, under the rounded group, never rows inside it) are only for warnings and live state (hotkeys paused, a login item that needs approval, a missing permission). Explanations go in an ⓘ (`InfoHeader`) at the trailing end of the section header. Inline captions are only for live validation (a name already taken, a hotkey conflict). A button whose effect isn't obvious from its label may carry a `.help` tooltip.
 - Put an action on the thing it acts on: About's copy icon (`doc.on.doc`, a tick for about 2 s after copying) sits beside the version line rather than in a separate button.
 - Sliders never show tick marks; `SliderRow` rounds to its step in the binding.
@@ -70,7 +70,7 @@ A new setting only needs a default value in `TesseraSettings` (or a nested struc
 
 ## Motion
 
-Follows Reduce Motion. Animations are the onboarding flick demo (paused under Reduce Motion), permission symbol replacement, the About copy icon turning into a tick (instant under Reduce Motion), the Ring pane picker's gliding hover plate (instant under Reduce Motion), the overlay's own morph, brief Ring selection/shortcut confirmation fades, the coach's 0.2 s fades (kept under Reduce Motion) and its pulsing "try it" seam (still under Reduce Motion). No page transitions.
+Follows Reduce Motion. Animations are the onboarding flick demo (paused under Reduce Motion), permission symbol replacement, the About copy icon turning into a tick (instant under Reduce Motion), the Ring pane picker's gliding hover plate (instant under Reduce Motion), the overlay's own morph, brief Ring selection/shortcut confirmation fades, the coach's 0.2 s fades (kept under Reduce Motion), its pulsing "try it" seam (still under Reduce Motion) and the Settings sidebar's 0.3 s glide between names and icons (instant under Reduce Motion). No page transitions.
 
 ## Ring feedback
 

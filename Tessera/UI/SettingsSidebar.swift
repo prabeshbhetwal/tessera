@@ -2,13 +2,12 @@ import AppKit
 import SwiftUI
 import TesseraCore
 
-/// Settings sidebar: a search field over the pane list. Typing swaps the panes for matching settings;
-/// picking one opens its pane, scrolls to the row and highlights it.
+/// Settings sidebar: the pane list, or the settings matching the title bar's search while it holds text.
+/// Picking a result opens its pane, scrolls to the row and highlights it.
 struct SettingsSidebar: View {
     @Bindable var navigation: SettingsNavigation
     /// Settings › General › App › Understand searches with Apple Intelligence.
     var usesAppleIntelligence: Bool
-    @State private var query = ""
     /// Settings the on-device model picked for a phrase the local search can't fully read.
     @State private var suggested: [SettingsEntry] = []
     @State private var thinking = false
@@ -16,7 +15,7 @@ struct SettingsSidebar: View {
     /// Local matches for the current query, worked out once per change rather than on every redraw.
     @State private var local: [SettingsEntry] = []
 
-    private var trimmed: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var trimmed: String { navigation.query.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var matches: [SettingsEntry] {
         let picked = Set(suggested.map(\.id))
         return local.filter { !picked.contains($0.id) }
@@ -24,19 +23,12 @@ struct SettingsSidebar: View {
     private var ordered: [SettingsEntry] { suggested + matches }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if navigation.compactSidebar {
-                rail
-            } else {
-                SearchField(text: $query, focusRequests: navigation.searchFocusRequests,
-                            focusOnShow: navigation.focusSearchOnShow,
-                            onMove: move, onSubmit: { reveal(selection ?? ordered.first?.id) })
-                    .onAppear { navigation.focusSearchOnShow = false }
-                    .padding(.horizontal, 10)
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
-                if trimmed.isEmpty { panes } else { results }
-            }
+        Group {
+            if trimmed.isEmpty { panes } else { results }
+        }
+        // ↑ ↓ and Return in the title bar's search field step through and open the results.
+        .onChange(of: navigation.searchKey) { _, key in
+            if key.step == 0 { reveal(selection ?? ordered.first?.id) } else { move(key.step) }
         }
         // The switch is part of the identity: turning it off cancels a model request and drops its picks.
         .task(id: SearchRun(query: trimmed, usesAppleIntelligence: usesAppleIntelligence)) {
@@ -70,34 +62,7 @@ struct SettingsSidebar: View {
             }
         }
         .listStyle(.sidebar)
-    }
-
-    /// The icon-only sidebar: a search button over the pane icons, each named in its tooltip.
-    private var rail: some View {
-        VStack(spacing: 0) {
-            Button { navigation.focusSearch() } label: {
-                Image(systemName: "magnifyingglass").frame(width: 28, height: 22)
-            }
-            .buttonStyle(.borderless)
-            .help("Search settings (⌘F)")
-            .accessibilityLabel("Search settings")
-            .padding(.top, 10)
-            .padding(.bottom, 4)
-            List(selection: $navigation.pane) {
-                ForEach(SettingsGroup.allCases, id: \.self) { group in
-                    Section {
-                        ForEach(group.panes, id: \.self) { pane in
-                            Label { Text(pane.title) } icon: { PaneIcon(pane: pane, size: 24) }
-                                .labelStyle(.iconOnly)
-                                .frame(maxWidth: .infinity)
-                                .help(pane.title)
-                                .tag(pane)
-                        }
-                    }
-                }
-            }
-            .listStyle(.sidebar)
-        }
+        .scrollContentBackground(.hidden)
     }
 
     private var results: some View {
@@ -115,6 +80,7 @@ struct SettingsSidebar: View {
             }
         }
         .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
         .overlay {
             if ordered.isEmpty, !thinking { ContentUnavailableView.search(text: trimmed) }
         }
@@ -160,69 +126,5 @@ private struct ResultRow: View {
             PaneIcon(pane: pane)
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// AppKit's search field: magnifier, clear button and Esc to clear, plus ↑ ↓ and Return for the results.
-private struct SearchField: NSViewRepresentable {
-    @Binding var text: String
-    /// Bumped by ⌘F; each new value focuses the field.
-    let focusRequests: Int
-    /// Focus the field as soon as it is in the window (the icon sidebar's search button and ⌘F).
-    var focusOnShow = false
-    let onMove: (Int) -> Void
-    let onSubmit: () -> Void
-
-    func makeNSView(context: Context) -> NSSearchField {
-        let field = NSSearchField()
-        if focusOnShow { DispatchQueue.main.async { field.window?.makeFirstResponder(field) } }
-        field.placeholderString = "Search settings"
-        field.sendsSearchStringImmediately = true
-        field.delegate = context.coordinator
-        // The clear button and Esc send the action, not a text-change notification.
-        field.target = context.coordinator
-        field.action = #selector(Coordinator.changed(_:))
-        field.setAccessibilityLabel("Search settings")
-        return field
-    }
-
-    func updateNSView(_ field: NSSearchField, context: Context) {
-        context.coordinator.parent = self
-        if field.stringValue != text { field.stringValue = text }
-        if context.coordinator.focusRequests != focusRequests {
-            context.coordinator.focusRequests = focusRequests
-            field.window?.makeFirstResponder(field)
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
-
-    @MainActor final class Coordinator: NSObject, NSSearchFieldDelegate {
-        var parent: SearchField
-        var focusRequests: Int
-
-        init(parent: SearchField) {
-            self.parent = parent
-            focusRequests = parent.focusRequests
-        }
-
-        func controlTextDidChange(_ note: Notification) {
-            guard let field = note.object as? NSSearchField else { return }
-            parent.text = field.stringValue
-        }
-
-        @objc func changed(_ field: NSSearchField) {
-            if parent.text != field.stringValue { parent.text = field.stringValue }
-        }
-
-        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-            switch selector {
-            case #selector(NSResponder.moveDown(_:)): parent.onMove(1)
-            case #selector(NSResponder.moveUp(_:)): parent.onMove(-1)
-            case #selector(NSResponder.insertNewline(_:)): parent.onSubmit()
-            default: return false
-            }
-            return true
-        }
     }
 }

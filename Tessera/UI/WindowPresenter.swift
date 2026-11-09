@@ -65,12 +65,14 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
 
     private func makeSettingsWindow() -> NSWindow {
         let controller = NSHostingController(rootView: SettingsView(model: model, navigation: navigation, displays: displays))
-        // The split view reports its tallest pane as intrinsic height, taller than the screen. AppKit then keeps
-        // the oversized view bottom-anchored and the top (sidebar, pane header) is clipped under the title bar.
+        // The view reports its tallest pane as intrinsic height, taller than the screen. AppKit then keeps the
+        // oversized view bottom-anchored and the top (sidebar, pane header) is clipped under the title bar.
         // Size the window here and let the view fill it instead.
         controller.sizingOptions = []
         // Fixed size, never resized by the user, zoomed or made full screen. Only the position is remembered.
         let window = makeWindow(title: "Tessera Settings", controller: controller)
+        // A slim title bar: it holds only the sidebar button, the title and the search field.
+        window.toolbarStyle = .unifiedCompact
         window.collectionBehavior.insert(.fullScreenNone)
         window.center()
         window.setFrameAutosaveName("TesseraSettings")
