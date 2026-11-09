@@ -3,6 +3,18 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.14</title>
+            <pubDate>Mon, 09 Nov 2026 07:06:04 +0000</pubDate>
+            <sparkle:version>20261109.070419</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.14</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Settings sidebar fits the search field
+
+The Settings sidebar opened too narrow, so the search field cut off the first letter of "Search settings". The sidebar now opens at a comfortable width and never gets narrow enough to clip the field.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.14/Tessera-0.2.0-beta.14.zip" length="4819357" type="application/octet-stream" sparkle:edSignature="BeDm1V5A6urwl1uXIP1AKMH6KHYN7SiLd3Ey+GciaK9nCEdXewtim6N5FCq0FWzyTXDBEyL3qB0/6T/wdBIMDw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.13</title>
             <pubDate>Mon, 09 Nov 2026 06:45:00 +0000</pubDate>
             <sparkle:version>20261109.064324</sparkle:version>
