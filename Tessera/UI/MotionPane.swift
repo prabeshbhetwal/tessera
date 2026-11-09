@@ -13,11 +13,11 @@ struct MotionPane: View {
         Form {
             if reduceMotion {
                 Section {
-                    Callout(.info, "Reduce Motion is on in System Settings › Accessibility › Display, so windows and the preview jump instead of animating. The settings below take effect when it's off.")
+                    Callout(.info, "Reduce Motion is on in System Settings, so windows and the preview jump. These settings apply when it's off.")
                 }
             }
 
-            Section("Snap speed") {
+            Section {
                 Picker("Speed", selection: Binding(
                     get: { SnapSpeed(seconds: seconds) },
                     set: { if let speed = $0 { model.settings.snapSeconds = speed.seconds } }
@@ -28,16 +28,18 @@ struct MotionPane: View {
                 .settingAnchor("Speed")
                 SliderRow(title: "Duration", value: $model.settings.snapSeconds, range: 0...SnapSpeed.maxSeconds,
                           step: 0.01, format: { $0 == 0 ? "Instant" : String(format: "%.2f s", $0) })
-                Caption(SnapSpeed(seconds: seconds) == nil
-                    ? "Custom speed. Pick a preset above or drag to any duration."
-                    : "How long a window takes to glide into place, for the ring and shortcuts alike. Instant jumps straight there.")
+                if SnapSpeed(seconds: seconds) == nil { Caption("Custom speed. Pick a preset to go back to a set speed.") }
+            } header: {
+                InfoHeader("Snap speed", info: "How long a window takes to glide into place, for the ring and shortcuts alike. Instant jumps straight there.")
             }
 
-            Section("Preview morph") {
+            Section {
                 Toggle("Animate the preview between selections", isOn: p.morph).settingAnchor("Animate the preview between selections")
                 SliderRow(title: "Spring response", value: p.springResponse, range: 0...0.4, step: 0.01, format: SliderRow.seconds)
                     .disabled(!s.morph)
-                Caption(s.morph ? "Lower is snappier. 0 turns the animation off." : "Turn on the morph to adjust its spring.")
+                if !s.morph { Caption("Turn on the morph to adjust it.") }
+            } header: {
+                InfoHeader("Preview morph", info: "The preview glides between selections. Lower Spring response is snappier; 0 turns the animation off.")
             }
 
             ResetSection {

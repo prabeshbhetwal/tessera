@@ -19,17 +19,13 @@ struct DisplaysPane: View {
                 SliderRow(title: "Gap", value: $model.settings.defaultGap, range: 0...40, anchor: "New displays gap")
                 SliderRow(title: "Padding", value: $model.settings.defaultPadding, range: 0...40, anchor: "New displays padding")
             } header: {
-                Text("New displays")
-            } footer: {
-                Footer("Used by any display you haven't changed. Gap is the space between windows; padding is the space at the screen edges.")
+                InfoHeader("New displays", info: "Used by any display you haven't changed. Gap is the space between windows; padding is the space at the screen edges.")
             }
 
             Section {
                 sizingControls
             } header: {
-                Text("Column sizing")
-            } footer: {
-                Footer("These widths decide how many columns each display can hold, from its usable width. Minimum ≤ ideal ≤ maximum.")
+                InfoHeader("Column sizing", info: "These widths decide how many columns each display can hold. Minimum ≤ ideal ≤ maximum.")
             }
 
             ResetSection {
@@ -109,10 +105,10 @@ private struct DisplayRow: View {
             }
         } footer: {
             Footer(range.minCols == range.maxCols
-                ? "This display fits exactly \(range.minCols) \(range.isPortrait ? "rows" : "columns") with the current column sizing."
+                ? "Fits exactly \(range.minCols) \(range.isPortrait ? "rows" : "columns")."
                 : override == nil
-                    ? "Automatic: \(range.minCols) to \(range.maxCols) fit this display. Any change here is remembered for it."
-                    : "Your settings for this display. \(range.minCols) to \(range.maxCols) \(range.isPortrait ? "rows" : "columns") fit.")
+                    ? "Automatic: \(range.minCols) to \(range.maxCols) \(range.isPortrait ? "rows" : "columns") fit. Changes here are remembered for this display."
+                    : "Your settings. \(range.minCols) to \(range.maxCols) \(range.isPortrait ? "rows" : "columns") fit.")
         }
     }
 

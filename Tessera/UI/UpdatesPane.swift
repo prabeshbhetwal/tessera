@@ -45,9 +45,7 @@ struct UpdatesPane: View {
                 Toggle("Include beta versions", isOn: $model.settings.updates.includeBetas)
                     .settingAnchor("Include beta versions")
             } header: {
-                Text("Automatic updates")
-            } footer: {
-                Footer("Updates are verified before they install. Beta versions get new features first and may be less stable.")
+                InfoHeader("Automatic updates", info: "Tessera checks that each update is genuine before installing it. Beta versions get new features first and may be less stable.")
             }
 
             ResetSection { model.settings.updates = UpdateSettings() }

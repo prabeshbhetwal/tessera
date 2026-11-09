@@ -3,8 +3,9 @@ import SwiftUI
 import TesseraCore
 
 /// Settings panes in sidebar order; ⌘1–9 select all but Updates and ⌘0 selects About.
+/// `overlay` is shown as "Appearance"; its key stays `overlay` so search anchors and saved links keep working.
 enum SettingsPane: CaseIterable, Hashable {
-    case general, updates, excludedApps, shortcuts, cycles, splits, displays, ring, overlay, motion, about
+    case general, ring, shortcuts, cycles, excludedApps, displays, splits, overlay, motion, updates, about
 
     /// Case name, the pane key `SettingsCatalog` uses.
     var key: String { "\(self)" }
@@ -14,20 +15,19 @@ enum SettingsPane: CaseIterable, Hashable {
         self = pane
     }
 
-    /// The ⌘-digit that selects this pane. Updates, rarely opened, has none, so every other pane kept the digit it
-    /// had before Updates got a pane of its own.
+    /// The ⌘-digit that selects this pane, in sidebar order. Updates, rarely opened, has none.
     var shortcutKey: Character? {
         switch self {
         case .general: "1"
-        case .updates: nil
-        case .excludedApps: "2"
+        case .ring: "2"
         case .shortcuts: "3"
         case .cycles: "4"
-        case .splits: "5"
+        case .excludedApps: "5"
         case .displays: "6"
-        case .ring: "7"
+        case .splits: "7"
         case .overlay: "8"
         case .motion: "9"
+        case .updates: nil
         case .about: "0"
         }
     }
@@ -42,7 +42,7 @@ enum SettingsPane: CaseIterable, Hashable {
         case .splits: "Splits"
         case .displays: "Displays"
         case .ring: "Ring"
-        case .overlay: "Overlay"
+        case .overlay: "Appearance"
         case .motion: "Motion"
         case .about: "About"
         }
@@ -80,43 +80,44 @@ enum SettingsPane: CaseIterable, Hashable {
         }
     }
 
-    /// One sentence under the pane title: what the pane controls.
+    /// One short line under the pane title (at most 8 words): what the pane is for, in plain words.
     var blurb: String {
         switch self {
-        case .general: "The trigger chord, launch behaviour, settings files and the command-line tool."
-        case .updates: "How often Tessera looks for a new version, and whether it installs it on its own."
-        case .excludedApps: "Apps in front of which the trigger and hotkeys stay off."
-        case .shortcuts: "Global hotkeys and keyboard control of the open ring."
-        case .cycles: "Named sequences a hotkey steps through on repeated presses."
-        case .splits: "Window arrangements Tessera learned from your adjustments."
-        case .displays: "Column count, gap and padding for each connected display."
-        case .ring: "What each direction does, where pointing begins, how tall the top and bottom bands are, and how big the ring is."
-        case .overlay: "How the ring and the snap preview look on screen."
-        case .motion: "How fast windows glide into place and the preview animates."
+        case .general: "Startup, menu bar, messages and tips."
+        case .updates: "Get new versions of Tessera."
+        case .excludedApps: "Apps where Tessera stays out of the way."
+        case .shortcuts: "Keyboard shortcuts for every action."
+        case .cycles: "One shortcut that steps through several layouts."
+        case .splits: "Window layouts Tessera remembers for your apps."
+        case .displays: "Columns and spacing for each screen."
+        case .ring: "How you open the ring and pick layouts."
+        case .overlay: "How the ring and snap preview look."
+        case .motion: "How fast windows move into place."
         case .about: ""
         }
     }
 }
 
-/// Sidebar groups, in ⌘-number order.
+/// Sidebar groups, by task, in ⌘-number order. The first and last have no title.
 enum SettingsGroup: CaseIterable {
-    case setup, control, snapping, about
+    case app, controls, windows, look, info
 
     var title: String? {
         switch self {
-        case .setup: "Setup"
-        case .control: "Control"
-        case .snapping: "Snapping"
-        case .about: nil
+        case .app, .info: nil
+        case .controls: "Controls"
+        case .windows: "Windows"
+        case .look: "Look"
         }
     }
 
     var panes: [SettingsPane] {
         switch self {
-        case .setup: [.general, .updates, .excludedApps]
-        case .control: [.shortcuts, .cycles, .splits]
-        case .snapping: [.displays, .ring, .overlay, .motion]
-        case .about: [.about]
+        case .app: [.general]
+        case .controls: [.ring, .shortcuts, .cycles, .excludedApps]
+        case .windows: [.displays, .splits]
+        case .look: [.overlay, .motion]
+        case .info: [.updates, .about]
         }
     }
 }

@@ -17,7 +17,7 @@ struct AdvancedSection: View {
 
     var body: some View {
         Section {
-            DisclosureGroup("Advanced") {
+            DisclosureGroup {
                 HStack {
                     Button("Export settings…") { exporting = true }
                         .fileExporter(
@@ -56,10 +56,10 @@ struct AdvancedSection: View {
                 case nil:
                     EmptyView()
                 }
+            } label: {
+                InfoHeader("Advanced", info: "Export or import all your settings as a file. Importing replaces everything; an invalid file changes nothing. The command-line tool lets scripts run any Tessera command.")
             }
             .settingAnchor("Advanced")
-        } footer: {
-            Footer("Import replaces every setting; an invalid file changes nothing. The command-line tool links tessera into \(CLIInstaller.linkURL.deletingLastPathComponent().path(percentEncoded: false)) so scripts can run every Tessera command.")
         }
     }
 

@@ -7,6 +7,8 @@ struct CyclesEditor: View {
     @FocusState private var focusedStep: StepID?
     @State private var removingCycle: Int?
 
+    private static let info = "Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle doesn't update the hotkeys that run it."
+
     private struct StepID: Hashable {
         let cycle: Int
         let step: Int
@@ -15,7 +17,7 @@ struct CyclesEditor: View {
     var body: some View {
         ForEach(cycles.indices, id: \.self) { c in
             let cycle = cycleBinding(c)
-            Section("Cycle “\(cycles[c].name)”") {
+            Section {
                 TextField("Name", text: cycle.name)
                 DisplaySelectorEditor(title: "Display", selector: cycle.display)
                 ForEach(cycles[c].steps.indices, id: \.self) { s in
@@ -36,12 +38,16 @@ struct CyclesEditor: View {
                             if cycles.indices.contains(c) { cycles.remove(at: c) }
                         }
                     }
+            } header: {
+                Text("Cycle “\(cycles[c].name)”")
             }
         }
         Section {
-            Button("Add Cycle", action: addCycle)
-        } footer: {
-            Footer("Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle doesn't update the hotkeys that run it (Shortcuts › Hotkeys).")
+            HStack {
+                Button("Add Cycle", action: addCycle)
+                Spacer()
+                InfoButton(topic: "Cycles", text: Self.info)
+            }
         }
     }
 

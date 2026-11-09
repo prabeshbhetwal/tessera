@@ -1,10 +1,12 @@
 import SwiftUI
 import TesseraCore
 
-/// The ring is the control: click a wedge in the diagram (or use ← →) and pick its layout underneath.
+/// How the ring behaves: the trigger that opens it, gestures, what each direction does, and its size and zones.
+/// How it looks (whether it shows, icons, grid, colours) is in Appearance (`RingLookSections`).
 struct RingPane: View {
     @Bindable var model: SettingsModel
     @State private var focusedWedge = 0
+    @State private var recordingChord = false
 
     static let directions = ["Up", "Up-right", "Right", "Down-right", "Down", "Down-left", "Left", "Up-left"]
 
@@ -14,6 +16,23 @@ struct RingPane: View {
         let theme = model.settings.activeTheme
         Form {
             Section {
+                KeycapRow(keys: ModifierKey.names(model.settings.trigger.keyCodes), prominent: true)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                ChordRecorder(chord: $model.settings.trigger, recording: $recordingChord)
+                    .settingAnchor("Chord")
+            } header: {
+                InfoHeader("Trigger", info: "Hold these keys to open the ring, then let go to snap. "
+                    + "Click the keys to record new ones, or select them and press Delete for the default.")
+            } footer: {
+                if recordingChord {
+                    Footer("Hold the keys you want, then let go. Esc cancels.")
+                } else if model.settings.trigger.keyCodes.count == 1 {
+                    Footer("With one key, the ring opens every time you press it.")
+                }
+            }
+
+            Section {
                 Toggle("Directions: flick towards a layout", isOn: ring.directions).settingAnchor("Directions: flick towards a layout")
                 Toggle("Pointing: a longer move picks a column of the grid", isOn: ring.pointing).settingAnchor("Pointing: a longer move picks a column of the grid")
                 Toggle("Click while pointing to span several columns", isOn: ring.clickToSpan).settingAnchor("Click while pointing to span several columns")
@@ -21,13 +40,16 @@ struct RingPane: View {
                 Toggle("Scroll while holding to change the column count", isOn: ring.scrollChangesColumns).settingAnchor("Scroll while holding to change the column count")
                 Toggle("Press and release without moving to tile all windows", isOn: ring.tapTilesWindows).settingAnchor("Press and release without moving to tile all windows")
             } header: {
-                Text("Gestures")
+                InfoHeader("Gestures", info: "A short move towards an icon picks that layout. Keep going further out to point at a column. "
+                    + "To cancel, let go in the middle of the ring, press Esc or right-click.")
             } footer: {
-                Footer(gestureSummary(r, keys: model.settings.ringKeyNavigation) + (r.tapTilesWindows
-                    ? " Pressing and releasing in place puts every window on that display side by side, in your learned split"
-                        + " for those apps or in equal shares."
-                    : " Pressing and releasing in place does nothing.")
-                    + " To cancel, release in the ring's empty middle, press Esc or right-click.")
+                if r.tapTilesWindows && (r.directions || r.pointing) {
+                    Footer("Pressing and letting go without moving tiles every window on that display.")
+                } else if !r.directions && !r.pointing {
+                    Footer(model.settings.ringKeyNavigation
+                        ? "Mouse gestures are off. While holding the trigger, use the arrow keys and Return."
+                        : "Gestures and ring keys are both off, so holding the trigger does nothing.")
+                }
             }
 
             Section {
@@ -40,64 +62,9 @@ struct RingPane: View {
                     }
                 }
             } header: {
-                Text("Directions")
-            } footer: {
-                Footer("Click a layout icon, or use ← →, then choose its action.")
+                InfoHeader("Directions", info: "Click a direction on the ring, or use ← →, then choose what it does.")
             }
             .disabled(!r.directions)
-
-            Section {
-                Toggle("Show the ring", isOn: ring.showRing).settingAnchor("Show the ring")
-                Group {
-                    Toggle("Action name and input hints", isOn: ring.showActionLabels).settingAnchor("Action name and input hints")
-                    Picker("Layout icons", selection: ring.iconStyle) {
-                        ForEach(RingIconStyle.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .settingAnchor("Layout icons")
-                    Toggle("Dashed circle where pointing begins", isOn: ring.showBoundary).settingAnchor("Dashed circle where pointing begins")
-                        .disabled(!(r.directions && r.pointing))
-                    Toggle("Frosted background", isOn: ring.frosted).settingAnchor("Frosted background")
-                }
-                .disabled(!r.showRing)
-            } header: {
-                Text("Appearance")
-            } footer: {
-                Footer(r.showRing
-                    ? "Move towards a layout icon. Your selection lights up; its name appears below."
-                    : "The ring stays hidden, but every gesture still works: the preview shows what you'll get.")
-            }
-
-            Section {
-                // Not tied to Pointing: the arrow keys pick columns too, and show the grid while they do.
-                Toggle("Grid lines while picking a column", isOn: ring.showGrid).settingAnchor("Grid lines while picking a column")
-                Toggle("Number the grid's columns", isOn: ring.showColumnNumbers).settingAnchor("Number the grid's columns")
-                    .disabled(!r.showGrid)
-                Toggle("Show \u{201C}click to add columns\u{201D} the first few times", isOn: ring.showPointingHint)
-                    .disabled(!r.pointing)
-                    .settingAnchor("Pointing hint")
-                Button("Show the hint again") { model.settings.ring.pointingHintsSeen = nil }
-                    .disabled(!r.pointing || !r.showPointingHint || r.pointingHintDue)
-            } header: {
-                Text("Grid and hints")
-            } footer: {
-                Footer("The grid also shows when the arrow keys pick a column.")
-            }
-
-            Section {
-                ColorPicker("Ring", selection: model.themeColor(\.ring.fillHex), supportsOpacity: false).settingAnchor("Ring")
-                SliderRow(title: "Ring tint", value: model.themeRingTint, range: 0...1, step: 0.05, format: SliderRow.percent)
-                ColorPicker("Lines and icons", selection: model.themeColor(\.ring.strokeHex), supportsOpacity: false).settingAnchor("Lines and icons")
-                ColorPicker("Selected layout", selection: model.themeColor(\.accentHex), supportsOpacity: false).settingAnchor("Selected layout")
-                ColorPicker("Grid", selection: model.themeColor(\.ring.gridHex), supportsOpacity: false).settingAnchor("Grid")
-            } header: {
-                Text("Colours")
-            } footer: {
-                Footer(model.customThemeIndex == nil
-                    ? "Changing a colour saves your look as the theme \u{201C}\(SettingsModel.editedThemeName)\u{201D}; \u{201C}\(model.settings.themeName)\u{201D} stays as shipped. Themes and the preview's colours are in Overlay."
-                    : "Saved to the theme \u{201C}\(model.settings.themeName)\u{201D}. Themes and the preview's colours are in Overlay.")
-            }
-            .disabled(!r.showRing)
 
             Section {
                 let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
@@ -113,36 +80,20 @@ struct RingPane: View {
                 SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
                     .disabled(!r.pointing)
             } header: {
-                Text("Size and zones")
-            } footer: {
-                Footer("Releasing within \(Int(r.cancelRadius)) pt of the centre cancels, and the ring always stays inside the point threshold. Raise the threshold if flicks land as points. While pointing, the top and bottom bands snap a window to half height.")
+                InfoHeader("Size and zones", info: "Letting go within \(Int(r.cancelRadius)) pt of the centre cancels. "
+                    + "Raise Point threshold if quick flicks pick a column by mistake. "
+                    + "While pointing, the top and bottom bands snap a window to half height.")
             }
 
-            ResetSection(keeps: "Keeps your theme colours.") {
+            // The ring's look switches belong to Appearance, which resets them.
+            ResetSection(keeps: "Keeps the ring's look (Appearance).") {
+                let current = model.settings.ring
                 model.settings.ring = .default
+                model.settings.ring.takeLook(from: current)
+                model.settings.trigger = .default
             }
         }
         .formStyle(.grouped)
-    }
-
-    /// One sentence that says what holding the trigger and moving will do with the current switches.
-    private func gestureSummary(_ r: RingSettings, keys: Bool) -> String {
-        switch (r.directions, r.pointing) {
-        case (true, true): "Move a little for a wedge's layout; keep going further out to point at a column."
-        case (true, false): "Every move picks a wedge, however far you go. The grid is off."
-        case (false, true): "Any move points straight at a column of the grid. The wedges are off."
-        case (false, false) where keys: "Mouse gestures are off. Use the arrow keys and Return while holding the trigger, or the hotkeys. The ring keys are listed in Shortcuts › Ring keyboard."
-        case (false, false): "Mouse gestures and ring keys (Shortcuts › Ring keyboard) are both off, so holding the trigger does nothing. Turn one on, or use the hotkeys."
-        }
-    }
-}
-
-private extension RingIconStyle {
-    var title: String {
-        switch self {
-        case .layouts: "Layout pictures"
-        case .arrows: "Arrows"
-        }
     }
 }
 

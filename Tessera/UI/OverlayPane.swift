@@ -1,8 +1,8 @@
 import SwiftUI
 import TesseraCore
 
-/// Everything about how the overlay looks: a sample, the theme and its colours, and the preview layers.
-/// A theme is a snapshot of this pane; picking one applies its colours and preview settings together.
+/// The Appearance pane (key `overlay`): a sample, the theme, the ring's look, every colour, and the preview layers.
+/// A theme is a snapshot of the colours and preview settings; picking one applies them together.
 struct OverlayPane: View {
     @Bindable var model: SettingsModel
     @State private var newThemeName = ""
@@ -30,14 +30,14 @@ struct OverlayPane: View {
                         NotificationCenter.default.post(name: .tesseraPreviewOverlay, object: nil,
                                                         userInfo: ["shortcut": true])
                     }
+                    .help("Shows the message a shortcut gives. No window moves.")
                     .settingAnchor("Preview Shortcut")
                     Button("Show on Screen") {
                         NotificationCenter.default.post(name: .tesseraPreviewOverlay, object: nil)
                     }
+                    .help("Shows the ring on screen for three seconds. No window moves.")
                     .settingAnchor("Show on Screen")
                 }
-            } footer: {
-                Footer("Show on Screen previews the ring for three seconds. Preview Shortcut shows the confirmation; neither moves a window.")
             }
 
             Section {
@@ -72,13 +72,13 @@ struct OverlayPane: View {
                     }
                 }
             } header: {
-                Text("Theme")
-            } footer: {
-                Footer("A theme is a snapshot of everything on this page: colours and preview settings, including the ring colours you can also set in Ring › Colours. "
+                InfoHeader("Theme", info: "A theme saves the colours and preview settings on this page. "
                     + (customIndex == nil
-                        ? "Built-in themes stay as shipped: changing a colour saves the result as \u{201C}\(Self.editedName)\u{201D}."
-                        : "Changes are saved to \u{201C}\(theme.name)\u{201D} as you make them."))
+                        ? "Built-in themes never change: when you change a colour, Tessera saves it as \u{201C}\(Self.editedName)\u{201D}."
+                        : "Changes save to \u{201C}\(theme.name)\u{201D} as you make them."))
             }
+
+            RingLookSections(model: model)
 
             Section {
                 ColorPicker("Ring", selection: colorBinding(\.ring.fillHex), supportsOpacity: false).settingAnchor("Ring")
@@ -149,9 +149,10 @@ struct OverlayPane: View {
                 Toggle("Outline where the window is now (dashed)", isOn: preview(\.showCurrentOutline)).settingAnchor("Outline where the window is now (dashed)")
             }
 
-            ResetSection(keeps: "Keeps your custom themes.") {
+            ResetSection(keeps: "Keeps your saved themes.") {
                 model.settings.themeName = Theme.default.name
                 applyPreview(of: .default)
+                model.settings.ring.takeLook(from: .default)
             }
         }
         .formStyle(.grouped)

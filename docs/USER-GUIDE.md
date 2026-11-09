@@ -88,7 +88,7 @@ Any of these cancels without moving the window:
 ### The preview
 
 While you hold the trigger, Tessera shows where the window will land:
-- a box in the target position (a tinted box, a snapshot of the window, or the app's icon; see [Overlay](#overlay))
+- a box in the target position (a tinted box, a snapshot of the window, or the app's icon; see [Appearance](#appearance))
 - a label with the exact size and slot, for example "1280 × 1047 · cols 2–3 · top"
 - dimming over the windows it will cover
 - an optional dashed outline of where the window is now
@@ -281,7 +281,7 @@ Example, after your first **⌃⌥T** with Dia, Claude and Codex:
 
 The buttons only act on the windows the card is about. If they've changed since (an app closed, another opened), the card reads "These windows have changed since then." and nothing moves. **Forget This Split** forgets the split the card describes, not whatever is on screen now, and its card offers **Undo**. `tessera explain` opens the card from the command line.
 
-**Settings › General › Help:**
+**Settings › General › Tips:**
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -323,17 +323,16 @@ Choose which items show, and the icon's picture, in **Settings › General › M
 
 ## 10. Settings, pane by pane
 
-Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera again. **⌘1–⌘9** switch panes (every pane but Updates); **⌘0** opens About. Every control can be reached with Tab.
+Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera again. The sidebar groups panes by task: General; Controls (Ring, Shortcuts, Cycles, Excluded Apps); Windows (Displays, Splits); Look (Appearance, Motion); then Updates and About. **⌘1–⌘9** switch panes in that order (every pane but Updates); **⌘0** opens About. Every control can be reached with Tab.
 
 ### General
-- **Trigger:** click the chord, hold the modifier keys you want, and release. Delete resets it to the default. A single-key chord opens the ring every time you press that key.
-- **Appearance:** Light, Dark or Match System, for Tessera's own windows.
-- **Launch at login.** You may need to approve it in System Settings › General › Login Items.
+- **App:** **Launch at login** (you may need to approve it in System Settings › General › Login Items); **Light or dark** (Light, Dark or Match System, for Tessera's own windows); and whether Settings search may use Apple Intelligence to understand what you type.
 - **Menu bar:** show or hide the icon, pick its picture (Tiles, Badge, Slot, Mosaic, Ring, Split, Columns, Quarters; Tiles matches the app icon), and choose which menu items appear and whether each shows its shortcut.
 - **Messages:** short on-screen confirmations such as "5 columns". Choose the position (Top, Centre, Bottom) and how long they stay (1.2 s by default).
-- **Help:** tips that appear on their own, the dim behind them, and **Show Tips Again**. See [What Just Happened?](#8a-what-just-happened).
-- **Import and export:** saves all settings to one JSON file, or loads them. Import replaces every setting; an invalid file is rejected and nothing changes.
-- **Command line:** **Install Command-Line Tool** links `tessera` into `~/.local/bin`. See [Automation](#11-automation).
+- **Tips:** tips that appear on their own, the dim behind them, and **Show Tips Again**. See [What Just Happened?](#8a-what-just-happened).
+- **Advanced:** **Import and export** saves all settings to one JSON file, or loads them (import replaces every setting; an invalid file is rejected and nothing changes). **Install Command-Line Tool** links `tessera` into `~/.local/bin`. See [Automation](#11-automation).
+
+**Restore Defaults** resets General. It doesn't touch the trigger; that's in Ring.
 
 ### Updates
 Shows when Tessera last checked, with **Check Now** to check straight away. Below that: check automatically (daily, weekly, fortnightly or monthly), download and install automatically, and include beta versions.
@@ -358,18 +357,25 @@ See [Learned splits](#7-learned-splits).
 - **Column sizing:** minimum, ideal and maximum column width, minimum row height, and the column limit. These decide how many columns every display can hold.
 
 ### Ring
+How the ring behaves. Its look and colours are in [Appearance](#appearance).
+- **Trigger:** click the chord, hold the modifier keys you want, and release. Delete resets it to the default. A single-key chord opens the ring every time you press that key.
 - **Gestures:** turn Directions (flick), Pointing, Click to span, Scroll to change columns, and Tap to tile on or off. With both Directions and Pointing off, use the arrow keys and Return while holding the trigger, or the hotkeys.
 - **Directions:** click a wedge, or use ← →, then choose its layout.
-- **Appearance:** show or hide the ring (the gestures keep working), action names and input hints, layout icons (layout pictures or arrows), the dashed circle where pointing begins, the frosted background, grid lines, column numbers, and the "click to add columns" hint.
-- **Colours:** ring tint, lines and icons, the selected layout, and the grid.
 - **Size and zones:** radius, thickness, point threshold, and the top and bottom bands. If you slip into pointing by accident, raise the point threshold.
 
-### Overlay
+**Restore Defaults** resets these and the trigger. It leaves the ring's look alone.
+
+### Appearance
 - **Theme:** Default, Minimal or Glass, or one you save yourself. Changing a colour on a built-in theme saves your look as a new theme; the built-in one stays as shipped.
+- **Ring:** show or hide the ring (the gestures keep working), action names and input hints, layout icons (layout pictures or arrows), the dashed circle where pointing begins, and the frosted background.
+- **Grid and hints:** grid lines, column numbers, and the "click to add columns" hint (with **Show the hint again**).
+- **Ring colours:** ring, ring tint, lines and icons, the selected layout, and the grid. Colours for the snap preview, its label, its outline and the dimming are in **Preview and label colours**.
 - **Preview fill:** Tinted box (instant), Window snapshot (needs Screen Recording), or App icon. Also fill opacity, border width and corner radius.
 - **Label:** show the size, the slot, or both, in the centre or at the bottom.
 - **Around the preview:** dim the windows it covers (and how strongly), and outline where the window is now.
 - **Show on Screen:** shows the real ring and preview for three seconds, so you can judge a theme without holding the trigger. **Preview Shortcut** shows a hotkey confirmation. Neither moves a window.
+
+**Restore Defaults** resets the look, including the ring switches above. It keeps the themes you saved.
 
 ### Motion
 - **Snap speed:** Instant, Snappy (0.12 s), Smooth (0.2 s), Fluid (0.3 s) or Relaxed (0.45 s), or drag to any duration. Applies to the ring and hotkeys alike.
@@ -385,7 +391,7 @@ Every surface runs the same commands as the ring and hotkeys.
 
 ### Command line
 
-Install it from **Settings › General › Install Command-Line Tool**. If your shell can't find `tessera`, add `~/.local/bin` to your PATH.
+Install it from **Settings › General › Advanced › Install Command-Line Tool**. If your shell can't find `tessera`, add `~/.local/bin` to your PATH.
 
 ```bash
 tessera apply --cols 2-4 --band top      # columns 2 to 4, top half
@@ -442,7 +448,7 @@ Search for "Tessera" in the Shortcuts app. Actions: Apply Columns, Perform Actio
 | Holding the trigger does nothing | Allow Accessibility (the menu bar icon shows a warning triangle until you do). Also check that the front app isn't in Excluded Apps, and that Ring › Gestures or the Ring keyboard is on. |
 | "This app is excluded in Tessera settings" | Remove the app in Settings › Excluded Apps. |
 | Accessibility is on but still not granted | In setup, choose **Fix permission**, then grant again. |
-| The preview is a plain box, not a picture | Choose Window snapshot in Settings › Overlay and allow Screen Recording. macOS asks you to quit and reopen Tessera. |
+| The preview is a plain box, not a picture | Choose Window snapshot in Settings › Appearance and allow Screen Recording. macOS asks you to quit and reopen Tessera. |
 | You keep slipping into pointing | Raise the point threshold in Settings › Ring › Size and zones. |
 | Tile uses an old layout you no longer want | Forget it in Settings › Splits, or use Tile Evenly. |
 | A hotkey shows a warning | It clashes with a macOS shortcut. It still works, but pick another key if the system one matters to you. |

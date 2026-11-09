@@ -112,7 +112,7 @@ final class HelpCenter {
         open(event)
     }
 
-    /// `.light` when Settings › General › Help › Dim the screen behind tips is off.
+    /// `.light` when Settings › General › Tips › Dim the screen behind tips is off.
     /// The drag tour needs both learning and neighbour resizing; without either the drag could never finish it.
     func steps(for event: HelpEvent) -> [CoachStep] {
         let s = model.settings
