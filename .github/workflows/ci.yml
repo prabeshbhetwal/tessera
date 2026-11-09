@@ -25,6 +25,12 @@ jobs:
         run: TESSERA_AUTOMATION_SCRATCH="$RUNNER_TEMP/tessera-core" bash scripts/verify-automation.sh
       - name: Production Ring rendering and geometry checks
         run: TESSERA_RING_SCRATCH="$RUNNER_TEMP/tessera-core" bash scripts/verify-ring-rendering.sh "$RUNNER_TEMP/tessera-ring-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.png"
+      - name: "TEMP: leave a broken Sparkle download in the SwiftPM cache"
+        run: |
+          D="$HOME/Library/Caches/org.swift.swiftpm/artifacts"
+          mkdir -p "$D"
+          echo "half-downloaded" > "$D/https___github_com_sparkle_project_Sparkle_releases_download_2_10_0_Sparkle_for_Swift_Package_Manager_zip"
+          ls -la "$D"
       - name: Build and verify app package
         run: |
           APP="$(scripts/build-app.sh)"
