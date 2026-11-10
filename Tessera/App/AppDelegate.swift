@@ -36,7 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             run: { [weak self] command in
                 guard let coordinator = self?.coordinator else { return }
                 Task { await coordinator.run(command, source: .menu) }
-            }
+            },
+            currentDisplay: { [weak self] in await self?.coordinator?.executor.currentDisplay() }
         )
         guard let fileURL = Self.settingsURL() else {
             log.fault("no Application Support directory")

@@ -199,6 +199,12 @@ final class CommandExecutor: CommandExecuting {
         return (window, frame)
     }
 
+    /// The display a `.current` command would act on right now, or nil when no window qualifies.
+    func currentDisplay() async -> DisplayContext? {
+        guard let frame = try? await frontmost().frame else { return nil }
+        return try? resolve(.current, windowFrame: frame)
+    }
+
     func resolve(_ selector: DisplaySelector, windowFrame: CGRect?) throws(Failure) -> DisplayContext {
         guard let display = DisplayResolver.resolve(selector, displays: displays.displays,
                                                     windowFrame: windowFrame, cursor: NSEvent.mouseLocation) else {

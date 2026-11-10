@@ -30,6 +30,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let model: SettingsModel
     private let presenter: () -> WindowPresenter?
     private let run: (Command) -> Void
+    /// The display the Columns items act on: the front window's, looked up each time the menu opens.
+    private let currentDisplay: () async -> DisplayContext?
+    private var columnsLookup: Task<Void, Never>?
     private let updates: UpdateService
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var icon: MenuBarIcon = .tiles
@@ -46,11 +49,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let checkItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
 
     init(model: SettingsModel, updates: UpdateService, presenter: @escaping () -> WindowPresenter?,
-         run: @escaping (Command) -> Void) {
+         run: @escaping (Command) -> Void, currentDisplay: @escaping () async -> DisplayContext?) {
         self.model = model
         self.updates = updates
         self.presenter = presenter
         self.run = run
+        self.currentDisplay = currentDisplay
         super.init()
         let menu = NSMenu()
         menu.autoenablesItems = false
@@ -62,11 +66,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
              ("Tile Evenly", .tileEvenly(display: .current))]
                 + WindowAction.allCases.map { action in (action.displayName, .apply(.action(action), display: .current)) },
             target: self, separatorsAfter: [2, 4, 8])
-        columnsItem.submenu = Self.submenu(
-            [("One More Column", .columns(.delta(1), display: .current)),
-             ("One Fewer Column", .columns(.delta(-1), display: .current))]
-                + (2...8).map { ("\($0) Columns", .columns(.set($0), display: .current)) },
-            target: self, separatorsAfter: [1])
+        showColumns(for: nil)
         let quit = NSMenuItem(title: "Quit Tessera", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         for entry in [status, hotkeysOffItem, explainItem, statusSeparator, snapItem, columnsItem, actionsSeparator,
                       settingsItem, shortcutsItem, undoItem, checkItem, .separator(), quit] {
@@ -120,8 +120,45 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         explainItem.showShortcut(for: .explain, in: s.hotkeys, visible: keys)
         undoItem.showShortcut(for: .undo, in: s.hotkeys, visible: keys)
         settingsItem.showShortcut(for: .openSettings, in: s.hotkeys, visible: keys, fallback: (",", .command))
-        for entry in (snapItem.submenu?.items ?? []) + (columnsItem.submenu?.items ?? []) {
-            entry.showShortcut(for: (entry.representedObject as? CommandBox)?.command, in: s.hotkeys, visible: keys)
+        showShortcuts(in: snapItem.submenu)
+        // The front window's display is an Accessibility query; the submenu fills in as soon as it answers,
+        // well before a pointer can reach it.
+        columnsLookup?.cancel()
+        guard granted, items.columnsSubmenu else { return }
+        columnsLookup = Task { [weak self] in
+            let display = await self?.currentDisplay()
+            guard !Task.isCancelled else { return }
+            self?.showColumns(for: display)
+        }
+    }
+
+    /// Only the counts `display` allows, its current count ticked. With no window there is nothing to act on.
+    private func showColumns(for display: DisplayContext?) {
+        guard let display else {
+            let menu = NSMenu()
+            let none = NSMenuItem(title: "No Window in Front", action: nil, keyEquivalent: "")
+            none.isEnabled = false
+            menu.addItem(none)
+            columnsItem.submenu = menu
+            return
+        }
+        let entries = ColumnsMenu.entries(range: display.range.minCols...display.range.maxCols,
+                                          current: display.profile.columns)
+        let menu = Self.submenu(entries.map { ($0.title, .columns($0.change, display: .current)) },
+                                target: self, separatorsAfter: [1])
+        for (item, entry) in zip(menu.items.filter { !$0.isSeparatorItem }, entries) {
+            item.isEnabled = entry.enabled
+            item.state = entry.checked ? .on : .off
+        }
+        columnsItem.submenu = menu
+        showShortcuts(in: menu)
+    }
+
+    private func showShortcuts(in menu: NSMenu?) {
+        let s = model.settings
+        for entry in menu?.items ?? [] {
+            entry.showShortcut(for: (entry.representedObject as? CommandBox)?.command, in: s.hotkeys,
+                               visible: s.menuBarItems.shortcutKeys)
         }
     }
 
@@ -137,6 +174,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// A submenu whose items run commands. Each item carries its command; `separatorsAfter` splits the list into groups.
     private static func submenu(_ entries: [(String, Command)], target: StatusItemController, separatorsAfter: Set<Int> = []) -> NSMenu {
         let menu = NSMenu()
+        menu.autoenablesItems = false   // else AppKit re-enables the Columns steps greyed at the ends of the range
         for (index, entry) in entries.enumerated() {
             let item = NSMenuItem(title: entry.0, action: #selector(runCommand(_:)), keyEquivalent: "")
             item.target = target
