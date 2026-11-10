@@ -256,6 +256,9 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     public var splitFillsClosedGap = true
     /// What the rest of a side-by-side group does when one of its windows is minimised (see `minimiseFillsGap`).
     public var splitOnMinimise: SplitMinimiseAction = .retile
+    /// What the rest of a side-by-side group does when a window closes but its app keeps running in the Dock (Wispr
+    /// Flow, Slack, Mail): cover its space, or leave it for the window to come back to. Needs `splitFillsClosedGap`.
+    public var splitOnCloseKeepsRunning: SplitMinimiseAction = .retile
     /// When a new window opens beside a side-by-side group, the group is tiled again with it: the learned split for
     /// the apps now there when there is one, otherwise equal shares. Needs `learnSplits`.
     public var splitTilesNewWindow = true

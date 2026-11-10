@@ -56,6 +56,8 @@ public enum SettingsCatalog {
         E("splits", "Learning", "Resize neighbours to fill the display", ["reflow resize other windows apps adjacent"]),
         E("splits", "Learning", "Fill the space when a window closes", ["app closes quit empty gap fill"]),
         E("splits", "Learning", "When a window is minimised", ["minimise minimize dock restore retile gap empty space"]),
+        E("splits", "Learning", "When a window closes but its app keeps running",
+          ["close button red dock still running background app retile gap empty space wispr slack"]),
         E("splits", "Learning", "Make room when a window opens", ["new window opens tile automatically fit in"]),
         E("splits", "Learning", "Make room on", ["new window which displays tiled remembered split"]),
         E("splits", "Learning", "Restore last order", ["window order arrangement"]),
