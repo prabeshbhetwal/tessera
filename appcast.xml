@@ -3,6 +3,21 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.21</title>
+            <pubDate>Tue, 10 Nov 2026 10:22:03 +0000</pubDate>
+            <sparkle:version>20261110.102104</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.21</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Menu bar: Columns submenu fits the display you're on
+
+- **The Columns submenu lists only the counts your front window's display allows**, instead of a fixed 2–8 on every screen that quietly clamped.
+- **The current count is ticked**, so you can see how many columns the display uses.
+- **One More / One Fewer Column grey out at the ends of the range**, so they never do nothing.
+- While Tessera finds the front window, the submenu briefly shows "Finding Front Window…"; with no window in front it says "No Window in Front".</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.21/Tessera-0.2.0-beta.21.zip" length="5181198" type="application/octet-stream" sparkle:edSignature="51tlz/nZj+GOYnfX3PmGxvVpd3rqcdvl2Kw5kHOXz+u7aQ6nMlXiA6gYq+IjZYooqEfw8GvQwBNcTw9oMqP2CQ==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.20</title>
             <pubDate>Tue, 10 Nov 2026 05:19:37 +0000</pubDate>
             <sparkle:version>20261110.051800</sparkle:version>
