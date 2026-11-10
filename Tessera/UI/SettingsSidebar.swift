@@ -116,11 +116,12 @@ private struct ResultRow: View {
         let pane = SettingsPane(key: entry.pane) ?? .general
         Label {
             VStack(alignment: .leading, spacing: 1) {
-                Text(entry.title).lineLimit(2)
+                // Wrapped, not cut, in the narrow sidebar.
+                Text(entry.title).lineLimit(3)
                 Text(entry.section.isEmpty || entry.section == pane.title ? pane.title : "\(pane.title) › \(entry.section)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
         } icon: {
             PaneIcon(pane: pane)
