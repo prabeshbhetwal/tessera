@@ -36,13 +36,11 @@ struct SettingsView: View {
         return min(max(navigation.sidebarWidth, fitted), max(Self.maxSidebarWidth, fitted))
     }
 
-    /// The search field's text. Typing the first letter or clearing the last one over icons only swaps the rail
-    /// for the results and back, with the same glide as the sidebar button.
+    /// The search field's text. Typing opens the results under the field; clearing it closes them.
     private var query: Binding<String> {
         Binding(get: { navigation.query }, set: { text in
-            let searching = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            let swaps = navigation.compactSidebar && searching != navigation.isSearching
-            withAnimation(swaps ? glide : nil) { navigation.query = text }
+            navigation.query = text
+            navigation.resultsOpen = navigation.isSearching
         })
     }
 
@@ -51,23 +49,28 @@ struct SettingsView: View {
             sidebar
             pane
         }
+        .overlay { if navigation.showsResults { dismissResults } }
+        // Centred under the field, which the title bar centres in the window.
+        .overlay(alignment: .top) {
+            if navigation.showsResults {
+                SearchResultsPanel(model: model, navigation: navigation)
+                    .padding(.top, 6)
+                    .transition(dropTransition)
+            }
+        }
+        .animation(dropAnimation, value: navigation.showsResults)
         .toolbar {
             ToolbarItem(placement: .navigation) { sidebarButton }
-            // At the title bar's trailing end: one click to search, even from icons only.
-            ToolbarItem { Spacer() }
-            ToolbarItem {
+            // Centred where the title would be: search is the way round Settings, one click away in either mode.
+            ToolbarItem(placement: .principal) {
                 SearchField(text: query, focusRequests: navigation.searchFocusRequests,
-                            onMove: navigation.pressSearchKey, onSubmit: { navigation.pressSearchKey(0) })
-                    .frame(width: 200)
+                            onKey: navigation.pressSearchKey,
+                            onFocus: navigation.reopenResults)
+                    .frame(width: SearchResultsPanel.fieldWidth)
                     .overlay(alignment: .trailing) {
                         // The shortcut, where the clear button sits once there's text.
                         if navigation.query.isEmpty {
-                            Text("⌘F")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
-                                .background(.quaternary, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                            MiniKeycap("⌘F")
                                 .padding(.trailing, 7)
                                 .allowsHitTesting(false)
                                 .accessibilityHidden(true)
@@ -90,8 +93,6 @@ struct SettingsView: View {
         let compact = navigation.compactSidebar
         return Button { toggleSidebar() } label: { Label("Sidebar", systemImage: "sidebar.left") }
             .keyboardShortcut("s", modifiers: [.control, .command])
-            // Search results hold the sidebar open; switching modes then would change nothing you can see.
-            .disabled(navigation.isSearching)
             .help(compact ? "Show pane names" : "Show icons only")
             .accessibilityLabel(compact ? "Show pane names" : "Show icons only")
     }
@@ -101,19 +102,21 @@ struct SettingsView: View {
     /// `NavigationSplitView`: that snaps its sidebar shut without animating, and AppKit won't make a sidebar
     /// narrower than the title bar's window buttons and toggle (140 pt).
     private var sidebar: some View {
-        let rail = navigation.showsRail
+        let rail = navigation.compactSidebar
         let width = listWidth
         return ZStack(alignment: .topLeading) {
             if rail {
                 SettingsRail(navigation: navigation).transition(.opacity)
             } else {
-                SettingsSidebar(navigation: navigation, usesAppleIntelligence: model.settings.searchUsesAppleIntelligence)
+                SettingsSidebar(navigation: navigation)
                     .frame(width: width)
                     .transition(.opacity)
             }
         }
-        .frame(width: rail ? SettingsRail.width : width, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
+        // Inside the width frame, so the foot takes the column's width rather than setting it.
+        .safeAreaInset(edge: .bottom, spacing: 0) { SidebarBrand(navigation: navigation, compact: rail) }
+        .frame(width: rail ? SettingsRail.width : width, alignment: .leading)
         .clipped()
         // On the window's own background, like the pane, with a hairline between them.
         .overlay(alignment: .trailing) { Divider() }
@@ -122,7 +125,6 @@ struct SettingsView: View {
 
     /// The sidebar's edge: drag it to size the pane list between its fitted width and `maxSidebarWidth`. Dragged
     /// past halfway from the fitted width to the rail, it glides to icons only; dragged back out, to names again.
-    /// While search results show, it only resizes.
     private func resizeHandle(from width: CGFloat) -> some View {
         Color.clear
             .frame(width: 6)
@@ -135,9 +137,6 @@ struct SettingsView: View {
                     let proposed = start + drag.translation.width
                     let fitted = fittedWidth
                     let clamped = min(max(proposed, fitted), Self.maxSidebarWidth)
-                    // Search results hold the list open and leave the icons-only choice alone, as the sidebar
-                    // button does: clearing the search still returns to the rail.
-                    guard !navigation.isSearching else { navigation.sidebarWidth = clamped; return }
                     let icons = proposed < (SettingsRail.width + fitted) / 2
                     if icons != navigation.compactSidebar { withAnimation(glide) { navigation.compactSidebar = icons } }
                     if !icons { navigation.sidebarWidth = clamped }
@@ -167,6 +166,24 @@ struct SettingsView: View {
 
     /// The sidebar's glide between names and icons. Instant with Reduce Motion.
     private var glide: Animation? { reduceMotion ? nil : .smooth(duration: 0.3) }
+
+    /// The search results drop from the field: a short fall and grow from under it. A fade with Reduce Motion.
+    private var dropTransition: AnyTransition {
+        reduceMotion ? .opacity
+            : .opacity.combined(with: .scale(scale: 0.96, anchor: .top)).combined(with: .offset(y: -6))
+    }
+
+    private var dropAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.28, bounce: 0.12)
+    }
+
+    /// Behind the open results: a click anywhere else in the window folds them away, keeping the search text.
+    private var dismissResults: some View {
+        Color.clear
+            .contentShape(Rectangle())
+            .onTapGesture { navigation.closeResults() }
+            .accessibilityHidden(true)
+    }
 
     private func toggleSidebar() {
         withAnimation(glide) { navigation.compactSidebar.toggle() }
