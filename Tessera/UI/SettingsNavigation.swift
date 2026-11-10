@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import TesseraCore
 
@@ -12,10 +13,12 @@ final class SettingsNavigation {
     private(set) var reveals = 0
     /// Bumped by ⌘F to focus the title bar's search field.
     private(set) var searchFocusRequests = 0
-    /// What is typed in the title bar's search field. While it holds text the sidebar lists the matching settings,
-    /// showing over icons only until the search is cleared.
+    /// What is typed in the title bar's search field. While it holds text the matching settings drop down under it.
     var query = ""
-    /// ↑ ↓ and Return pressed in the search field, for the sidebar's results to act on.
+    /// The results under the search field are showing. Typing opens them; picking one, clicking elsewhere or
+    /// clearing the search closes them. Focusing the field, ↓ or Return brings them back while text remains.
+    var resultsOpen = false
+    /// ↑ ↓ and Return pressed in the search field, for the open results to act on.
     private(set) var searchKey = SearchKey()
     /// The sidebar shows only pane icons. Remembered between launches.
     var compactSidebar = UserDefaults.standard.bool(forKey: "SettingsCompactSidebar") {
@@ -27,13 +30,26 @@ final class SettingsNavigation {
     }
 
     var isSearching: Bool { !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-    /// The icon rail is showing: icons only, with no search results to list.
-    var showsRail: Bool { compactSidebar && !isSearching }
+    var showsResults: Bool { resultsOpen && isSearching }
 
     func focusSearch() { searchFocusRequests += 1 }
 
-    /// `step` is −1 for ↑, 1 for ↓ and 0 for Return.
-    func pressSearchKey(_ step: Int) { searchKey = SearchKey(step: step, serial: searchKey.serial + 1) }
+    /// ↑ ↓, Return or ⌥Return in the search field: acted on by the open results, or reopens them.
+    func pressSearchKey(_ action: SearchKey.Action) {
+        if showsResults { searchKey = SearchKey(action: action, serial: searchKey.serial + 1) } else { reopenResults() }
+    }
+
+    /// Brings back results folded away by a pick or a click elsewhere, while the search still holds text.
+    func reopenResults() {
+        if isSearching { resultsOpen = true }
+    }
+
+    /// Folds the results away, keeping the search text, and takes the keyboard from the field so a click back
+    /// into it reopens them.
+    func closeResults() {
+        resultsOpen = false
+        NSApp.keyWindow?.makeFirstResponder(nil)
+    }
 
     /// Opens the entry's pane and asks the pane to scroll to its row and highlight it.
     func reveal(_ entry: SettingsEntry) {
@@ -47,6 +63,15 @@ final class SettingsNavigation {
 
 /// One key press in the search field; `serial` makes pressing the same key twice a change.
 struct SearchKey: Equatable {
-    var step = 0
+    enum Action: Equatable {
+        /// ↑ is −1, ↓ is 1.
+        case move(Int)
+        /// Return: open the selected result.
+        case open
+        /// ⌥Return: flip the selected result's switch.
+        case flip
+    }
+
+    var action = Action.open
     var serial = 0
 }

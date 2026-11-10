@@ -71,8 +71,10 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         controller.sizingOptions = []
         // Fixed size, never resized by the user, zoomed or made full screen. Only the position is remembered.
         let window = makeWindow(title: "Tessera Settings", controller: controller)
-        // A slim title bar: it holds only the sidebar button, the title and the search field.
+        // A slim title bar: the sidebar button and, centred where the title would be, the search field. The title
+        // stays for the Window menu and VoiceOver; the sidebar's foot shows the app's name instead.
         window.toolbarStyle = .unifiedCompact
+        window.titleVisibility = .hidden
         window.collectionBehavior.insert(.fullScreenNone)
         window.center()
         window.setFrameAutosaveName("TesseraSettings")
