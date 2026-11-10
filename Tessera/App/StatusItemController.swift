@@ -121,10 +121,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         undoItem.showShortcut(for: .undo, in: s.hotkeys, visible: keys)
         settingsItem.showShortcut(for: .openSettings, in: s.hotkeys, visible: keys, fallback: (",", .command))
         showShortcuts(in: snapItem.submenu)
-        // The front window's display is an Accessibility query; the submenu fills in as soon as it answers,
-        // well before a pointer can reach it.
+        // The front window's display is an Accessibility query (up to 0.3 s on a slow app). Until it answers,
+        // the last display's counts must not stay clickable: they would run against whichever display is current now.
         columnsLookup?.cancel()
         guard granted, items.columnsSubmenu else { return }
+        showColumnsNote("Finding Front Window…")
         columnsLookup = Task { [weak self] in
             let display = await self?.currentDisplay()
             guard !Task.isCancelled else { return }
@@ -134,14 +135,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     /// Only the counts `display` allows, its current count ticked. With no window there is nothing to act on.
     private func showColumns(for display: DisplayContext?) {
-        guard let display else {
-            let menu = NSMenu()
-            let none = NSMenuItem(title: "No Window in Front", action: nil, keyEquivalent: "")
-            none.isEnabled = false
-            menu.addItem(none)
-            columnsItem.submenu = menu
-            return
-        }
+        guard let display else { return showColumnsNote("No Window in Front") }
         let entries = ColumnsMenu.entries(range: display.range.minCols...display.range.maxCols,
                                           current: display.profile.columns)
         let menu = Self.submenu(entries.map { ($0.title, .columns($0.change, display: .current)) },
@@ -152,6 +146,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
         columnsItem.submenu = menu
         showShortcuts(in: menu)
+    }
+
+    /// A Columns submenu holding one greyed line, so nothing in it can be chosen.
+    private func showColumnsNote(_ title: String) {
+        let menu = NSMenu()
+        let note = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        note.isEnabled = false
+        menu.addItem(note)
+        columnsItem.submenu = menu
     }
 
     private func showShortcuts(in menu: NSMenu?) {
