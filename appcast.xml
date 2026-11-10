@@ -3,6 +3,22 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.19</title>
+            <pubDate>Tue, 10 Nov 2026 02:31:07 +0000</pubDate>
+            <sparkle:version>20261110.022351</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.19</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Settings sidebar: fits its names, resizes, blends in
+
+- The sidebar now shares the window's background, so it no longer looks like a separate grey panel.
+- It is narrower, sized to fit the longest pane name in full at your Mac's sidebar text size.
+- **Drag its edge** to make it wider, or narrower down to that fitted width. Keep dragging and it switches to icons only; drag back out to see names again. Your width is remembered.
+- The search field shows its **⌘F** shortcut until you start typing.
+- Search results wrap onto more lines instead of being cut off.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.19/Tessera-0.2.0-beta.19.zip" length="5045709" type="application/octet-stream" sparkle:edSignature="rBTgSf26zPS3lj/iKQzszZu+NqSZOkLF1Vxoe2yIUEjpPeOdA14x9i4Tzu+q5dKA1QyzevAgz1BjLG4DKHWXBw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.18</title>
             <pubDate>Tue, 10 Nov 2026 00:47:52 +0000</pubDate>
             <sparkle:version>20261110.004742</sparkle:version>
