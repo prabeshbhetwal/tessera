@@ -3,6 +3,22 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.20</title>
+            <pubDate>Tue, 10 Nov 2026 05:19:37 +0000</pubDate>
+            <sparkle:version>20261110.051800</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.20</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Settings search: results drop down, flip switches in place
+
+- **Search sits in the middle of the title bar** ("Search Tessera", **⌘F**). Results now drop down under it instead of replacing the sidebar, which stays where it is.
+- Results are grouped by pane under its icon, with the words you typed in bold and where each setting lives.
+- **On/off settings have their own switch in the results.** Click it, or press **⌥↩**, to change the setting without leaving the search.
+- **↑ ↓** move, **↩** opens the setting's pane with the row highlighted, **esc** clears. Click back into the field to see the results again.
+- The sidebar ends with Tessera's icon, name and version; click it for About.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.20/Tessera-0.2.0-beta.20.zip" length="5166139" type="application/octet-stream" sparkle:edSignature="WDQ0iirZFHBAu0LT/ax6VJDLY6n2Dw+iyk/HgAqxQpBIFbvAdafpHbTkyLtGwRwJP72svV6byouVDsR6/OUlAQ==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.19</title>
             <pubDate>Tue, 10 Nov 2026 02:31:07 +0000</pubDate>
             <sparkle:version>20261110.022351</sparkle:version>
