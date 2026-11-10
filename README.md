@@ -134,6 +134,8 @@ scripts/release.sh 0.2.0 --notes /absolute/path/to/release-notes.md
 
 Use a version newer than every entry in `appcast.xml`; add `--beta` for a beta and `--dry-run` to rehearse. The script builds the app, signs the zip with the Sparkle key from the login keychain, uploads a GitHub release and pushes the updated feed. Never commit private keys.
 
+What has to be true before Tessera is called 1.0: [docs/RELEASE-1.0.md](docs/RELEASE-1.0.md).
+
 ### Project layout
 
 - `Packages/TesseraCore`: pure Swift logic with no AppKit, covered by unit tests. Grid sizing, selection, the trigger state machine, the preview model, commands and settings.
