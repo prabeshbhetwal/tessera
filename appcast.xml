@@ -3,6 +3,19 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.22</title>
+            <pubDate>Tue, 10 Nov 2026 13:54:11 +0000</pubDate>
+            <sparkle:version>20261110.135239</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.22</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Splits: closing a window fills its space more reliably
+
+- **Closing a window now fills its space even when the window came back late or in its old spot.** Apps such as Wispr Flow reopen exactly where Tessera last tiled them, or show their window a moment after you switch to them. Tessera used to miss those windows, so closing one left an empty column. It now picks them up and re-tiles the rest into your remembered split.
+- **New setting: Settings › Splits › When a window closes but its app keeps running.** Choose *Re-tile remaining windows* (the default) or *Leave the space empty* for apps that stay in the Dock after you click the close button. Search Settings for "close button" or "dock" to find it.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.22/Tessera-0.2.0-beta.22.zip" length="5183495" type="application/octet-stream" sparkle:edSignature="sxZdKs48Jd6J00cXfcpP/TmXF7enOn3uofe0iRd4HVQOXkhlGjDK8iG7LJtpAuC/D5IPZwudA4+k1I7bZXlADQ==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.21</title>
             <pubDate>Tue, 10 Nov 2026 10:22:03 +0000</pubDate>
             <sparkle:version>20261110.102104</sparkle:version>
