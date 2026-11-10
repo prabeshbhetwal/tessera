@@ -122,6 +122,7 @@ struct SettingsView: View {
 
     /// The sidebar's edge: drag it to size the pane list between its fitted width and `maxSidebarWidth`. Dragged
     /// past halfway from the fitted width to the rail, it glides to icons only; dragged back out, to names again.
+    /// While search results show, it only resizes.
     private func resizeHandle(from width: CGFloat) -> some View {
         Color.clear
             .frame(width: 6)
@@ -133,10 +134,13 @@ struct SettingsView: View {
                     dragStart = start
                     let proposed = start + drag.translation.width
                     let fitted = fittedWidth
-                    // Search results hold the list open, as they do against the sidebar button.
-                    let icons = !navigation.isSearching && proposed < (SettingsRail.width + fitted) / 2
+                    let clamped = min(max(proposed, fitted), Self.maxSidebarWidth)
+                    // Search results hold the list open and leave the icons-only choice alone, as the sidebar
+                    // button does: clearing the search still returns to the rail.
+                    guard !navigation.isSearching else { navigation.sidebarWidth = clamped; return }
+                    let icons = proposed < (SettingsRail.width + fitted) / 2
                     if icons != navigation.compactSidebar { withAnimation(glide) { navigation.compactSidebar = icons } }
-                    if !icons { navigation.sidebarWidth = min(max(proposed, fitted), Self.maxSidebarWidth) }
+                    if !icons { navigation.sidebarWidth = clamped }
                 }
                 .onEnded { _ in dragStart = nil })
             .accessibilityHidden(true)
