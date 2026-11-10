@@ -3,6 +3,22 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.18</title>
+            <pubDate>Tue, 10 Nov 2026 00:47:52 +0000</pubDate>
+            <sparkle:version>20261110.004742</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.18</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Settings sidebar: docked icons, a smooth switch, search in the title bar
+
+- **Icons only** is now a slim column docked to the window's edge, with the groups close together.
+- Switching between names and icons (**⌃⌘S**) now glides instead of snapping.
+- **Search** sits at the right end of the title bar, one click away in either mode (**⌘F** still works). Typing while only icons show opens the matching settings; clearing the search returns to icons.
+- The title bar is slimmer, and pane icons no longer have a white outline.
+- The sidebar's edge can no longer be dragged; use the sidebar button to switch.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.18/Tessera-0.2.0-beta.18.zip" length="5021319" type="application/octet-stream" sparkle:edSignature="DPSyY6R/EXJpt9VU7Bez6zy4LOz0OXmHrkSry2LBNw5jvMfs6FNgPV40+yvxTbSdxK0IM7MBBv/eTZBcHafOBg==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.17</title>
             <pubDate>Mon, 09 Nov 2026 12:45:12 +0000</pubDate>
             <sparkle:version>20261109.124345</sparkle:version>
