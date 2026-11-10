@@ -21,6 +21,10 @@ final class SettingsNavigation {
     var compactSidebar = UserDefaults.standard.bool(forKey: "SettingsCompactSidebar") {
         didSet { UserDefaults.standard.set(compactSidebar, forKey: "SettingsCompactSidebar") }
     }
+    /// The pane list's width as last dragged; 0 until the sidebar's edge is first dragged. Remembered between launches.
+    var sidebarWidth = CGFloat(UserDefaults.standard.double(forKey: "SettingsSidebarWidth")) {
+        didSet { UserDefaults.standard.set(Double(sidebarWidth), forKey: "SettingsSidebarWidth") }
+    }
 
     var isSearching: Bool { !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     /// The icon rail is showing: icons only, with no search results to list.

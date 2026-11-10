@@ -19,6 +19,7 @@ struct SearchField: NSViewRepresentable {
         field.target = context.coordinator
         field.action = #selector(Coordinator.changed(_:))
         field.setAccessibilityLabel("Search settings")
+        field.toolTip = "Search settings (⌘F)"
         return field
     }
 

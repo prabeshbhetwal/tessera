@@ -61,16 +61,3 @@ private extension View {
             .contentShape(Rectangle())
     }
 }
-
-/// AppKit's sidebar material, behind the Settings sidebar in both its widths.
-struct SidebarMaterial: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .sidebar
-        view.blendingMode = .behindWindow
-        view.state = .followsWindowActiveState
-        return view
-    }
-
-    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
-}

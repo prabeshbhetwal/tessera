@@ -1,3 +1,4 @@
+import AppKit
 import Observation
 import SwiftUI
 import TesseraCore
@@ -12,8 +13,28 @@ struct SettingsView: View {
     @Bindable var navigation: SettingsNavigation
     var displays: [DisplayContext]
 
-    /// The full sidebar's width. The icon rail is `SettingsRail.width`.
-    static let sidebarWidth: CGFloat = 230
+    /// The widest the pane list can be dragged. The icon rail is `SettingsRail.width`.
+    static let maxSidebarWidth: CGFloat = 280
+
+    @Environment(\.sidebarRowSize) private var rowSize
+    /// Where a drag on the sidebar's edge started from.
+    @State private var dragStart: CGFloat?
+
+    /// The narrowest the pane list goes: the longest pane name in full at the system's sidebar text size, after the
+    /// list's 42 pt inset and icon, with an 18 pt gap before the trailing edge. Narrower than this, it becomes icons.
+    private var fittedWidth: CGFloat {
+        let size: CGFloat = switch rowSize { case .small: 11; case .large: 15; default: 13 }
+        let font = NSFont.systemFont(ofSize: size, weight: .semibold)
+        let longest = SettingsPane.allCases.map { ($0.title as NSString).size(withAttributes: [.font: font]).width }
+        return ceil(longest.max() ?? 0) + 60
+    }
+
+    /// The pane list's width: as last dragged, else the fitted width plus a little air.
+    private var listWidth: CGFloat {
+        let fitted = fittedWidth
+        guard navigation.sidebarWidth > 0 else { return fitted + 12 }
+        return min(max(navigation.sidebarWidth, fitted), max(Self.maxSidebarWidth, fitted))
+    }
 
     /// The search field's text. Typing the first letter or clearing the last one over icons only swaps the rail
     /// for the results and back, with the same glide as the sidebar button.
@@ -38,6 +59,20 @@ struct SettingsView: View {
                 SearchField(text: query, focusRequests: navigation.searchFocusRequests,
                             onMove: navigation.pressSearchKey, onSubmit: { navigation.pressSearchKey(0) })
                     .frame(width: 200)
+                    .overlay(alignment: .trailing) {
+                        // The shortcut, where the clear button sits once there's text.
+                        if navigation.query.isEmpty {
+                            Text("⌘F")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(.quaternary, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                .padding(.trailing, 7)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
             }
         }
         .background {
@@ -67,20 +102,44 @@ struct SettingsView: View {
     /// narrower than the title bar's window buttons and toggle (140 pt).
     private var sidebar: some View {
         let rail = navigation.showsRail
+        let width = listWidth
         return ZStack(alignment: .topLeading) {
             if rail {
                 SettingsRail(navigation: navigation).transition(.opacity)
             } else {
                 SettingsSidebar(navigation: navigation, usesAppleIntelligence: model.settings.searchUsesAppleIntelligence)
-                    .frame(width: Self.sidebarWidth)
+                    .frame(width: width)
                     .transition(.opacity)
             }
         }
-        .frame(width: rail ? SettingsRail.width : Self.sidebarWidth, alignment: .leading)
+        .frame(width: rail ? SettingsRail.width : width, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
         .clipped()
-        .background(SidebarMaterial())
+        // On the window's own background, like the pane, with a hairline between them.
         .overlay(alignment: .trailing) { Divider() }
+        .overlay(alignment: .trailing) { resizeHandle(from: rail ? SettingsRail.width : width) }
+    }
+
+    /// The sidebar's edge: drag it to size the pane list between its fitted width and `maxSidebarWidth`. Dragged
+    /// past halfway from the fitted width to the rail, it glides to icons only; dragged back out, to names again.
+    private func resizeHandle(from width: CGFloat) -> some View {
+        Color.clear
+            .frame(width: 6)
+            .contentShape(Rectangle())
+            .pointerStyle(.columnResize)
+            .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                .onChanged { drag in
+                    let start = dragStart ?? width
+                    dragStart = start
+                    let proposed = start + drag.translation.width
+                    let fitted = fittedWidth
+                    // Search results hold the list open, as they do against the sidebar button.
+                    let icons = !navigation.isSearching && proposed < (SettingsRail.width + fitted) / 2
+                    if icons != navigation.compactSidebar { withAnimation(glide) { navigation.compactSidebar = icons } }
+                    if !icons { navigation.sidebarWidth = min(max(proposed, fitted), Self.maxSidebarWidth) }
+                }
+                .onEnded { _ in dragStart = nil })
+            .accessibilityHidden(true)
     }
 
     /// The pane's header over its form, scrolled to a search result's row when one is revealed.
