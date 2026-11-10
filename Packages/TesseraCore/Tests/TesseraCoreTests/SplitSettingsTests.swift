@@ -5,7 +5,7 @@ import Testing
 @Suite struct SplitSettingsTests {
     private static let splitKeys = [
         "learnSplits", "splitRestoresOrder", "splitGapPlacement", "splitGapWhenGrowing", "splitReflowsNeighbours",
-        "splitFillsClosedGap", "splitOnMinimise", "splitTilesNewWindow", "splitNewWindowScope", "learnedSplits",
+        "splitFillsClosedGap", "splitOnMinimise", "splitOnCloseKeepsRunning", "splitTilesNewWindow", "splitNewWindowScope", "learnedSplits",
     ]
 
     private func split(
@@ -38,6 +38,7 @@ import Testing
         #expect(s.splitReflowsNeighbours)
         #expect(s.splitFillsClosedGap)
         #expect(s.splitOnMinimise == .retile)
+        #expect(s.splitOnCloseKeepsRunning == .retile)
         #expect(s.minimiseFillsGap)
         #expect(s.splitTilesNewWindow)
         #expect(s.splitNewWindowScope == .rememberedSplits)
@@ -84,6 +85,7 @@ import Testing
         s.splitGapPlacement = .followsNeighbour
         s.splitGapWhenGrowing = .shrinks
         s.splitOnMinimise = .leaveSpace
+        s.splitOnCloseKeepsRunning = .leaveSpace
         let decoded = try JSONDecoder().decode(TesseraSettings.self, from: JSONEncoder().encode(s))
         #expect(decoded == s)
     }

@@ -52,6 +52,11 @@ extension SplitWatchers {
         let closed = group.filter { entry in !left.contains { $0.window == entry.window } }
         guard !Task.isCancelled, ownMoves == 0 else { return .busy }
         guard !closed.isEmpty else { return .notYet }
+        // Closed, but its app is still running (in the Dock): the person may want the space kept for it.
+        // ponytail: an app that quits on its last window but takes longer than this look counts as still running.
+        if !minimised, settings.splitOnCloseKeepsRunning == .leaveSpace, closed.allSatisfy({ entry in
+            NSRunningApplication(processIdentifier: entry.window.pid).map { !$0.isTerminated } ?? false
+        }) { return .skipped }
         guard !left.isEmpty, left.allSatisfy({ entry in group.contains { $0.window == entry.window } })
         else { return .skipped }
 

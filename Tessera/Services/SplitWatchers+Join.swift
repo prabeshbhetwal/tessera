@@ -30,7 +30,8 @@ extension SplitWatchers {
         pendingJoin = Task { [weak self] in
             // A replaced look leaves the flag to the look that replaced it.
             defer { if !Task.isCancelled, self?.pendingJoinLaunch == pid { self?.pendingJoinLaunch = nil } }
-            for delay in launched || restored ? [500, 1000, 1500] : [500] {
+            // An activated app's window can show late too (an Electron window shown from the Dock), so every look retries.
+            for delay in [500, 1000, 1500] {
                 do { try await Task.sleep(for: .milliseconds(delay)) } catch { return }
                 guard let self else { return }
                 if !launched, !restored, self.wasUnhidden(pid) { return }
@@ -77,7 +78,12 @@ extension SplitWatchers {
         guard wasTiled || learned != nil else { return false }
         let goals = learned ?? GridGeometry.tiles(ordered.count, display: display)
         let moves = ordered.indices.filter { !CommandExecutor.sameFrame(ordered[$0].frame, goals[$0]) }
-        guard !moves.isEmpty else { return false }
+        // Already in its place (an app reopening a window where it was last tiled): nothing moves, so no move's end
+        // re-arms the watchers. Re-arm here, or the group is watched without it and its close leaves a gap.
+        guard !moves.isEmpty else {
+            armSoon(after: .zero)
+            return true
+        }
 
         beginOwnMove()
         let (landed, undoMarker) = await windows.moveTogether(

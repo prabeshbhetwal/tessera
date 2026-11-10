@@ -24,6 +24,13 @@ struct SplitsPane: View {
                 .pickerStyle(.radioGroup)
                 .disabled(!model.settings.learnSplits || !model.settings.splitFillsClosedGap)
                 .settingAnchor("When a window is minimised")
+                Picker("When a window closes but its app keeps running", selection: $model.settings.splitOnCloseKeepsRunning) {
+                    Text("Re-tile remaining windows").tag(SplitMinimiseAction.retile)
+                    Text("Leave the space empty").tag(SplitMinimiseAction.leaveSpace)
+                }
+                .pickerStyle(.radioGroup)
+                .disabled(!model.settings.learnSplits || !model.settings.splitFillsClosedGap)
+                .settingAnchor("When a window closes but its app keeps running")
                 Toggle("Make room when a window opens", isOn: $model.settings.splitTilesNewWindow)
                     .disabled(!model.settings.learnSplits)
                     .settingAnchor("Make room when a window opens")
@@ -73,6 +80,7 @@ struct SplitsPane: View {
                 model.settings.splitReflowsNeighbours = defaults.splitReflowsNeighbours
                 model.settings.splitFillsClosedGap = defaults.splitFillsClosedGap
                 model.settings.splitOnMinimise = defaults.splitOnMinimise
+                model.settings.splitOnCloseKeepsRunning = defaults.splitOnCloseKeepsRunning
                 model.settings.splitTilesNewWindow = defaults.splitTilesNewWindow
                 model.settings.splitNewWindowScope = defaults.splitNewWindowScope
                 model.settings.splitRestoresOrder = defaults.splitRestoresOrder
