@@ -60,6 +60,8 @@ public enum SettingsCatalog {
           ["close button red dock still running background app retile gap empty space wispr slack"]),
         E("splits", "Learning", "Make room when a window opens", ["new window opens tile automatically fit in"]),
         E("splits", "Learning", "Make room on", ["new window which displays tiled remembered split"]),
+        E("splits", "Learning", "Wait before tiling a new app",
+          ["delay seconds timer brief quick open wispr finder new window tile later"]),
         E("splits", "Learning", "Restore last order", ["window order arrangement"]),
         E("splits", "Learning", "Empty space when order changes", ["gap placement follows neighbour"]),
         E("splits", "Learned splits", "Forget All…", ["clear delete learned splits manage display monitor remembered layouts"]),

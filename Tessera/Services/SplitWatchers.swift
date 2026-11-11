@@ -23,11 +23,12 @@ final class SplitWatchers {
     private var pendingArm: Task<Void, Never>?
     /// Covering the space a closed window left (see `fillSoon`), keyed by `DisplayID.storageKey`.
     var pendingFills: [String: Task<Void, Never>] = [:]
-    /// Tiling a newly opened window in (see `joinSoon`).
-    var pendingJoin: Task<Void, Never>?
-    /// The app whose launch or restored window `pendingJoin` is still looking for, so its own activation doesn't cut the
+    /// Tiling a newly opened window in (see `joinSoon`), one look per app, so another app's activation never cuts a
     /// look short.
-    var pendingJoinLaunch: pid_t?
+    var pendingJoins: [pid_t: Task<Void, Never>] = [:]
+    /// Apps whose launch or restored window a look in `pendingJoins` is still waiting for, so their own activation
+    /// doesn't replace that look.
+    var firstWindowLooks: Set<pid_t> = []
     /// When each app was last unhidden: its windows reappearing are not new windows joining.
     var unhidden: [pid_t: Date] = [:]
     /// Groups last arranged by Tile Evenly: a re-arm keeps them from learning, so the stored split survives.
@@ -89,6 +90,9 @@ final class SplitWatchers {
         pendingArm = nil
         for task in pendingFills.values { task.cancel() }
         pendingFills = [:]
+        for task in pendingJoins.values { task.cancel() }
+        pendingJoins = [:]
+        firstWindowLooks = []
         for watcher in watchers.values { watcher.stop() }
     }
 

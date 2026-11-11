@@ -264,6 +264,10 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     public var splitTilesNewWindow = true
     /// Which displays `splitTilesNewWindow` acts on. Files that already hold a value keep it.
     public var splitNewWindowScope: SplitNewWindowScope = .rememberedSplits
+    /// Seconds a new window must stay open before `splitTilesNewWindow` tiles it in equal shares, when the apps now
+    /// beside it have no learned split, so a window opened for a moment (Wispr Flow, Finder) is left alone. A learned
+    /// split applies at once. 0 tiles right away. Read it through `splitNewWindowWaitSeconds`, which clamps.
+    public var splitNewWindowWait = 0
     /// Oldest first, at most `SplitMemory.capacity`.
     public var learnedSplits: [LearnedSplit] = []
     public var updates = UpdateSettings()
