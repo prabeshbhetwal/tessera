@@ -116,7 +116,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         // Not gated on Accessibility: updating is how a broken build gets fixed. Greyed only while a check runs.
         checkItem.isEnabled = updates.canCheckForUpdates
         // Read each time the menu opens, so a hotkey changed in Settings › Shortcuts shows straight away.
-        let keys = items.shortcutKeys
+        // Global hotkeys off: the menu doesn't show them either, or they'd seem to work only while the menu is open.
+        let keys = items.shortcutKeys && s.hotkeysEnabled
         explainItem.showShortcut(for: .explain, in: s.hotkeys, visible: keys)
         undoItem.showShortcut(for: .undo, in: s.hotkeys, visible: keys)
         settingsItem.showShortcut(for: .openSettings, in: s.hotkeys, visible: keys, fallback: (",", .command))
