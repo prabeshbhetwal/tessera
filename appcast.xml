@@ -3,6 +3,20 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.24</title>
+            <pubDate>Wed, 11 Nov 2026 07:42:59 +0000</pubDate>
+            <sparkle:version>20261111.074154</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.24</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Splits, hotkeys and the shortcut card
+
+- **A quit app comes back to its split when you reopen it.** If you quit an app that sat beside other windows, the window left behind grows to fill the space. Reopening the app now puts it back beside that window, in your remembered split when there is one. Before, with Settings › Splits › Make room on set to "Displays already tiled", the reopened app opened on top of the window instead.
+- **The menu no longer shows hotkeys while they're switched off.** With Settings › Shortcuts › Use global hotkeys off, the menu still listed each item's hotkey, so they seemed to work only while the menu was open. Turn the switch on and hotkeys work in every app.
+- **The shortcut confirmation shows its full text.** Messages such as "Tiled 3 windows · your split" were cut off at the end.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.24/Tessera-0.2.0-beta.24.zip" length="5221040" type="application/octet-stream" sparkle:edSignature="ti9GAvv/kDx5NzRktqWU1tYH9O2a8PKfOFPr8OoHhWVqs41EDOPZWZIk5n+CwhdN0CSlTiiGDQDFxK+bXKvVCg==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.23</title>
             <pubDate>Wed, 11 Nov 2026 02:46:11 +0000</pubDate>
             <sparkle:version>20261111.024454</sparkle:version>
