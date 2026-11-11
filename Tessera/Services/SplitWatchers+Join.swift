@@ -19,6 +19,12 @@ extension SplitWatchers {
         let settings = model.settings
         guard settings.learnSplits, settings.splitTilesNewWindow, pid != ProcessInfo.processInfo.processIdentifier
         else { return }
+        // An app relaunched after quitting out of a group (the rest covered its space) comes back to the windows it left.
+        var restoring = restoring
+        if launched, restoring == nil, let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier,
+           let left = closedOutOf.removeValue(forKey: bundleID) {
+            restoring = left
+        }
         let restored = restoring != nil
         // A just-launched or restored app activates too: keep that look (its retries, groups and scope).
         if !launched, !restored, firstWindowLooks.contains(pid) { return }
