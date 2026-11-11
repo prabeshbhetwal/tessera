@@ -3,6 +3,19 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.23</title>
+            <pubDate>Wed, 11 Nov 2026 02:46:11 +0000</pubDate>
+            <sparkle:version>20261111.024454</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.23</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Splits: new windows tile in more reliably, with an optional wait
+
+- **Apps that take a while to open now tile into their remembered split.** WhatsApp, Wispr Flow, Dia and other apps can take several seconds to show their first window after launch. Tessera used to stop looking before the window appeared, so it opened floating on top of your tiled windows. It now keeps looking for up to 12 seconds.
+- **New setting: Settings › Splits › Wait before tiling a new app.** Enter a number of seconds (0–60). A window from apps you haven't arranged together before is tiled in equal shares only if it's still open when the wait ends, so an app you open for a moment (Wispr Flow, Finder) is left alone. Apps you've arranged together before get their remembered split straight away. 0 (the default) tiles right away. Search Settings for "wait" or "delay" to find it.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.23/Tessera-0.2.0-beta.23.zip" length="5218346" type="application/octet-stream" sparkle:edSignature="NRvqLW+DH8HkgJTAgjuDqv9JqRN1qmREBmzPpodT/Opg0mI+gVverA0MZgetqSVxgGqUkE1gZ9zoTLkSDhgFDA==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.22</title>
             <pubDate>Tue, 10 Nov 2026 13:54:11 +0000</pubDate>
             <sparkle:version>20261110.135239</sparkle:version>
