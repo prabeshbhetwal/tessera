@@ -87,6 +87,11 @@ extension SplitWatchers {
         for (index, frame) in zip(moves, landed) { if let frame { finals[index].frame = frame } }
         let grew = zip(moves, landed).filter { $0.1 != nil }.map { HelpEvent.appName(left[$0.0].window) }
         guard !grew.isEmpty else { return .skipped }
+        if !minimised {
+            for case let bundleID? in closed.map(\.window.bundleID) {
+                closedOutOf[bundleID] = (others: left.map(\.window), displayKey: displayKey)
+            }
+        }
         let kind = HelpEventKind.gapFilled(closed: closed.map { HelpEvent.appName($0.window) }, filled: grew,
                                            usedSplit: learned != nil, minimised: minimised)
         let split = learned == nil ? nil : SplitMemory.lookup(SplitKey(left, on: display), in: settings.learnedSplits)

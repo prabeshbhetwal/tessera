@@ -35,6 +35,10 @@ final class SplitWatchers {
     private var noLearn: Set<SplitKey> = []
     /// Minimised out of a group whose space the rest covered; tiled back in when restored (see `joinSoon`).
     let minimisedWindows = MinimisedWindows()
+    /// By bundle ID: an app whose window closed out of a group whose space the rest covered, with the windows it left
+    /// and their display. Relaunched, its window joins them again, even when only one is left (a lone window isn't
+    /// watched, so `splitNewWindowScope`'s tiled displays would miss it).
+    var closedOutOf: [String: (others: [WindowRef], displayKey: String)] = [:]
 
     init(windows: WindowService, displays: DisplayService, model: SettingsModel) {
         self.windows = windows

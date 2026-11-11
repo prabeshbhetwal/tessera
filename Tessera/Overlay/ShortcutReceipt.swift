@@ -18,11 +18,13 @@ final class ShortcutReceipt {
     func show(title text: String, action: WindowAction?, settings: TesseraSettings) {
         task?.cancel()
         let theme = settings.activeTheme
-        let font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        let textWidth = (text as NSString).size(withAttributes: [.font: font]).width
+        title.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        title.stringValue = text
+        // The label's own width (its cell adds padding to the text), plus the 88 pt left and 16 pt right margins.
+        let textWidth = max(title.intrinsicContentSize.width, detail.intrinsicContentSize.width)
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600)
-        let size = CGSize(width: min(max(248, ceil(textWidth) + 102), min(420, visible.width - 24)), height: 82)
+        let size = CGSize(width: min(max(248, ceil(textWidth) + 104), min(520, visible.width - 24)), height: 82)
         let y: CGFloat = switch settings.hudPosition {
         case .bottom: visible.minY + visible.height * 0.18
         case .center: visible.midY - size.height / 2
@@ -60,8 +62,6 @@ final class ShortcutReceipt {
         resultFill.fillColor = HexColor.cgColor(theme.accentHex)
         CATransaction.commit()
 
-        title.font = font
-        title.stringValue = text
         title.textColor = NSColor(cgColor: HexColor.cgColor(theme.ring.strokeHex)) ?? .labelColor
         title.frame = CGRect(x: 88, y: 42, width: size.width - 104, height: 18)
         detail.textColor = title.textColor?.withAlphaComponent(0.7)
