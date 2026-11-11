@@ -3,6 +3,9 @@ import TesseraCore
 
 /// Learned splits (window arrangements remembered per display): how they are learned, and a list to forget.
 struct SplitsPane: View {
+    private static let waitInfo = "A window opened next to tiled windows waits this many seconds and is tiled in "
+        + "equal shares only if it's still open, so an app you open for a moment (Wispr Flow, Finder) is left alone. "
+        + "Apps you've arranged together before get their split straight away. 0 tiles right away."
     @Bindable var model: SettingsModel
     let displays: [DisplayContext]
     @State private var confirmingForgetAll = false
@@ -41,6 +44,22 @@ struct SplitsPane: View {
                 .pickerStyle(.radioGroup)
                 .disabled(!model.settings.learnSplits || !model.settings.splitTilesNewWindow)
                 .settingAnchor("Make room on")
+                LabeledContent {
+                    HStack(spacing: 6) {
+                        TextField("Seconds", value: $model.settings.splitNewWindowWait, format: .number)
+                            .labelsHidden().multilineTextAlignment(.trailing).frame(width: 44)
+                        Stepper("Seconds", value: $model.settings.splitNewWindowWait,
+                                in: 0...TesseraSettings.maxNewWindowWait).labelsHidden()
+                        Text("s")
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Wait before tiling a new app")
+                        InfoButton(topic: "Wait before tiling a new app", text: Self.waitInfo)
+                    }
+                }
+                .disabled(!model.settings.learnSplits || !model.settings.splitTilesNewWindow)
+                .settingAnchor("Wait before tiling a new app")
                 Toggle("Restore last order", isOn: $model.settings.splitRestoresOrder).settingAnchor("Restore last order")
                 Picker("Empty space when order changes", selection: $model.settings.splitGapPlacement) {
                     Text("Stays in place").tag(SplitGapPlacement.staysInPlace)
@@ -83,6 +102,7 @@ struct SplitsPane: View {
                 model.settings.splitOnCloseKeepsRunning = defaults.splitOnCloseKeepsRunning
                 model.settings.splitTilesNewWindow = defaults.splitTilesNewWindow
                 model.settings.splitNewWindowScope = defaults.splitNewWindowScope
+                model.settings.splitNewWindowWait = defaults.splitNewWindowWait
                 model.settings.splitRestoresOrder = defaults.splitRestoresOrder
                 model.settings.splitGapPlacement = defaults.splitGapPlacement
             }

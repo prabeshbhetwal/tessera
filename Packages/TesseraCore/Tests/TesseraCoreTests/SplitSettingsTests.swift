@@ -5,8 +5,19 @@ import Testing
 @Suite struct SplitSettingsTests {
     private static let splitKeys = [
         "learnSplits", "splitRestoresOrder", "splitGapPlacement", "splitGapWhenGrowing", "splitReflowsNeighbours",
-        "splitFillsClosedGap", "splitOnMinimise", "splitOnCloseKeepsRunning", "splitTilesNewWindow", "splitNewWindowScope", "learnedSplits",
+        "splitFillsClosedGap", "splitOnMinimise", "splitOnCloseKeepsRunning", "splitTilesNewWindow", "splitNewWindowScope", "splitNewWindowWait", "learnedSplits",
     ]
+
+    @Test func newWindowWaitClamps() {
+        var s = TesseraSettings.defaults
+        #expect(s.splitNewWindowWaitSeconds == 0)
+        s.splitNewWindowWait = -5
+        #expect(s.splitNewWindowWaitSeconds == 0)
+        s.splitNewWindowWait = 8
+        #expect(s.splitNewWindowWaitSeconds == 8)
+        s.splitNewWindowWait = 500
+        #expect(s.splitNewWindowWaitSeconds == TesseraSettings.maxNewWindowWait)
+    }
 
     private func split(
         apps: [String] = ["com.a", "com.b"],

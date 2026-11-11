@@ -110,6 +110,12 @@ public enum SplitNewWindowScope: String, Codable, CaseIterable, Equatable, Senda
     case tiledDisplays, rememberedSplits
 }
 
+extension TesseraSettings {
+    public static let maxNewWindowWait = 60
+    /// `splitNewWindowWait` clamped to `0...maxNewWindowWait`.
+    public var splitNewWindowWaitSeconds: Int { min(max(splitNewWindowWait, 0), Self.maxNewWindowWait) }
+}
+
 /// What the rest of a side-by-side group does when one of its windows is minimised.
 public enum SplitMinimiseAction: String, Codable, CaseIterable, Equatable, Sendable {
     /// The others cover its space, as when it closes; restoring it tiles it back in, as a newly opened window.
