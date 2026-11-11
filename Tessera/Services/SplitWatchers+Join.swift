@@ -47,17 +47,24 @@ extension SplitWatchers {
                 switch await self.join(pid: pid, tiled: tiled, anywhere: anywhere, restored: restored, holds: wait > 0) {
                 case .tiled: return
                 case .notFound: continue
-                case .held(let waiting):
+                case .held(let first):
                     // No learned split for these apps: only a window still open after the wait is tiled in, so one
-                    // opened for a moment (Wispr Flow, Finder) is left alone.
-                    do { try await Task.sleep(for: .seconds(wait)) } catch { return }
-                    // Another app's tile can be moving right then (it answers notFound): try again briefly.
-                    for _ in 0..<4 {
-                        if await self.join(pid: pid, tiled: tiled, anywhere: anywhere, restored: restored, holds: false,
-                                           waiting: waiting) != .notFound { return }
-                        do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+                    // opened for a moment (Wispr Flow, Finder) is left alone. A window the app opens during the wait
+                    // waits its own turn.
+                    var waiting = (now: first, allowed: first)
+                    while true {
+                        do { try await Task.sleep(for: .seconds(wait)) } catch { return }
+                        // Another app's tile can be moving right then (it answers notFound): try again briefly.
+                        var look = JoinLook.notFound
+                        for attempt in 0..<4 {
+                            look = await self.join(pid: pid, tiled: tiled, anywhere: anywhere, restored: restored,
+                                                   holds: false, waiting: waiting)
+                            if look != .notFound || attempt == 3 { break }
+                            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+                        }
+                        guard case .held(let newcomers) = look else { return }
+                        waiting = (now: newcomers, allowed: waiting.allowed + newcomers)
                     }
-                    return
                 }
             }
         }
@@ -73,9 +80,10 @@ extension SplitWatchers {
 
     /// `.tiled` once a group was tiled, or the setting went off. `holds` leaves a window whose group has no learned split
     /// untiled and answers `.held` with it (see `splitNewWindowWait`); a hold anywhere wins, so it is looked at again.
-    /// `waiting` (after the wait) tiles only where a held window is still open, not another the app opened since.
-    private func join(pid: pid_t, tiled: [String: [WindowRef]], anywhere: Bool, restored: Bool,
-                      holds: Bool, waiting: [WindowRef]? = nil) async -> JoinLook {
+    /// `waiting` (after the wait) tiles only where a window that waited (`now`) is still open, and leaves out any window
+    /// the app opened since (not in `allowed`), answering `.held` with those so they wait their own turn.
+    private func join(pid: pid_t, tiled: [String: [WindowRef]], anywhere: Bool, restored: Bool, holds: Bool,
+                      waiting: (now: [WindowRef], allowed: [WindowRef])? = nil) async -> JoinLook {
         let settings = model.settings
         guard settings.learnSplits, settings.splitTilesNewWindow, Permissions.isAccessibilityTrusted else { return .tiled }
         guard ownMoves == 0 else { return .notFound }
@@ -83,12 +91,18 @@ extension SplitWatchers {
         for display in displays.displays {
             let watched = tiled[display.id.storageKey] ?? []
             guard !watched.isEmpty || anywhere else { continue }
-            let found = await windows.visibleWindows(on: display.frame, primaryHeight: DisplayService.primaryHeight,
+            var found = await windows.visibleWindows(on: display.frame, primaryHeight: DisplayService.primaryHeight,
                                                      excluding: Set(settings.excludedBundleIDs))
             guard !Task.isCancelled, ownMoves == 0 else { return .notFound }
-            let joined = found.filter { $0.window.pid == pid && !watched.contains($0.window) }
+            var joined = found.filter { $0.window.pid == pid && !watched.contains($0.window) }
             guard !joined.isEmpty, found.count > 1 else { continue }
-            if let waiting, !joined.contains(where: { waiting.contains($0.window) }) { continue }
+            if let waiting {
+                let newcomers = joined.map(\.window).filter { !waiting.allowed.contains($0) }
+                held += newcomers
+                guard joined.contains(where: { waiting.now.contains($0.window) }) else { continue }
+                found.removeAll { newcomers.contains($0.window) }
+                joined.removeAll { newcomers.contains($0.window) }
+            }
             // The whole group is still here (same Space), so the new window joins it. A restored window rejoins what is
             // left of the group it was minimised out of, even if some of it closed since.
             let present = watched.filter { window in found.contains { $0.window == window } }
