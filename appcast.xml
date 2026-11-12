@@ -3,6 +3,17 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.25</title>
+            <pubDate>Thu, 12 Nov 2026 05:41:58 +0000</pubDate>
+            <sparkle:version>20261112.053640</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.25</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- Splits are now learned only from changes you make with the mouse. An app resizing its own window (such as Finder), or macOS moving windows after sleep or a Space switch, no longer saves a split. That could leave a big empty space in the middle that Tile and closing windows kept putting back.
+- Tile now says "Already in your split" when the windows are already in their split, instead of "Tiled" with nothing moving.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.25/Tessera-0.2.0-beta.25.zip" length="5221963" type="application/octet-stream" sparkle:edSignature="d8HFw3dcnBHajR0jvgyWQMBgIPNskMhUZbiU/Bkkoknum65XYbI3++1a8GECrPTKm9w6Pfp8YA60LcOI6PQyDA==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.24</title>
             <pubDate>Wed, 11 Nov 2026 07:42:59 +0000</pubDate>
             <sparkle:version>20261111.074154</sparkle:version>
