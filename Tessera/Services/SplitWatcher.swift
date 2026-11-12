@@ -48,6 +48,10 @@ final class SplitWatcher {
     private var baseline: [(window: WindowRef, frame: CGRect)] = []
     /// A hand adjustment is waiting for its debounce; a baseline read now would absorb it.
     private var adjusting = false
+    /// A mouse button was down while the adjustment waiting to be learned happened. Without it the change was an app
+    /// resizing its own window or macOS moving windows (display wake, a Space switch): neighbours may still follow, but
+    /// the arrangement is not saved, so a window that opened floating in a hole never becomes part of a split.
+    private var byHand = false
 
     init(windows: WindowService, displays: DisplayService, model: SettingsModel) {
         self.windows = windows
@@ -116,6 +120,7 @@ final class SplitWatcher {
         watched = []
         baseline = []
         adjusting = false
+        byHand = false
     }
 
     /// Brackets each of Tessera's own moves (`CommandExecutor.place`; balance every begin with an end). Moves and
@@ -143,6 +148,7 @@ final class SplitWatcher {
         default:
             if quiet {
                 adjusting = true
+                if NSEvent.pressedMouseButtons != 0 { byHand = true }
                 schedule()
             }
         }
@@ -157,17 +163,9 @@ final class SplitWatcher {
         onWindowClosed?(group, display, minimised)
     }
 
-    /// Watching a window of the app with this process ID.
-    func watches(pid: pid_t) -> Bool { watched.contains { $0.pid == pid } }
-
     /// A hand adjustment waits to be handled, or a move (Tessera's or this watcher's reflow) is settling: re-arming now
     /// would drop it.
     var isBusy: Bool { adjusting || !quiet }
-
-    /// Watching exactly these windows.
-    func watches(_ group: [(window: WindowRef, frame: CGRect)]) -> Bool {
-        group.count == watched.count && group.allSatisfy { entry in watched.contains(entry.window) }
-    }
 
     /// No Tessera move is in flight or still settling.
     private var quiet: Bool { ownMoves == 0 && ContinuousClock.now >= ignoreUntil }
@@ -217,7 +215,9 @@ final class SplitWatcher {
         baseline = visible
         // An arrangement that can't be learned (say, windows overlapping) is skipped, and so is one that only repeats
         // the stored split (a slow app's late notification); the next adjustment tries again.
-        guard learns else { return }
+        let handMade = byHand
+        byHand = false
+        guard learns, handMade else { return }
         let previous = SplitMemory.lookup(key, in: model.settings.learnedSplits)
         switch save(visible, display: display, onlyIfChanged: true) {
         case .failure(let rejection):

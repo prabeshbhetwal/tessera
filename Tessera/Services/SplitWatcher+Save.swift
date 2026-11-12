@@ -3,6 +3,14 @@ import TesseraCore
 
 @MainActor
 extension SplitWatcher {
+    /// Watching a window of the app with this process ID.
+    func watches(pid: pid_t) -> Bool { watched.contains { $0.pid == pid } }
+
+    /// Watching exactly these windows.
+    func watches(_ group: [(window: WindowRef, frame: CGRect)]) -> Bool {
+        group.count == watched.count && group.allSatisfy { entry in watched.contains(entry.window) }
+    }
+
     /// Learns how `found` sit on `display` and saves that as the split for these apps there. With `onlyIfChanged`, a
     /// split within a point of the stored one is not written again and comes back with `changed` false.
     func save(_ found: [(window: WindowRef, frame: CGRect)], display: DisplayContext, onlyIfChanged: Bool = false)

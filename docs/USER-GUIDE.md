@@ -235,7 +235,7 @@ A card explains what moved. Press **⌃⌥Z** to put the windows back. Under **M
 
 ### How a split is learned
 
-About **1 second** after you stop adjusting, Tessera saves the arrangement as a **split**. A split is keyed by:
+About **1 second** after you stop adjusting, Tessera saves the arrangement as a **split**. Only changes you make with the mouse (dragging or resizing a window) are saved; an app resizing its own window, or macOS moving windows after sleep or a Space switch, never is. A split is keyed by:
 - **the display**, and
 - **the set of apps** on it. App order doesn't matter. Two Chrome windows count as two.
 

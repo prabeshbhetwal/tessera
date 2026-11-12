@@ -74,6 +74,8 @@ extension CommandExecutor {
         let (slots, learned) = evenly
             ? (GridGeometry.tiles(ordered.count, display: display), false)
             : splitFrames(for: ordered, display: display)
+        // The windows already sit in their split: say so, rather than "Tiled" with nothing moving.
+        let alreadyThere = learned && zip(ordered, slots).allSatisfy { Self.sameFrame($0.frame, $1) }
         // All at once, so with a snap speed set the windows glide together instead of one after another.
         let batch = await windows.newBatch()
         let landed = await withTaskGroup(of: (Int, CGRect?).self) { group in
@@ -107,6 +109,9 @@ extension CommandExecutor {
                                   portrait: display.range.isPortrait)
         onEvent?(.make(kind: kind, source: source, display: display, group: after, split: split, previous: nil,
                        undoMarker: undoMarker))
+        if alreadyThere, moved == n {
+            return CommandResult(ok: true, message: "Already in your split · Tile Evenly for equal shares")
+        }
         let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
         return CommandResult(ok: moved > 0, message: message + (learned ? " · your split" : evenly ? " evenly" : ""))
     }
