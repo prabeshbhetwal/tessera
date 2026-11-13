@@ -28,6 +28,17 @@ import Testing
         #expect(SplitReflow.following(goals: goals, landed: [goals[0], nil], gap: gap) == goals)
     }
 
+    /// Two stacked windows on the left both land narrow. The right window shares its seam with both, so following
+    /// either would resize the other, which never moves again: it stays in its slot rather than overlap one.
+    @Test func aLandedWindowIsNeverResizedByALaterFollow() {
+        let goals = [rect(0, 495, 255, 500), rect(0, 495, 0, 245), rect(505, 1000)]
+        let landed: [CGRect?] = [rect(0, 450, 255, 500), rect(0, 300, 0, 245), goals[2]]
+        let followed = SplitReflow.following(goals: goals, landed: landed, gap: gap)
+        let real = [landed[0]!, landed[1]!, followed[2]]
+        #expect(!SplitReflow.stacked(real))
+        #expect(followed == goals)
+    }
+
     /// The window beside the hole sits well short of it (an earlier fixed-width window left space): it still covers it.
     @Test func fillReachesAcrossEmptySpace() {
         let left = rect(0, 400)
