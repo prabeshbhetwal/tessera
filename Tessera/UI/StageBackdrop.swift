@@ -32,6 +32,9 @@ struct StageWallpaper: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: store.image != nil)
+        // Scaled to fill, a wide picture runs far past the stage's 420 pt. `.clipped()` trims only the drawing, so
+        // the unseen overflow still took every click and drag over the form beside it, freezing its controls.
+        .allowsHitTesting(false)
         .onAppear { store.load() }
     }
 }
