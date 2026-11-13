@@ -81,6 +81,7 @@ final class SplitWatcher {
             CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
             observers.append((observer, elements))
         }
+        baseline = group  // so a window closed before the refresh below lands still leaves a gap to fill
         refreshBaseline()  // the frames Tile just set
     }
 
@@ -255,8 +256,8 @@ final class SplitWatcher {
         guard model.settings.splitReflowsNeighbours, baseline.count == visible.count, before.count == visible.count,
               let goals = SplitReflow.frames(before: before, after: visible.map(\.frame), usable: usable,
                                              gap: display.profile.gap) else { return false }
-        // Mid-drag: following an edge that is still moving would leave the neighbours behind the final one.
-        guard NSEvent.pressedMouseButtons == 0 else { return true }
+        // Mid-drag: following a still-moving edge would leave the neighbours behind; the adjustment still waits.
+        guard NSEvent.pressedMouseButtons == 0 else { adjusting = true; return true }
         let moves = visible.indices.filter { visible[$0].frame != goals[$0] }.map { (index: $0, window: visible[$0].window) }
         let generation = self.generation
         beginOwnMove()

@@ -56,7 +56,14 @@ final class InputService: @unchecked Sendable {
             Self.logger.error("CGEvent.tapCreate failed; Accessibility / Input Monitoring not granted?")
             return false
         }
+        // Made here rather than on the tap thread, so a failure is reported to the caller and nothing is left half started.
+        guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
+            Self.logger.error("CFMachPortCreateRunLoopSource failed; event tap not started")
+            CFMachPortInvalidate(tap)
+            return false
+        }
         session.tap = tap
+        session.source = source
         shared.withLock { $0.session = session }
 
         // The thread's closure keeps `session` (the refcon) alive until the run loop exits.
@@ -146,6 +153,7 @@ private final class TapSession: @unchecked Sendable {
     let service: InputService
     /// Set once in `InputService.start()` before the thread starts; read-only afterwards.
     var tap: CFMachPort?
+    var source: CFRunLoopSource?
     private var machine: TriggerMachine
     private var generation: Int
     private let control = OSAllocatedUnfairLock(uncheckedState: Control())
@@ -162,7 +170,7 @@ private final class TapSession: @unchecked Sendable {
 
     /// Tap-thread body: runs until `stop()`, then tears the tap down on this same thread.
     func run() {
-        guard let tap, let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else { return }
+        guard let tap, let source else { return }
         let runLoop = CFRunLoopGetCurrent()
         CFRunLoopAddSource(runLoop, source, .commonModes)
         control.withLockUnchecked { $0.runLoop = runLoop }
@@ -196,6 +204,8 @@ private final class TapSession: @unchecked Sendable {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             // Key-ups may have been lost while disabled: close the ring instead of leaving it stuck.
             for output in machine.reset() { service.onOutput(output) }
+            let reason = type == .tapDisabledByTimeout ? "timeout" : "user input"
+            InputService.logger.debug("event tap disabled by \(reason, privacy: .public); re-enabling")
             service.tapWasDisabled(self)
             return false
         }

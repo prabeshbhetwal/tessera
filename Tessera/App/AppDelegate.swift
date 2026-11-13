@@ -16,6 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// CLI endpoint; answers "still starting up" until the executor exists.
     private let socketServer = SocketServer()
     private let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "app")
+    /// Quit is held for the settings flush (see `applicationShouldTerminate`).
+    private var awaitingSave = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !anotherInstanceIsRunning() else {
@@ -40,7 +42,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             currentDisplay: { [weak self] in await self?.coordinator?.executor.currentDisplay() }
         )
         guard let fileURL = Self.settingsURL() else {
+            // Without it every command would answer "still starting up" for good: say so and quit instead.
             log.fault("no Application Support directory")
+            let alert = NSAlert()
+            alert.alertStyle = .critical
+            alert.messageText = "Tessera can’t store its settings"
+            alert.informativeText = "macOS didn’t give Tessera an Application Support folder, so it can’t save "
+                + "or load settings. Tessera will quit."
+            alert.runModal()
+            NSApp.terminate(nil)
             return
         }
         let store = SettingsStore(fileURL: fileURL)
@@ -69,6 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if Permissions.isAccessibilityTrusted, coordinator.start() {
                 statusItem?.accessibilityGranted = true
                 if let resumeStep { coordinator.presenter.showOnboarding(startStep: resumeStep) }
+            } else if Permissions.isAccessibilityTrusted {
+                tapFailed()
             } else {
                 statusItem?.accessibilityGranted = false
                 coordinator.presenter.showOnboarding(startStep: min(resumeStep ?? 0, OnboardingView.accessibilityStep))
@@ -80,6 +92,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The menu bar icon can be hidden; relaunching the app is the way back to Settings.
         coordinator?.presenter.showSettings()
         return false
+    }
+
+    /// Writes a settings change still waiting on its debounce (an edit just before Quit or a Sparkle relaunch).
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let coordinator else { return .terminateNow }
+        awaitingSave = true
+        Task {
+            await coordinator.flushSave()
+            replyToTerminate()
+        }
+        // A stuck disk must never stop Tessera quitting.
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            replyToTerminate()
+        }
+        return .terminateLater
+    }
+
+    private func replyToTerminate() {
+        guard awaitingSave else { return }
+        awaitingSave = false
+        NSApp.reply(toApplicationShouldTerminate: true)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -146,7 +180,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func permissionChanged(_ granted: Bool) {
         statusItem?.accessibilityGranted = granted
         if granted {
-            coordinator?.start()
+            if coordinator?.start() == false { tapFailed() }
         } else {
             coordinator?.stop()
             coordinator?.presenter.closeSettings()
@@ -154,11 +188,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Accessibility reads as granted but macOS refused the event tap. The known cause is a stale Accessibility entry
+    /// from an older (differently signed) build, which onboarding can't detect because it shows the grant as done.
+    private func tapFailed() {
+        log.error("Accessibility is granted but the event tap could not be created; stale permission entry?")
+        statusItem?.accessibilityGranted = false
+        let alert = NSAlert()
+        alert.messageText = "Tessera can’t see the trigger"
+        alert.informativeText = "Accessibility is allowed, but macOS won’t let Tessera watch the keyboard and mouse. "
+            + "An older Tessera build may hold a stale entry. Open System Settings, remove Tessera from "
+            + "Accessibility, then grant it again."
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Not Now")
+        if alert.runModal() == .alertFirstButtonReturn { Permissions.openPrivacyPane("Privacy_Accessibility") }
+    }
+
     private func anotherInstanceIsRunning() -> Bool {
         guard let id = Bundle.main.bundleIdentifier else { return false }
         let me = ProcessInfo.processInfo.processIdentifier
+        // A dying instance (a relaunch racing its quit) doesn't count, or neither would be left running.
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: id)
-            .filter { $0.processIdentifier != me }
+            .filter { $0.processIdentifier != me && !$0.isTerminated }
         others.first?.activate()
         return !others.isEmpty
     }

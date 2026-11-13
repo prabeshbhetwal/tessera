@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import os
 import Sparkle
 import TesseraCore
 
@@ -28,6 +29,7 @@ final class UpdateService: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStan
 
     /// What `apply(_:)` last wrote; nil until the first call, which also starts Sparkle.
     private var lastApplied: UpdateSettings?
+    private static let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "updates")
     private var channels: Set<String> = []
     private var subscriptions: Set<AnyCancellable> = []
     // Lazy: the delegates (self) can only be passed once `super.init()` has run.
@@ -94,6 +96,19 @@ final class UpdateService: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStan
         guard replacedSinceLaunch else { return }
         throw NSError(domain: "com.prabeshbhetwal.Tessera.updates", code: 1,
                       userInfo: [NSLocalizedDescriptionKey: Self.replacedMessage])
+    }
+
+    /// Logs why an update cycle stopped; "no update found" and a cancelled authorisation are routine.
+    func updater(_ updater: SPUUpdater, didAbortWithError error: any Error) {
+        let error = error as NSError
+        let routine = error.domain == SUSparkleErrorDomain
+            && [Int(SUError.noUpdateError.rawValue), Int(SUError.installationCanceledError.rawValue)].contains(error.code)
+        if routine {
+            Self.log.debug("update cycle ended: \(error.localizedDescription, privacy: .public)")
+        } else {
+            let detail = "\(error.domain) \(error.code): \(error.localizedDescription)"
+            Self.log.error("update cycle aborted (\(detail, privacy: .public))")
+        }
     }
 
     /// Read from the file: `Bundle` keeps the Info.plist it loaded at launch for the life of the process.
