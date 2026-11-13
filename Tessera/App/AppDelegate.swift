@@ -62,7 +62,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Sparkle's alert can change "install automatically"; the write saves like a Settings edit, and the
         // re-apply that follows matches what Sparkle already holds, so it never echoes back.
         updates.onInstallAutomaticallyChange = { [weak self] in self?.model.settings.updates.installAutomatically = $0 }
-        Task {
+        // Weak here too, or the strong capture makes every `[weak self]` stored below meaningless.
+        Task { [weak self] in
+            guard let self else { return }
             let loaded = await store.load()
             model.settings = loaded.settings
             applyAppSettings(loaded.settings)
