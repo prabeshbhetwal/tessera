@@ -9,16 +9,16 @@ struct DisplaysDemo: View {
     var body: some View {
         let laptop = DemoDisplay.context(DemoDisplay.laptop, settings: settings, menuBar: true)
         let ultrawide = DemoDisplay.context(DemoDisplay.ultrawide, settings: settings, menuBar: true)
-        let caption = "A new 14-inch laptop gets \(Self.columns(laptop)); a new 34-inch ultrawide gets \(Self.columns(ultrawide))."
+        let caption = "Laptop: \(Self.columns(laptop)). Ultrawide: \(Self.columns(ultrawide))."
+        let s = settings.sizing
+        let detail = "Columns \(Int(s.minColumnWidth))–\(Int(s.maxColumnWidth)) pt wide, ideally \(Int(s.idealColumnWidth)) · "
+            + "gap \(Int(settings.defaultGap)) · padding \(Int(settings.defaultPadding))"
         StagePlayer(display: laptop, settings: settings,
-                    frames: [StageFrame(windows: [], grid: true, caption: caption)]) { _ in
-            VStack(spacing: 8) {
-                MiniGrid(display: ultrawide)
-                    .aspectRatio(ultrawide.visibleFrame.width / ultrawide.visibleFrame.height, contentMode: .fit)
-                    .padding(6)
-                    .stageGlass(cornerRadius: 10, clear: true)
-                Text("34-inch ultrawide").font(.caption).foregroundStyle(.secondary)
-            }
+                    frames: [StageFrame(windows: [], grid: true, caption: caption)], detail: detail) { _ in
+            // The second screen size, where the same widths give more columns.
+            MiniGrid(display: ultrawide)
+                .aspectRatio(ultrawide.visibleFrame.width / ultrawide.visibleFrame.height, contentMode: .fit)
+                .frame(maxHeight: 64)
         }
     }
 

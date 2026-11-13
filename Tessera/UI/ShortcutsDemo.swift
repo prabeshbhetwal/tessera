@@ -12,14 +12,14 @@ struct ShortcutsDemo: View {
         let items = settings.hotkeys.filter { !$0.hotkey.isNone }
         let cued: HotkeyBinding? = if case .hotkey(let id) = cues?.cue { items.first { $0.id == id } } else { nil }
         let binding = cued ?? items.first { $0.target(cycles: settings.cycles) != nil }
-        StagePlayer(display: display, settings: settings, frames: frames(binding, display: display)) { index in
+        let detail = settings.hotkeysEnabled ? "Point at a shortcut on the left to play it." : "All hotkeys are off."
+        StagePlayer(display: display, settings: settings, frames: frames(binding, display: display), detail: detail) { index in
+            // Which shortcut is playing; pressed in on the step it runs.
             if let binding {
-                HStack(spacing: 6) {
-                    ForEach(Array(binding.hotkey.keycaps.enumerated()), id: \.offset) { _, key in
-                        Keycap(key, prominent: true)
-                    }
+                HStack(spacing: 4) {
+                    ForEach(Array(binding.hotkey.keycaps.enumerated()), id: \.offset) { _, key in Keycap(key) }
                 }
-                .scaleEffect(index == 1 ? 0.97 : 1)
+                .scaleEffect(index == 1 ? 0.96 : 1)
             }
         }
     }

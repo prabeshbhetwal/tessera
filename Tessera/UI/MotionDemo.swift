@@ -16,7 +16,9 @@ struct MotionDemo: View {
                        caption: i == 0 ? "Snap it to the other half." : "\(speed): the move takes \(time).",
                        seconds: seconds)
         }
-        StagePlayer(display: display, settings: settings, frames: frames) { index in
+        StagePlayer(display: display, settings: settings, frames: frames,
+                    detail: "The same speed for the ring and shortcuts.") { index in
+            // The time the move takes, on a scale from instant to the slowest allowed.
             VStack(alignment: .leading, spacing: 6) {
                 GeometryReader { geometry in
                     Capsule().fill(.quaternary)
@@ -34,7 +36,6 @@ struct MotionDemo: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 24)
         }
     }
 }

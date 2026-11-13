@@ -40,24 +40,39 @@ extension View {
     func demoCue(_ cue: DemoCue) -> some View { modifier(DemoCueModifier(cue: cue)) }
 }
 
+/// Sets the cue after the pointer rests on the control for a moment, so sweeping across the form on the way
+/// somewhere else doesn't restart the stage at every row.
 private struct DemoCueModifier: ViewModifier {
     let cue: DemoCue
     @Environment(DemoCueState.self) private var state: DemoCueState?
+    @State private var pending: Task<Void, Never>?
 
     func body(content: Content) -> some View {
-        content.onHover { inside in if inside, state?.cue != cue { state?.cue = cue } }
+        content.onHover { inside in
+            pending?.cancel()
+            guard inside, state?.cue != cue else { return }
+            pending = Task {
+                try? await Task.sleep(for: .milliseconds(250))
+                if !Task.isCancelled { state?.cue = cue }
+            }
+        }
     }
 }
 
 /// Acts out a demo once each time its frames change (a setting moved, another control was pointed at, or the
 /// stage was clicked), then rests on the last frame with a faint outline where the window started. Nothing
 /// loops, so there's nothing to pause. Under Reduce Motion it goes straight to the last frame.
-struct StagePlayer<Sheet: View>: View {
+///
+/// One composition: the mock screen fills the column down to a compact footer, whose headline says what happens
+/// and whose second line reads back the settings that decide it.
+struct StagePlayer<Accessory: View>: View {
     let display: DisplayContext
     let settings: TesseraSettings
     let frames: [StageFrame]
-    /// The "you do" half under the desktop, for the frame showing.
-    @ViewBuilder let sheet: (Int) -> Sheet
+    /// The settings behind the demo, read back in one line ("Snap speed Smooth, 0.2 s").
+    let detail: String
+    /// A small picture in the footer, only where it adds something the screen can't show (cycle steps, a time bar).
+    @ViewBuilder let accessory: (Int) -> Accessory
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var index = 0
@@ -67,17 +82,18 @@ struct StagePlayer<Sheet: View>: View {
 
     var body: some View {
         let frame = frames.isEmpty ? StageFrame(windows: [], caption: "") : frames[shown]
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             MockDesktop(display: display, settings: settings, frame: frame, ghost: ghost)
+                .frame(maxHeight: .infinity, alignment: .top)
                 .contentShape(Rectangle())
                 .onTapGesture { replays += 1 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Demo")
-                .accessibilityValue(frame.caption)
+                .accessibilityValue("\(frame.caption) \(detail)")
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Plays it again.")
                 .accessibilityAction { replays += 1 }
-            StageSheet(caption: frame.caption) { sheet(shown) }
+            StageFooter(headline: frame.caption, detail: detail) { accessory(shown) }
         }
         .task(id: Replay(frames: frames, replays: replays)) { await play() }
     }
@@ -115,26 +131,43 @@ struct StagePlayer<Sheet: View>: View {
     }
 }
 
-/// The glass sheet under the desktop: what the person does, and a caption saying what happens.
-private struct StageSheet<Content: View>: View {
-    let caption: String
-    @ViewBuilder let content: Content
+extension StagePlayer where Accessory == EmptyView {
+    init(display: DisplayContext, settings: TesseraSettings, frames: [StageFrame], detail: String) {
+        self.init(display: display, settings: settings, frames: frames, detail: detail) { _ in EmptyView() }
+    }
+}
+
+/// The footer under the screen: an optional picture, the outcome as a headline, the settings behind it.
+/// Near-opaque glass, so the text reads on any wallpaper and under Reduce Transparency.
+private struct StageFooter<Accessory: View>: View {
+    let headline: String
+    let detail: String
+    @ViewBuilder let accessory: Accessory
+    /// The window's scheme, read outside the glass: Liquid Glass picks its own scheme from what is behind it,
+    /// which over a light wallpaper in a dark window gave dark text on the dark tint.
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        VStack(spacing: 14) {
-            Spacer(minLength: 0)
-            content
-            Spacer(minLength: 0)
-            Text(caption)
-                .font(.callout.weight(.medium))
-                .multilineTextAlignment(.center)
+        let ink: Color = scheme == .dark ? .white : .black
+        VStack(alignment: .leading, spacing: 10) {
+            accessory
+            Text(headline)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(ink)
+                .fixedSize(horizontal: false, vertical: true)
                 .contentTransition(.opacity)
-                .frame(maxWidth: .infinity)
-                .accessibilityHidden(true)
+            Text(detail)
+                .font(.callout)
+                .foregroundStyle(ink.opacity(0.66))
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .stageGlass(cornerRadius: 0, tint: 0.45)
-        .overlay(alignment: .top) { Rectangle().fill(.white.opacity(0.4)).frame(height: 0.5) }
+        .environment(\.colorScheme, scheme)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 20)
+        .frame(height: 190, alignment: .top)
+        .stageGlass(cornerRadius: 0, tint: 0.62)
+        .overlay(alignment: .top) { Rectangle().fill(.separator).frame(height: 1) }
+        .accessibilityHidden(true)
     }
 }

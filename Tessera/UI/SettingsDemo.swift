@@ -48,13 +48,9 @@ private struct AppearanceDemo: View {
             frame.caption = frame.preview == nil ? frame.caption : "The preview, its label and the dimming, in this theme."
             return frame
         }
-        let theme = settings.activeTheme
-        StagePlayer(display: display, settings: settings, frames: Array(frames)) { index in
-            RingDiagram(ring: settings.ring, fill: Color(hex: theme.ring.fillHex), tint: theme.ring.opacity,
-                        stroke: Color(hex: theme.ring.strokeHex), accent: Color(hex: theme.accentHex),
-                        active: index >= 2 ? 2 : nil, focused: nil, showBoundary: false)
-                .frame(width: 170, height: 170)
-                .opacity(settings.ring.showRing ? 1 : 0.25)
-        }
+        let look = settings.activeTheme.preview
+        let detail = "\(settings.themeName) theme · fill \(Int(look.opacity * 100)) % · border \(look.borderWidth.formatted()) pt"
+            + (look.showNeighbours ? " · dimming \(Int(look.dimStrength * 100)) %" : "")
+        StagePlayer(display: display, settings: settings, frames: Array(frames), detail: detail)
     }
 }

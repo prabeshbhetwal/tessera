@@ -89,8 +89,11 @@ extension View {
 
 /// Displays for the demos, sized by `TesseraCore` the way `DisplayService` sizes a real screen.
 enum DemoDisplay {
-    /// The stage's own screen, a little taller than a laptop's so the column has more desktop than sheet.
-    static let stage = CGSize(width: 1512, height: 1400)
+    /// The stage's own screen: the whole column under the menu bar. The footer sits over its bottom the way the
+    /// Dock does, so the visible frame stops above it (`footer`, in display points).
+    static let stage = CGSize(width: 1512, height: 2360)
+    /// The footer's height in display points: 190 pt on the 420 pt column.
+    static let footer: CGFloat = 684
     static let laptop = CGSize(width: 1512, height: 982)
     static let ultrawide = CGSize(width: 3440, height: 1440)
 
@@ -98,7 +101,8 @@ enum DemoDisplay {
     /// 33 pt are the menu bar and out of the visible frame.
     static func context(_ size: CGSize, settings: TesseraSettings, menuBar: Bool = false) -> DisplayContext {
         let frame = CGRect(origin: .zero, size: size)
-        let visible = CGRect(x: 0, y: 0, width: size.width, height: size.height - (menuBar ? 33 : 0))
+        let dock = size == stage ? footer : 0
+        let visible = CGRect(x: 0, y: dock, width: size.width, height: size.height - dock - (menuBar ? 33 : 0))
         let range = SizingRule.range(for: visible.size, constants: settings.sizing)
         return DisplayContext(
             id: DisplayID(vendor: 0, model: 0, serial: 0, uuid: "demo"), frame: frame, visibleFrame: visible,

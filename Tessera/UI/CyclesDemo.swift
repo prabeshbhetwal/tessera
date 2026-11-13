@@ -12,13 +12,11 @@ struct CyclesDemo: View {
         let cued: Cycle? = if case .cycle(let name) = cues?.cue { settings.cycles.first { $0.name == name } } else { nil }
         let cycle = cued ?? settings.cycles.first
         let keys = cycle.flatMap { c in settings.hotkeys.first { $0.command == .cycle(name: c.name) }?.hotkey }
-        StagePlayer(display: display, settings: settings, frames: frames(cycle, keys: keys, display: display)) { index in
-            VStack(spacing: 14) {
-                if let keys, !keys.isNone {
-                    HStack(spacing: 6) { ForEach(Array(keys.keycaps.enumerated()), id: \.offset) { Keycap($1, prominent: true) } }
-                }
-                if let cycle { steps(cycle, lit: index > 0 ? Self.step(afterPresses: index, of: cycle) : nil) }
-            }
+        let detail = cycle.map { "\($0.steps.count) steps · press again within \(Int(CycleTracker().timeout)) s to move on; "
+            + "point at another cycle to play it" } ?? ""
+        StagePlayer(display: display, settings: settings, frames: frames(cycle, keys: keys, display: display), detail: detail) { index in
+            // The whole sequence, with the step that just ran lit.
+            if let cycle { steps(cycle, lit: index > 0 ? Self.step(afterPresses: index, of: cycle) : nil) }
         }
     }
 

@@ -9,28 +9,22 @@ struct RingDemo: View {
     @Environment(DemoCueState.self) private var cues: DemoCueState?
 
     static let directions = ["up", "up-right", "right", "down-right", "down", "down-left", "left", "up-left"]
-    static let arrows = ["arrow.up", "arrow.up.right", "arrow.right", "arrow.down.right", "arrow.down",
-                         "arrow.down.left", "arrow.left", "arrow.up.left"]
 
     var body: some View {
         let display = DemoDisplay.context(DemoDisplay.stage, settings: settings)
         let story = Self.story(settings: settings, display: display, cue: cues?.cue)
-        StagePlayer(display: display, settings: settings, frames: story.frames) { index in
-            VStack(spacing: 14) {
-                KeycapRow(keys: ModifierKey.names(settings.trigger.keyCodes), prominent: true)
-                if index >= 2, let arrow = story.arrow {
-                    Image(systemName: arrow)
-                        .font(.system(size: 34, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
-                        .transition(.scale(scale: 0.95).combined(with: .opacity))
-                }
-            }
-        }
+        StagePlayer(display: display, settings: settings, frames: story.frames, detail: Self.detail(settings))
+    }
+
+    /// The settings behind a flick, read back.
+    static func detail(_ settings: TesseraSettings) -> String {
+        let keys = ModifierKey.names(settings.trigger.keyCodes)
+        let trigger = keys.isEmpty ? "No trigger set" : "Trigger " + keys.joined(separator: " ")
+        return "\(trigger) · flick past \(Int(settings.ring.flickDistance)) pt to point at a column"
     }
 
     struct Story {
         var frames: [StageFrame]
-        var arrow: String?
     }
 
     static func story(settings: TesseraSettings, display: DisplayContext, cue: DemoCue?) -> Story {
@@ -67,8 +61,8 @@ struct RingDemo: View {
         flick.selection = .wedge(index: index, action: action)
         flick.caption = "Flick \(directions[index]): \(action.displayName)."
         let release = StageFrame(windows: [DemoWindow(id: 0, frame: target, live: true)], pointer: flick.pointer,
-                                 caption: "Let go, and the window snaps there.")
-        return Story(frames: [hold, open, flick, release], arrow: arrows[index])
+                                 caption: "Flick \(directions[index]), let go: \(action.displayName.lowercased()).")
+        return Story(frames: [hold, open, flick, release])
     }
 
     private static func pointing(_ open: StageFrame, display: DisplayContext) -> Story {
@@ -88,8 +82,8 @@ struct RingDemo: View {
         release.ring = nil
         release.grid = false
         release.preview = nil
-        release.caption = "Let go, and the window takes that column."
-        return Story(frames: [open.withoutRing, open, point, release], arrow: "hand.point.up.left")
+        release.caption = "Point at column \(column + 1), let go: it takes the column."
+        return Story(frames: [open.withoutRing, open, point, release])
     }
 
     private static func tapTiles(display: DisplayContext) -> Story {
@@ -102,7 +96,7 @@ struct RingDemo: View {
                                 caption: "Press the trigger and let go without moving.")
         let after = StageFrame(windows: tiles.enumerated().map { DemoWindow(id: $0, frame: $1) },
                                caption: "Every window on the display tiles side by side.")
-        return Story(frames: [before, after], arrow: nil)
+        return Story(frames: [before, after])
     }
 }
 
