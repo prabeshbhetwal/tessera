@@ -16,6 +16,9 @@ struct WindowUndoHistory {
     private struct Step {
         var moves: [Move]
         let batch: Int?
+        /// When the command behind it started (`WindowService` orders moves and batches on one counter). Undo takes
+        /// the step whose command started last, so a hotkey move made during a Tile undoes before the Tile does.
+        let order: Int
     }
 
     private static let maxSteps = 500
@@ -33,10 +36,10 @@ struct WindowUndoHistory {
     }
 
     /// Records `frame` as where `ref` was before a move, as its own step tagged `batch`.
-    mutating func push(_ frame: CGRect, for ref: WindowRef, key: Key, batch: Int?,
+    mutating func push(_ frame: CGRect, for ref: WindowRef, key: Key, batch: Int?, order: Int,
                        placement: WindowPlacementSnapshot? = nil) {
         marker += 1
-        steps.append(Step(moves: [(key, ref, frame, placement)], batch: batch))
+        steps.append(Step(moves: [(key, ref, frame, placement)], batch: batch, order: order))
         if steps.count > Self.maxSteps { steps.removeFirst(steps.count - Self.maxSteps) }
     }
 
@@ -64,11 +67,17 @@ struct WindowUndoHistory {
             for index in joined.reversed() { steps.remove(at: index) }
             marker += 1
         }
-        return first == steps.count - 1 ? marker : nil
+        return first == latestIndex ? marker : nil
     }
 
+    /// The step whose command started last; the later one when two share an order.
+    private var latestIndex: Int? {
+        steps.indices.max { steps[$0].order == steps[$1].order ? $0 < $1 : steps[$0].order < steps[$1].order }
+    }
+    /// The order of the latest step, or -1 with none.
+    var lastOrder: Int { latestIndex.map { steps[$0].order } ?? -1 }
     /// The batch tag of the latest step, while its moves are still separate steps (before `merge`).
-    var lastBatch: Int? { steps.last?.batch }
+    var lastBatch: Int? { latestIndex.flatMap { steps[$0].batch } }
 
     /// Removes every step tagged `batch` and returns their moves, oldest first: a batch Undo cancelled midway.
     mutating func takeBatch(_ batch: Int) -> [Move] {
@@ -79,15 +88,16 @@ struct WindowUndoHistory {
     }
 
     /// Takes the most recent step: each of its windows with the frame to restore. Nil when there are no steps left.
-    mutating func popStep() -> [Move]? {
-        guard let step = steps.popLast() else { return nil }
+    mutating func popStep() -> (moves: [Move], order: Int)? {
+        guard let index = latestIndex else { return nil }
+        let step = steps.remove(at: index)
         marker += 1
-        return step.moves
+        return (step.moves, step.order)
     }
 
-    /// Puts back a step `popStep` took when none of it could be restored, as the latest step again.
-    mutating func reinstate(_ moves: [Move]) {
+    /// Puts back a step `popStep` took when none of it could be restored, in its place again.
+    mutating func reinstate(_ moves: [Move], order: Int) {
         marker += 1
-        steps.append(Step(moves: moves, batch: nil))
+        steps.append(Step(moves: moves, batch: nil, order: order))
     }
 }

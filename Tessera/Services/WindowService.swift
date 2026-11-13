@@ -36,9 +36,10 @@ actor WindowService {
     /// the real starting frame, not from mid-air.
     var glideStart: [UndoKey: CGRect] = [:]
     /// Moves not yet recorded for undo (gliding, or waiting to re-check a write), so ⌃⌥Z can stop and reverse them.
-    var inFlight: [UndoKey: (window: WindowRef, before: CGRect, batch: Int?, generation: Int)] = [:]
-    /// Batches handed out and not yet merged, and those of them Undo cancelled midway.
-    var openBatches: Set<Int> = []
+    var inFlight: [UndoKey: (window: WindowRef, before: CGRect, batch: Int?, generation: Int, order: Int)] = [:]
+    /// Batches handed out and not yet merged, with the order they started in (see `WindowUndoHistory.Step.order`),
+    /// and those of them Undo cancelled midway.
+    var batchOrders: [Int: Int] = [:]
     var cancelledBatches: Set<Int> = []
 
     func frontmostWindow() -> WindowRef? {
@@ -83,12 +84,14 @@ actor WindowService {
         nextGeneration += 1
         let generation = nextGeneration
         generations[key] = generation
-        inFlight[key] = (window, before, batch, generation)
+        // A Tile's moves all take the order of the Tile, so a move started after it undoes first.
+        let order = batch.flatMap { batchOrders[$0] } ?? generation
+        inFlight[key] = (window, before, batch, generation, order)
         glideStart[key] = before
         // A move this one took over had already moved the window: on failure, keep that earlier move undoable.
         func failed(_ reason: String) -> ApplyResult {
             if !Self.matches(before, now) {
-                undo.push(before, for: window, key: key, batch: batch, placement: Self.placement(before))
+                undo.push(before, for: window, key: key, batch: batch, order: order, placement: Self.placement(before))
             }
             return .failed(reason)
         }
@@ -130,7 +133,7 @@ actor WindowService {
             return failed(Self.refusedMessage)
         }
 
-        undo.push(before, for: window, key: key, batch: batch, placement: Self.placement(before))
+        undo.push(before, for: window, key: key, batch: batch, order: order, placement: Self.placement(before))
         let landed = CoordinateSpace.fromAX(actual, primaryHeight: primaryHeight)
         return Self.isConstrained(landed: actual.size, goal: goal.size) ? .constrained(landed) : .applied(landed)
     }
@@ -138,7 +141,8 @@ actor WindowService {
     /// A tag for moves that undo in one press (a Tile): pass it to `apply`, then `mergeMoves` when they are done.
     func newBatch() -> Int {
         let batch = undo.newBatch()
-        openBatches.insert(batch)
+        nextGeneration += 1
+        batchOrders[batch] = nextGeneration
         return batch
     }
 
@@ -152,7 +156,7 @@ actor WindowService {
     /// Joins the moves tagged `batch` into one undo step; moves made meanwhile by anything else stay their own steps.
     /// Returns `undoMarker()` when the next undo takes back exactly this batch, nil otherwise (`WindowUndoHistory.merge`).
     @discardableResult func mergeMoves(_ batch: Int) -> Int? {
-        openBatches.remove(batch)
+        batchOrders[batch] = nil
         cancelledBatches.remove(batch)
         return undo.merge(batch: batch)
     }

@@ -21,11 +21,8 @@ extension CommandExecutor {
         let front = await windows.frontmostWindow()
         let frontFrame: CGRect? = if let front { await windows.frame(of: front) } else { nil }
         let display = try resolve(selector == .current && frontFrame == nil ? .cursor : selector, windowFrame: frontFrame)
-        let (all, skipped) = await windows.visibleWindowsCounted(
+        let (found, skipped) = await windows.visibleWindowsCounted(
             on: display.frame, primaryHeight: DisplayService.primaryHeight, excluding: Set(model.settings.excludedBundleIDs))
-        // A window wholly covered by others (a buried duplicate, a window behind a full-size one) isn't one the user
-        // sees, so Tile and splits leave it alone. Covered jointly counts too: two halves hide what is behind both.
-        let found = WindowVisibility.exposedIndices(all.map(\.frame)).map { all[$0] }
         return (display, found, skipped)
     }
 
