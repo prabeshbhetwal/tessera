@@ -15,6 +15,9 @@ struct OnboardingView: View {
     @State private var showFix = false
     @State private var fixTimer: Task<Void, Never>?
     @State private var fixFailed = false
+    /// Set by the app delegate when Accessibility reads as granted but the event tap can't be created.
+    static var tapFailed = false
+    @State private var tapFailed = OnboardingView.tapFailed
     @State private var screenAllowed = Permissions.isScreenCaptureAllowed
 
     init(startStep: Int = 0, chord: TriggerChord = .default, onFinish: @escaping () -> Void) {
@@ -49,6 +52,7 @@ struct OnboardingView: View {
                 axTrusted = trusted
                 guard trusted else { return }
                 showFix = false
+                tapFailed = false
                 // Granted: move on by itself instead of making the user find the button.
                 if step == Self.accessibilityStep { step += 1 }
             }
@@ -116,7 +120,7 @@ struct OnboardingView: View {
                 .frame(height: 160)
             VStack(spacing: 8) {
                 Text("Snap windows with the ring").font(.largeTitle.weight(.bold))
-                Text("Hold the trigger, then move towards an edge for a half, a corner for a quarter, or up to fill the screen. Keep going further out to point at a column of your display's grid instead.")
+                Text("Hold the trigger, then move towards an edge for a half, a corner for a quarter, or up to fill the screen. Keep going further out to point at a column of your display’s grid instead.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -129,20 +133,22 @@ struct OnboardingView: View {
     private var accessibility: some View {
         StepPage(
             symbol: "accessibility", title: "Allow Accessibility",
-            text: "Tessera moves and resizes other apps' windows through macOS Accessibility. The trigger does nothing until it's allowed."
+            text: "Tessera moves and resizes other apps’ windows through macOS Accessibility. The trigger does nothing until it’s allowed."
         ) {
             PermissionRow(title: "Accessibility", granted: axTrusted, actionTitle: "Grant…") {
                 Permissions.promptAccessibility()
                 startFixTimer()
             }
-            if showFix && !axTrusted {
+            if (showFix && !axTrusted) || tapFailed {
                 VStack(spacing: 8) {
-                    Caption("Still not granted? An older Tessera build may hold a stale entry. Reset it, then grant again.")
+                    Caption(tapFailed
+                        ? "Allowed, but Tessera can’t read the trigger. An older build may hold a stale entry. Reset it, then grant again."
+                        : "Still not granted? An older build may hold a stale entry. Reset it, then grant again.")
                         .multilineTextAlignment(.center)
                     Button("Fix permission", action: resetPermission)
                         .controlSize(.regular)
                     if fixFailed {
-                        Caption("Tessera couldn't reset the permission. Open System Settings, remove Tessera from Accessibility, then grant it again.")
+                        Caption("Tessera couldn’t reset the permission. Open System Settings, remove Tessera from Accessibility, then grant it again.")
                             .multilineTextAlignment(.center)
                         Button("Open System Settings") { Permissions.openPrivacyPane("Privacy_Accessibility") }
                             .controlSize(.regular)
@@ -156,13 +162,13 @@ struct OnboardingView: View {
     private var screenRecording: some View {
         StepPage(
             symbol: "rectangle.dashed.badge.record", title: "Window snapshots",
-            text: "Optional, and only used by the Window snapshot preview style. The preview is a tinted box by default; with Screen Recording allowed you can switch it to show a picture of the window you're moving. Tessera takes one still snapshot per gesture and never records or saves anything."
+            text: "Optional, and only used by the Window snapshot preview style. The preview is a tinted box by default; with Screen Recording allowed you can switch it to show a picture of the window you’re moving. Tessera takes one still snapshot per gesture and never records or saves anything."
         ) {
             PermissionRow(title: "Screen Recording", granted: screenAllowed, actionTitle: "Allow…") {
                 Permissions.requestScreenCapture()
                 screenAllowed = Permissions.isScreenCaptureAllowed
             }
-            Caption("Allowing it doesn't change the preview by itself: pick Window snapshot in Settings › Appearance › Preview. After you allow it, macOS asks to quit and reopen Tessera; setup continues here.")
+            Caption("Lets the preview show real windows. macOS then asks you to reopen Tessera.")
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
         }
@@ -171,7 +177,7 @@ struct OnboardingView: View {
     private var tryIt: some View {
         StepPage(
             symbol: "hand.point.up.left.fill", title: "Try it",
-            text: "Click another app's window, then hold \(ModifierKey.describe(chord.keyCodes))."
+            text: "Click another app’s window, then hold \(ModifierKey.describe(chord.keyCodes))."
         ) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 12) {
                 GestureHint("arrow.up.left.and.arrow.down.right", "Move a little: an edge is a half, a corner a quarter, up maximises.")
@@ -181,7 +187,7 @@ struct OnboardingView: View {
             }
             .frame(maxWidth: 480)
             if !axTrusted {
-                Caption("Accessibility isn't granted yet, so the gesture won't move this window. Go back a step to grant it.")
+                Caption("Accessibility isn’t granted yet, so the gesture won’t move this window. Go back a step to grant it.")
             }
         }
     }
@@ -242,8 +248,8 @@ private struct PermissionRow: View {
             Button(actionTitle, action: action)
                 .disabled(granted)
         }
-        .padding(14)
-        .frame(width: 440)
+        .padding(16)
+        .frame(maxWidth: 440)
         .background(.quinary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
@@ -254,7 +260,7 @@ private struct StepIndicator: View {
     let current: Int
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             ForEach(0..<count, id: \.self) { i in
                 Capsule()
                     .fill(i == current ? Color.accentColor : i < current ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.25))

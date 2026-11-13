@@ -9,7 +9,7 @@ final class Coordinator {
     let displays: DisplayService
     let presenter: WindowPresenter
     let executor: CommandExecutor
-    private let store: SettingsStore
+    let store: SettingsStore
     private let windows: WindowService
     private let thumbnails = ThumbnailService()
     private let overlay = OverlayController()
@@ -19,7 +19,11 @@ final class Coordinator {
     private var engine: SelectionEngine
     private var session: Session?
     private var sessionCounter = 0
-    private var saveTask: Task<Void, Never>?
+    /// Debounced settings write and what it will write (see Coordinator+Saving).
+    var saveTask: Task<Void, Never>?
+    var unsavedSettings: TesseraSettings?
+    /// The last write failed; the next failure stays quiet until one succeeds.
+    var saveFailing = false
     /// Called after every settings change has been applied (the app delegate updates the menu bar item).
     var onSettingsChange: ((TesseraSettings) -> Void)?
     private let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "coordinator")
@@ -185,6 +189,7 @@ final class Coordinator {
     func stop() {
         input?.stop()
         input = nil
+        executor.splitWatcher.stop()  // its AX observers too; `start()` arms them again
         cancelSession()
     }
 
@@ -203,19 +208,20 @@ final class Coordinator {
         if hotkey, result.ok, model.settings.showHUD, session == nil, ![.openSettings, .explain].contains(command) {
             let title = result.message ?? command.summary
             let action: WindowAction? = if case let .apply(.action(value), _) = command { value }
-                else { WindowAction.allCases.first { $0.displayName == title } }
+                else { WindowAction.allCases.first { $0.displayName == title.components(separatedBy: " · ")[0] } }
             shortcutReceipt.show(title: title, action: action, settings: model.settings)
             return
         }
         if let message = result.ok ? result.message : (result.message ?? "Command failed") {
-            showHUD(message)
+            showHUD(message, always: !result.ok)
         }
     }
 
-    /// Every HUD message goes through here, so the "Show messages" switch covers them all.
-    func showHUD(_ text: String) {
+    /// Every HUD message goes through here, so the "Show messages" switch covers them all, except `always` ones
+    /// the person must see (failures, such as a move that didn't happen or settings that couldn't be saved).
+    func showHUD(_ text: String, always: Bool = false) {
         let s = model.settings
-        guard s.showHUD else { return }
+        guard s.showHUD || always else { return }
         overlay.showHUD(text, position: s.hudPosition, seconds: s.hudSeconds)
     }
 
@@ -289,7 +295,7 @@ final class Coordinator {
             guard let found else {
                 cancelSession()
                 input?.abortSession()
-                showHUD(CommandExecutor.noWindowMessage)
+                showHUD(await windows.whyNoWindow(nil) ?? CommandExecutor.noWindowMessage, always: true)
                 return
             }
             session?.target = found.window
@@ -446,13 +452,13 @@ final class Coordinator {
                 resolved.targetFrame = targetFrame(for: s.selection, in: resolved)  // centre needs the size
             }
             guard let target = resolved.target, let frame = resolved.targetFrame else {
-                showHUD(CommandExecutor.noWindowMessage)
+                showHUD(await windows.whyNoWindow(nil) ?? CommandExecutor.noWindowMessage, always: true)
                 return
             }
             let result = await executor.place(target, current: resolved.current, goal: frame)
             if case let .failed(reason) = result {
                 log.notice("apply failed for \(target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
-                showHUD("Can't move this window")
+                showHUD(WindowService.isSpecific(reason) ? reason : "Can’t move this window", always: true)
             }
         }
     }
@@ -489,13 +495,6 @@ final class Coordinator {
         displays.refresh()
         presenter.updateDisplays(displays.displays)
         onSettingsChange?(settings)
-        saveTask?.cancel()
-        saveTask = Task { [store, log] in
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
-            do { try await store.save(settings) } catch {
-                log.error("settings save failed: \(error.localizedDescription, privacy: .public)")
-            }
-        }
+        scheduleSave(settings)
     }
 }

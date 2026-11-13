@@ -122,6 +122,21 @@ import Testing
         Self.expectInvalid("x") { try Self.url("tessera://apply?cols=1..x") }
     }
 
+    /// Nothing is guessed: zero is not a column and a range cannot mix positive and negative columns.
+    @Test func columnsRejectZeroAndMixedSigns() throws {
+        for bad in ["0", "0..3", "1..0", "-1..2", "-2-1", "2..-1", "-3..0"] {
+            Self.expectInvalid(bad) { try Self.url("tessera://apply?cols=\(bad)") }
+            Self.expectInvalid(bad) { try Self.cli("apply --cols \(bad)") }
+        }
+        Self.expectInvalid("column 0") { try Self.cli("apply --cols 0") }
+        Self.expectInvalid("mixing positive and negative") { try Self.cli("apply --cols -1..2") }
+        Self.expectInvalid("mixing positive and negative") { try Self.cli("apply --cols 2..-1") }
+        // Still fine: all positive, all negative.
+        #expect(try Self.cli("apply --cols 1-3") == .apply(.span(columns: 1...3, band: .full), display: .current))
+        #expect(try Self.cli("apply --cols -3..-1") == .apply(.span(columns: -3 ... -1, band: .full), display: .current))
+        #expect(try Self.cli("apply --cols -2--1") == .apply(.span(columns: -2 ... -1, band: .full), display: .current))
+    }
+
     @Test func urlBadBand() {
         Self.expectInvalid("middle") { try Self.url("tessera://apply?cols=1&band=middle") }
     }

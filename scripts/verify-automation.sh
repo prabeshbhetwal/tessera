@@ -8,6 +8,7 @@ PRODUCTS="$(xcrun swift build --show-bin-path --package-path Packages/TesseraCor
 MODULES="$PRODUCTS"
 if [[ -d "$PRODUCTS/Modules" ]]; then MODULES="$PRODUCTS/Modules"; fi
 OBJECT="$(find "$SCRATCH" -type f \( -name 'RingFeedback.swift.o' -o -name 'RingFeedback.o' \) -print -quit)"
+[[ -n "$OBJECT" ]] || { echo "RingFeedback object not found under $SCRATCH; did the TesseraCore build succeed?" >&2; exit 1; }
 OBJECTS="$(dirname "$OBJECT")"
 xcrun swiftc -parse-as-library -swift-version 6 -I "$MODULES" \
   Tessera/App/CommandBridge.swift Tessera/Automation/SocketServer.swift \

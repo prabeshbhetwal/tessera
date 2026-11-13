@@ -13,7 +13,7 @@ public enum SettingsCatalog {
           ["settings search on device model smart ai"]),
         E("general", "Menu bar", "Show the menu bar icon", ["status item top bar"]),
         E("general", "Menu bar", "Icon", ["menu bar symbol glyph picture"]),
-        E("general", "Menu bar", "Show each item's shortcut", ["menu hotkey key equivalents"]),
+        E("general", "Menu bar", "Show each item’s shortcut", ["menu hotkey key equivalents"]),
         E("general", "Menu items", "Status line (how to snap)", ["menu hint"]),
         E("general", "Menu items", "What Just Happened?", ["menu explain last action"]),
         E("general", "Menu items", "Snap Front Window submenu", ["menu"]),
@@ -40,7 +40,7 @@ public enum SettingsCatalog {
 
     static let shortcuts: [E] = [
         E("shortcuts", "Hotkeys", "Use global hotkeys", ["keyboard shortcuts on"]),
-        E("shortcuts", "Hotkeys", "Add Hotkey", ["hotkeys list new keyboard shortcut record bind keys"]),
+        E("shortcuts", "Hotkeys", "Add Hotkey", ["hotkey hotkeys list new keyboard shortcut record bind keys"]),
         E("shortcuts", "Ring keyboard", "Navigate the open ring with the keyboard", ["arrow keys"]),
         E("shortcuts", "Ring keyboard", "Announce the selection with VoiceOver", ["accessibility speak"]),
         E("shortcuts", "", "Restore Defaults", ["reset shortcuts hotkeys"]),
@@ -87,8 +87,9 @@ public enum SettingsCatalog {
 
     static let ring: [E] = [
         E("ring", "Trigger", "Chord", ["trigger keys hold open ring modifier record activate"]),
-        E("ring", "Gestures", "Directions: flick towards a layout", ["flick gesture direction"]),
-        E("ring", "Gestures", "Pointing: a longer move picks a column of the grid", ["point gesture column"]),
+        E("ring", "Gestures", "Flick towards a layout", anchor: "Directions: flick towards a layout", ["flick gesture direction"]),
+        E("ring", "Gestures", "Point for a column of the grid", anchor: "Pointing: a longer move picks a column of the grid",
+          ["point gesture column longer move"]),
         E("ring", "Gestures", "Click while pointing to span several columns", ["span multiple columns click"]),
         E("ring", "Gestures", "Scroll while holding to change the column count", ["scroll wheel trackpad columns"]),
         E("ring", "Gestures", "Press and release without moving to tile all windows", ["tap tile all tile evenly"]),
@@ -111,7 +112,7 @@ public enum SettingsCatalog {
         E("overlay", "Ring", "Dashed circle where pointing begins", ["boundary dashed line"]),
         E("overlay", "Ring", "Frosted background", ["blur glass vibrancy"]),
         E("overlay", "Grid and hints", "Grid lines while picking a column", ["grid lines"]),
-        E("overlay", "Grid and hints", "Number the grid's columns", ["column numbers"]),
+        E("overlay", "Grid and hints", "Number the grid’s columns", ["column numbers"]),
         E("overlay", "Grid and hints", "Show \u{201C}click to add columns\u{201D} the first few times", anchor: "Pointing hint",
           ["hint click add columns"]),
         E("overlay", "Ring colours", "Ring", ["ring colour fill"]),
@@ -127,7 +128,7 @@ public enum SettingsCatalog {
         E("overlay", "Preview", "Fill the preview with", ["preview style fill"]),
         E("overlay", "Preview", "Fill opacity", ["preview transparency"]),
         E("overlay", "Preview", "Border width", ["preview outline stroke thickness"]),
-        E("overlay", "Preview", "Match the window's corner radius", ["rounded corners"]),
+        E("overlay", "Preview", "Match the window’s corner radius", ["rounded corners"]),
         E("overlay", "Preview", "Corner radius", ["rounded corners round"]),
         E("overlay", "Label", "Show a label on the preview", ["preview label"]),
         E("overlay", "Label", "Size in points", ["label dimensions"]),
@@ -142,7 +143,8 @@ public enum SettingsCatalog {
     static let motion: [E] = [
         E("motion", "Snap speed", "Speed", ["snap animation how fast windows move instant"]),
         E("motion", "Snap speed", "Duration", ["snap animation time seconds"]),
-        E("motion", "Preview morph", "Animate the preview between selections", ["morph preview animation"]),
+        E("motion", "Preview morph", "Animate the ring and preview", anchor: "Animate the preview between selections",
+          ["morph preview ring animation fade selection receipt"]),
         E("motion", "Preview morph", "Spring response", ["preview animation bounce"]),
         E("motion", "", "Restore Defaults", ["reset motion"]),
     ]

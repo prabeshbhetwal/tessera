@@ -13,7 +13,7 @@ struct MotionPane: View {
         Form {
             if reduceMotion {
                 Section {
-                    Callout(.info, "Reduce Motion is on in System Settings, so windows and the preview jump. These settings apply when it's off.")
+                    Callout(.info, "Reduce Motion is on in System Settings, so windows and the preview jump. These settings apply when it’s off.")
                 }
             }
 
@@ -34,12 +34,12 @@ struct MotionPane: View {
             }
 
             Section {
-                Toggle("Animate the preview between selections", isOn: p.morph).settingAnchor("Animate the preview between selections")
+                Toggle("Animate the ring and preview", isOn: p.morph).settingAnchor("Animate the preview between selections")
                 SliderRow(title: "Spring response", value: p.springResponse, range: 0...0.4, step: 0.01, format: SliderRow.seconds)
                     .disabled(!s.morph)
                 if !s.morph { Caption("Turn on the morph to adjust it.") }
             } header: {
-                InfoHeader("Preview morph", info: "The preview glides between selections. Lower Spring response is snappier; 0 turns the animation off.")
+                InfoHeader("Preview morph", info: "The preview glides between selections, and the ring and shortcut confirmations fade in. Lower Spring response is snappier; 0 turns the animation off.")
             }
 
             ResetSection {

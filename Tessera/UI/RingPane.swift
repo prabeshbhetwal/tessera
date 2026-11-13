@@ -33,15 +33,15 @@ struct RingPane: View {
             }
 
             Section {
-                Toggle("Directions: flick towards a layout", isOn: ring.directions).settingAnchor("Directions: flick towards a layout")
-                Toggle("Pointing: a longer move picks a column of the grid", isOn: ring.pointing).settingAnchor("Pointing: a longer move picks a column of the grid")
+                Toggle("Flick towards a layout", isOn: ring.directions).settingAnchor("Directions: flick towards a layout")
+                Toggle("Point for a column of the grid", isOn: ring.pointing).settingAnchor("Pointing: a longer move picks a column of the grid")
                 Toggle("Click while pointing to span several columns", isOn: ring.clickToSpan).settingAnchor("Click while pointing to span several columns")
                     .disabled(!r.pointing)
                 Toggle("Scroll while holding to change the column count", isOn: ring.scrollChangesColumns).settingAnchor("Scroll while holding to change the column count")
                 Toggle("Press and release without moving to tile all windows", isOn: ring.tapTilesWindows).settingAnchor("Press and release without moving to tile all windows")
             } header: {
                 InfoHeader("Gestures", info: "A short move towards an icon picks that layout. Keep going further out to point at a column. "
-                    + "To cancel, let go in the middle of the ring, press Esc or right-click.")
+                    + "To cancel, let go in the middle of the ring or right-click.")
             } footer: {
                 if r.tapTilesWindows && (r.directions || r.pointing) {
                     Footer("Pressing and letting go without moving tiles every window on that display.")
@@ -68,10 +68,13 @@ struct RingPane: View {
 
             Section {
                 let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
-                SliderRow(title: "Radius", value: ring.radius, range: 20...max(21, min(150, r.flickDistance - r.thickness / 2)))
+                // The ring's outer edge (radius + thickness / 2) stays inside the point threshold, which `save` requires
+                // while pointing is on. The sliders need a range at least 1 wide to draw, so the binding enforces the cap.
+                let radiusCap = max(20, min(150, r.flickDistance - r.thickness / 2))
+                let thicknessCap = max(4, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2))
+                SliderRow(title: "Radius", value: Self.capped(ring.radius, at: radiusCap), range: 20...max(21, radiusCap))
                     .disabled(!r.showRing)
-                SliderRow(title: "Thickness", value: ring.thickness,
-                          range: 4...max(5, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2)))
+                SliderRow(title: "Thickness", value: Self.capped(ring.thickness, at: thicknessCap), range: 4...max(5, thicknessCap))
                     .disabled(!r.showRing)
                 SliderRow(title: "Point threshold", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
                     .disabled(!(r.directions && r.pointing))
@@ -86,7 +89,7 @@ struct RingPane: View {
             }
 
             // The ring's look switches belong to Appearance, which resets them.
-            ResetSection(keeps: "Keeps the ring's look (Appearance).") {
+            ResetSection(keeps: "Keeps the ring’s look (Appearance).") {
                 let current = model.settings.ring
                 model.settings.ring = .default
                 model.settings.ring.takeLook(from: current)
@@ -94,6 +97,13 @@ struct RingPane: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+extension RingPane {
+    /// `binding` that never takes a value above `cap`, even where the slider's own range has to be wider than the cap.
+    fileprivate static func capped(_ binding: Binding<Double>, at cap: Double) -> Binding<Double> {
+        Binding(get: { binding.wrappedValue }, set: { binding.wrappedValue = min($0, cap) })
     }
 }
 

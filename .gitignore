@@ -8,6 +8,10 @@ xcuserdata/
 
 # Secrets / env
 .env*
+*.p12
+*.pem
+*.key
+*.cer
 
 # OS / tooling noise
 .DS_Store

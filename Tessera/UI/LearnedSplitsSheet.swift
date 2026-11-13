@@ -50,7 +50,8 @@ struct LearnedSplitsSheet: View {
                 Button("Forget All on This Display…", role: .destructive) { confirmingForgetAll = true }
                 Spacer()
                 if !selection.isEmpty {
-                    Button("Forget \(selection.count) Selected", action: askToForgetSelection)
+                    // Several ask first, so the label ends in an ellipsis like the other confirming buttons.
+                    Button("Forget \(selection.count) Selected\(selection.count > 1 ? "\u{2026}" : "")", action: askToForgetSelection)
                 }
                 Button("Done") { dismiss() }
                     .keyboardShortcut(.defaultAction)
@@ -62,7 +63,7 @@ struct LearnedSplitsSheet: View {
         .padding(20)
         .frame(width: 540, height: 460)
         .onChange(of: splits.isEmpty) { _, empty in if empty { dismiss() } }
-        .confirmationDialog("Forget all \(Self.count(splits.count)) on \(title)?",
+        .confirmationDialog(splits.count == 1 ? "Forget the split on \(title)?" : "Forget all \(Self.count(splits.count)) on \(title)?",
                             isPresented: $confirmingForgetAll, titleVisibility: .visible) {
             Button("Forget All", role: .destructive) { forget(splits.map(\.key)) }
         } message: {

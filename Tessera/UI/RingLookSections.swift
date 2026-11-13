@@ -34,7 +34,7 @@ struct RingLookSections: View {
         Section {
             // Not tied to Pointing: the arrow keys pick columns too, and show the grid while they do.
             Toggle("Grid lines while picking a column", isOn: ring.showGrid).settingAnchor("Grid lines while picking a column")
-            Toggle("Number the grid's columns", isOn: ring.showColumnNumbers).settingAnchor("Number the grid's columns")
+            Toggle("Number the grid’s columns", isOn: ring.showColumnNumbers).settingAnchor("Number the grid’s columns")
                 .disabled(!r.showGrid)
             Toggle("Show \u{201C}click to add columns\u{201D} the first few times", isOn: ring.showPointingHint)
                 .disabled(!r.pointing)

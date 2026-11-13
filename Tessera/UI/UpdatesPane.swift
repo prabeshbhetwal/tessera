@@ -7,6 +7,11 @@ struct UpdatesPane: View {
     @Bindable var model: SettingsModel
     @ObservedObject private var updates = UpdateService.shared
 
+    /// A beta build always accepts beta updates (`UpdateSettings.allowedChannels`), so the switch has no say there.
+    private var alwaysBeta: Bool {
+        UpdateSettings.isPrerelease(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+    }
+
     var body: some View {
         Form {
             Section {
@@ -25,6 +30,12 @@ struct UpdatesPane: View {
                     Button("Check Now") { updates.checkForUpdates() }
                         .disabled(!updates.canCheckForUpdates)
                         .settingAnchor("Check Now")
+                    // Sparkle reports false while a check or update session runs, and before the updater has
+                    // started, so the wording stays neutral rather than claiming a check is under way.
+                    if !updates.canCheckForUpdates {
+                        ProgressView().controlSize(.small)
+                        Text("Waiting for the updater…").font(.caption).foregroundStyle(.secondary)
+                    }
                     Spacer()
                 }
             }
@@ -42,10 +53,13 @@ struct UpdatesPane: View {
                 Toggle("Download and install automatically", isOn: $model.settings.updates.installAutomatically)
                     .disabled(!model.settings.updates.checkAutomatically)
                     .settingAnchor("Download and install automatically")
-                Toggle("Include beta versions", isOn: $model.settings.updates.includeBetas)
+                Toggle("Include beta versions", isOn: alwaysBeta ? .constant(true) : $model.settings.updates.includeBetas)
+                    .disabled(alwaysBeta)
                     .settingAnchor("Include beta versions")
             } header: {
                 InfoHeader("Automatic updates", info: "Tessera checks that each update is genuine before installing it. Beta versions get new features first and may be less stable.")
+            } footer: {
+                if alwaysBeta { Footer("Beta builds always receive beta updates.") }
             }
 
             ResetSection { model.settings.updates = UpdateSettings() }

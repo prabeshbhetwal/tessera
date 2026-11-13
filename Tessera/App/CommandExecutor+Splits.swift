@@ -8,15 +8,22 @@ extension CommandExecutor {
     /// no front window (desktop or Tessera in front) the display under the cursor.
     func windowsOnDisplay(_ selector: DisplaySelector) async throws(Failure)
         -> (display: DisplayContext, found: [(window: WindowRef, frame: CGRect)]) {
+        let (display, found, _) = try await windowsOnDisplayCounted(selector)
+        return (display, found)
+    }
+
+    /// `windowsOnDisplay`, plus how many apps were skipped because their windows couldn't be read.
+    func windowsOnDisplayCounted(_ selector: DisplaySelector) async throws(Failure)
+        -> (display: DisplayContext, found: [(window: WindowRef, frame: CGRect)], skipped: Int) {
         guard Permissions.isAccessibilityTrusted else {
             throw Failure(message: "Tessera needs Accessibility permission to move windows")
         }
         let front = await windows.frontmostWindow()
         let frontFrame: CGRect? = if let front { await windows.frame(of: front) } else { nil }
         let display = try resolve(selector == .current && frontFrame == nil ? .cursor : selector, windowFrame: frontFrame)
-        let found = await windows.visibleWindows(on: display.frame, primaryHeight: DisplayService.primaryHeight,
-                                                 excluding: Set(model.settings.excludedBundleIDs))
-        return (display, found)
+        let (found, skipped) = await windows.visibleWindowsCounted(
+            on: display.frame, primaryHeight: DisplayService.primaryHeight, excluding: Set(model.settings.excludedBundleIDs))
+        return (display, found, skipped)
     }
 
     /// The frames Tile gives `ordered`: the remembered split for these apps on this display when there is one that
@@ -65,8 +72,9 @@ extension CommandExecutor {
         guard !tiling else { throw Failure(message: "Already tiling") }
         tiling = true
         defer { tiling = false }
-        let (display, found) = try await windowsOnDisplay(selector)
-        guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display") }
+        let (display, found, skipped) = try await windowsOnDisplayCounted(selector)
+        let skippedNote = skipped > 0 ? " (\(skipped) skipped)" : ""
+        guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display" + skippedNote) }
         let portrait = display.range.isPortrait
         let ordered = onScreenOrder(found, portrait: portrait)
         // An earlier Tile's watch would learn adjustments made after this one.
@@ -78,50 +86,57 @@ extension CommandExecutor {
         let alreadyThere = learned && zip(ordered, slots).allSatisfy { Self.sameFrame($0.frame, $1) }
         // All at once, so with a snap speed set the windows glide together instead of one after another.
         let batch = await windows.newBatch()
-        let landed = await withTaskGroup(of: (Int, CGRect?).self) { group in
+        let outcomes = await withTaskGroup(of: (Int, ApplyResult).self) { group in
             for (index, (entry, slot)) in zip(ordered, slots).enumerated() {
-                group.addTask {
-                    let result = await self.place(entry.window, current: entry.frame, goal: slot, batch: batch)
-                    if case let .applied(frame) = result { return (index, frame) }
-                    return (index, nil)
-                }
+                group.addTask { (index, await self.place(entry.window, current: entry.frame, goal: slot, batch: batch)) }
             }
-            var results = [CGRect?](repeating: nil, count: ordered.count)
-            for await (index, frame) in group { results[index] = frame }
+            var results = [ApplyResult](repeating: .superseded, count: ordered.count)
+            for await (index, result) in group { results[index] = result }
             return results
         }
+        // A move a newer one took over still counts as moved, but its landing frame is that move's to report.
+        let landed = outcomes.map(\.landed)
+        // Where each window is now: where its move landed, or where it was when it didn't move.
+        let placed = ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) }
+        let constrained = outcomes.filter(\.constrained).count
         let undoMarker = await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
         // After the moves, so their settling is already ignored.
-        splitWatcher.watch(ordered, display: display, learns: !evenly)
+        splitWatcher.watch(placed, display: display, learns: !evenly)
         let n = ordered.count
-        let moved = landed.compactMap { $0 }.count
+        let moved = outcomes.filter { !$0.failed }.count
         let split = SplitMemory.lookup(SplitKey(ordered, on: display), in: model.settings.learnedSplits)
         let kind: HelpEventKind = if moved < n {
             .tilePartial(moved: moved, total: n,
-                         stuck: ordered.indices.filter { landed[$0] == nil }.map { HelpEvent.appName(ordered[$0].window) })
+                         stuck: ordered.indices.filter { outcomes[$0].failed }.map { HelpEvent.appName(ordered[$0].window) })
         } else if evenly {
             .tiledEvenly(hasSplit: split != nil)
         } else {
             .tiled(usedSplit: learned)
         }
         // A split that restores its own order can land the windows in a different order from `ordered`.
-        let after = onScreenOrder(ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) },
-                                  portrait: display.range.isPortrait)
+        let after = onScreenOrder(placed, portrait: display.range.isPortrait)
         onEvent?(.make(kind: kind, source: source, display: display, group: after, split: split, previous: nil,
                        undoMarker: undoMarker))
         if alreadyThere, moved == n {
             return CommandResult(ok: true, message: "Already in your split · Tile Evenly for equal shares")
         }
-        let message = moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows"
-        return CommandResult(ok: moved > 0, message: message + (learned ? " · your split" : evenly ? " evenly" : ""))
+        let message = (moved == n ? "Tiled \(n) window\(n == 1 ? "" : "s")" : "Tiled \(moved) of \(n) windows") + skippedNote
+            + (learned ? " · your split" : evenly ? " evenly" : "")
+            + (constrained > 0 ? " · \(constrained) kept \(constrained == 1 ? "its" : "their") own size" : "")
+        return CommandResult(ok: moved > 0, message: message)
     }
 
     func undoLast() async throws(Failure) {
         splitWatcher.stop()
         // Bracketed so the restore is never read as a hand adjustment; its end re-arms the watchers.
         splitWatcher.beginOwnMove()
-        let undone = await windows.undoLast()
+        // Apps excluded since the move are left alone: no command moves an excluded app's windows.
+        let outcome = await windows.undoLast(excluding: Set(model.settings.excludedBundleIDs))
         splitWatcher.endOwnMove()
-        guard undone else { throw Failure(message: "Nothing to undo") }
+        switch outcome {
+        case .restored: return
+        case .nothing: throw Failure(message: "Nothing to undo")
+        case let .refused(window): throw Failure(message: "Couldn’t restore \(HelpEvent.appName(window))")
+        }
     }
 }

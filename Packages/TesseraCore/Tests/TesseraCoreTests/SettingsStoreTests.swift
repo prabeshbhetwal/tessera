@@ -98,23 +98,6 @@ import Testing
         #expect(try Data(contentsOf: moved) == truncated)
     }
 
-    @Test func testNewerSchemaRenamed() async throws {
-        let dir = try makeDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let file = dir.appendingPathComponent("settings.json")
-        var newer = TesseraSettings.defaults
-        newer.schemaVersion = 3
-        let bytes = try JSONEncoder().encode(newer)
-        try bytes.write(to: file)
-
-        let result = await makeStore(in: dir).load()
-        let moved = dir.appendingPathComponent(Self.quarantineName)
-        #expect(result.settings == .defaults)
-        #expect(result.recoveredFrom == moved)
-        #expect(try Data(contentsOf: moved) == bytes)
-        #expect(!FileManager.default.fileExists(atPath: file.path))
-    }
-
     @Test func testMissingKeysLoadWithDefaultsAndKeepTheRest() async throws {
         let dir = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -131,30 +114,6 @@ import Testing
         #expect(result.settings == expected)
         #expect(result.recoveredFrom == nil)
         #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path) == ["settings.json"], "no backup, no quarantine")
-    }
-
-    @Test func testWrongTypeForAKeyIsCorrupt() async throws {
-        let dir = try makeDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let file = dir.appendingPathComponent("settings.json")
-        try Data(#"{"schemaVersion":2,"defaultGap":"wide"}"#.utf8).write(to: file)
-
-        let result = await makeStore(in: dir).load()
-        #expect(result.settings == .defaults)
-        #expect(result.recoveredFrom != nil)
-    }
-
-    @Test func testInvalidSettingsOnDiskRenamed() async throws {
-        let dir = try makeDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let file = dir.appendingPathComponent("settings.json")
-        var bad = TesseraSettings.defaults
-        bad.ring.wedges.removeLast()
-        try JSONEncoder().encode(bad).write(to: file)
-
-        let result = await makeStore(in: dir).load()
-        #expect(result.settings == .defaults)
-        #expect(result.recoveredFrom == dir.appendingPathComponent(Self.quarantineName))
     }
 
     @Test func testQuarantineNeverOverwritesEarlierQuarantine() async throws {
@@ -184,7 +143,7 @@ import Testing
 
         try await store.export(settings, to: exported)
         let imported = try await store.importSettings(from: exported)
-        #expect(imported == settings)
+        #expect(imported.settings == settings && imported.repairs.isEmpty)
     }
 
     @Test func testInvalidImportRejectedUntouched() async throws {
@@ -196,10 +155,8 @@ import Testing
         let file = dir.appendingPathComponent("settings.json")
         let before = try Data(contentsOf: file)
 
-        var sevenWedges = TesseraSettings.defaults
-        sevenWedges.ring.wedges.removeLast()
         let importFile = dir.appendingPathComponent("import.json")
-        try JSONEncoder().encode(sevenWedges).write(to: importFile)
+        try Data(#"{"ring":{"wedges":[]}}"#.utf8).write(to: importFile)
 
         await #expect(throws: SettingsError.self) {
             _ = try await store.importSettings(from: importFile)

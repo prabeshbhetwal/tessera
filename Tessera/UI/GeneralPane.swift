@@ -10,6 +10,9 @@ struct GeneralPane: View {
     @State private var loginNeedsApproval = false
 
     private static let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "settings-ui")
+    /// The on-device model ships with macOS 26; earlier systems can never enable the assistant.
+    private static let supportsAppleIntelligenceOS = ProcessInfo.processInfo.isOperatingSystemAtLeast(
+        OperatingSystemVersion(majorVersion: 26, minorVersion: 0, patchVersion: 0))
 
     var body: some View {
         Form {
@@ -29,11 +32,13 @@ struct GeneralPane: View {
                     .disabled(!SettingsAssistant.isAvailable)
                     .settingAnchor("Apple Intelligence search")
             } header: {
-                InfoHeader("App", info: "Light or dark changes Tessera's own windows; the ring's colours are in Appearance. "
+                InfoHeader("App", info: "Light or dark changes Tessera’s own windows; the ring’s colours are in Appearance. "
                     + "Apple Intelligence lets Settings search understand a whole sentence. It runs on your Mac, and nothing leaves it.")
             } footer: {
                 if !SettingsAssistant.isAvailable {
-                    Footer("Needs Apple Intelligence, which is off or not ready on this Mac.")
+                    Footer(Self.supportsAppleIntelligenceOS
+                        ? "Needs Apple Intelligence, which is off or not ready on this Mac."
+                        : "Needs macOS 26 or later with Apple Intelligence.")
                 }
             }
 
@@ -54,7 +59,7 @@ struct GeneralPane: View {
                 }
                 .disabled(!model.settings.showMenuBarIcon)
                 .settingAnchor("Icon")
-                Toggle("Show each item's shortcut", isOn: $model.settings.menuBarItems.shortcutKeys).settingAnchor("Show each item's shortcut")
+                Toggle("Show each item’s shortcut", isOn: $model.settings.menuBarItems.shortcutKeys).settingAnchor("Show each item’s shortcut")
                     .disabled(!model.settings.showMenuBarIcon)
             } header: {
                 Text("Menu bar")
@@ -135,7 +140,7 @@ struct GeneralPane: View {
             loginNeedsApproval = SMAppService.mainApp.status == .requiresApproval
         } catch {
             Self.log.error("Login item change failed: \(error.localizedDescription, privacy: .private)")
-            loginError = "Couldn't change the login item. Try again, or check Login Items in System Settings."
+            loginError = "Couldn’t change the login item. Try again, or check Login Items in System Settings."
         }
     }
 }

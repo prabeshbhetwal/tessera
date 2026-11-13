@@ -22,7 +22,7 @@ struct ApplyColumnsIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard from != 0, to != 0 else { throw TesseraIntentError(message: "Columns start at 1, or -1 for the last column. 0 isn't a column.") }
+        guard from != 0, to != 0 else { throw TesseraIntentError(message: "Columns start at 1, or -1 for the last column. 0 isn’t a column.") }
         guard (from > 0) == (to > 0) else {
             throw TesseraIntentError(message: "Use two positive column numbers, or two negative ones counting from the right.")
         }
@@ -71,7 +71,7 @@ struct RunCycleIntent: AppIntent {
 
 struct SetColumnsIntent: AppIntent {
     static let title: LocalizedStringResource = "Set Columns"
-    static let description = IntentDescription("Sets a display's column count. It's kept within what the display fits.")
+    static let description = IntentDescription("Sets a display’s column count. It’s kept within what the display fits.")
     static let openAppWhenRun = false
 
     @Parameter(title: "Columns", default: 4, inclusiveRange: (1, 16)) var count: Int
@@ -193,13 +193,13 @@ struct ListDisplaysIntent: AppIntent {
 
 struct DescribeWindowIntent: AppIntent {
     static let title: LocalizedStringResource = "Describe Window"
-    static let description = IntentDescription("Returns the front window's app and frame.")
+    static let description = IntentDescription("Returns the front window’s app and frame.")
     static let openAppWhenRun = false
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         guard let window = try await IntentRunner.run(.describeWindow).window else {
-            throw TesseraIntentError(message: "There's no front window.")
+            throw TesseraIntentError(message: "There’s no front window.")
         }
         let f = window.frame
         let display = window.displayIndex.map { " on display \($0)" } ?? ""
@@ -210,7 +210,7 @@ struct DescribeWindowIntent: AppIntent {
 
 struct OpenSettingsIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Settings"
-    static let description = IntentDescription("Opens Tessera's Settings window.")
+    static let description = IntentDescription("Opens Tessera’s Settings window.")
     static let openAppWhenRun = false
 
     @MainActor

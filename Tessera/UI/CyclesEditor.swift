@@ -7,7 +7,7 @@ struct CyclesEditor: View {
     @FocusState private var focusedStep: StepID?
     @State private var removingCycle: Int?
 
-    private static let info = "Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle doesn't update the hotkeys that run it."
+    private static let info = "Each press of a cycle’s hotkey moves the window to its next step. Reorder steps with the arrows, or select a step’s number and press ⌘↑ or ⌘↓. Renaming a cycle doesn’t update the hotkeys that run it."
 
     private struct StepID: Hashable {
         let cycle: Int
@@ -71,11 +71,14 @@ struct CyclesEditor: View {
             Button { move(cycle: c, step: s, by: -1) } label: { Image(systemName: "chevron.up") }
                 .disabled(s == 0)
                 .accessibilityLabel("Move step \(s + 1) up")
+                .help("Move step up")
             Button { move(cycle: c, step: s, by: 1) } label: { Image(systemName: "chevron.down") }
                 .disabled(s == count - 1)
                 .accessibilityLabel("Move step \(s + 1) down")
+                .help("Move step down")
             Button { cycles[c].steps.remove(at: s) } label: { Image(systemName: "minus.circle") }
                 .accessibilityLabel("Remove step \(s + 1)")
+                .help("Remove step")
         }
         .buttonStyle(.borderless)
         .onKeyPress(keys: [.upArrow, .downArrow]) { press in
@@ -182,6 +185,7 @@ struct ColumnStepper: View {
             .accessibilityLabel("\(title) column")
             .accessibilityValue(value < 0 ? "\(value.magnitude) from the right" : "\(value)")
         }
+        .help("Negative numbers count from the right")
         .fixedSize()
     }
 }
@@ -213,7 +217,7 @@ struct DisplaySelectorEditor: View {
                     case .id: selector = .id("")
                     }
                 }) {
-                    Text("Window's display").tag(Kind.current)
+                    Text("Window’s display").tag(Kind.current)
                     Text("Under the cursor").tag(Kind.cursor)
                     Text("Number (left to right)").tag(Kind.index)
                     Text("Specific display").tag(Kind.id)
@@ -255,7 +259,7 @@ extension Target {
 extension DisplaySelector {
     var summary: String {
         switch self {
-        case .current: "window's display"
+        case .current: "window’s display"
         case .cursor: "display under the cursor"
         case .index(let n): "display \(n)"
         case .id(let key): "display \(key)"

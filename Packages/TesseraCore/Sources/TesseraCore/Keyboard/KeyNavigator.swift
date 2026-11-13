@@ -24,16 +24,18 @@ public struct NavState: Equatable, Sendable {
 /// Every function takes the caller's `displays` in any order and sorts them itself, so a
 /// `NavState.displayIndex` always refers to the same left-to-right order as `DisplayResolver.ordered`.
 public enum KeyNavigator {
-    /// The window's display and the column under its centre, band `.full`. Falls back to display 0,
-    /// column 0 when there is no window or it is on no display. Nil only when there are no displays.
+    /// The window's display (`DisplayResolver.display(containing:in:)`, as the CLI's `--display current`) and the
+    /// column under its centre, band `.full`. Falls back to display 0, column 0 when there is no window or it
+    /// overlaps no display. Nil only when there are no displays.
     public static func start(windowFrame: CGRect?, displays: [DisplayContext]) -> NavState? {
         let ordered = ordered(displays)
         guard !ordered.isEmpty else { return nil }
-        guard let frame = windowFrame else { return NavState(displayIndex: 0, columns: 0...0, band: .full) }
-        let centre = CGPoint(x: frame.midX, y: frame.midY)
-        guard let index = ordered.firstIndex(where: { $0.frame.contains(centre) }) else {
+        guard let frame = windowFrame,
+              let hit = DisplayResolver.display(containing: frame, in: ordered),
+              let index = ordered.firstIndex(where: { $0.id == hit.id }) else {
             return NavState(displayIndex: 0, columns: 0...0, band: .full)
         }
+        let centre = CGPoint(x: frame.midX, y: frame.midY)
         let d = ordered[index]
         let usable = GridGeometry.usableFrame(d.visibleFrame, profile: d.profile)
         let column = GridGeometry.index(at: centre, in: usable, count: d.profile.columns, portrait: d.range.isPortrait)

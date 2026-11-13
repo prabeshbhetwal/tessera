@@ -68,4 +68,10 @@ struct WindowUndoHistory {
         marker += 1
         return step.moves
     }
+
+    /// Puts back a step `popStep` took when none of it could be restored, as the latest step again.
+    mutating func reinstate(_ moves: [Move]) {
+        marker += 1
+        steps.append(Step(moves: moves, batch: nil))
+    }
 }

@@ -148,7 +148,7 @@ struct SearchResultsPanel: View {
                 .foregroundStyle(.tertiary)
                 .padding(.bottom, 2)
             Text("No settings match \u{201C}\(trimmed)\u{201D}").font(.headline).lineLimit(2)
-            Text("Try another word, like gap, colour or shortcut.").font(.callout).foregroundStyle(.secondary)
+            Text("Try another word, such as colour or shortcut.").font(.callout).foregroundStyle(.secondary)
         }
         .multilineTextAlignment(.center)
         .padding(.vertical, 28)
@@ -163,7 +163,7 @@ struct SearchResultsPanel: View {
             if ordered.contains(where: { SearchQuickToggles.switch(for: $0) != nil }) {
                 KeyHint(keys: ["⌥", "↩"], action: "Switch")
             }
-            KeyHint(keys: ["esc"], action: "Clear")
+            KeyHint(keys: ["Esc"], action: "Clear")
             Spacer(minLength: 0)
             if usesAppleIntelligence, SettingsAssistant.isAvailable {
                 Label("Apple Intelligence", systemImage: "sparkle")
@@ -182,7 +182,13 @@ struct SearchResultsPanel: View {
         let ids = ordered.map(\.id)
         guard !ids.isEmpty else { return }
         let current = selection.flatMap { ids.firstIndex(of: $0) } ?? (step > 0 ? -1 : ids.count)
-        selection = ids[min(max(current + step, 0), ids.count - 1)]
+        let next = ids[min(max(current + step, 0), ids.count - 1)]
+        selection = next
+        // Focus stays in the field, so VoiceOver has to be told which result is now highlighted.
+        if let entry = ordered.first(where: { $0.id == next }) {
+            let pane = SettingsPane(key: entry.pane) ?? .general
+            AccessibilityNotification.Announcement("\(entry.title), \(pane.title)").post()
+        }
     }
 
     /// ⌥Return: flips the result's switch where it has one the pane would let change, and says the new state.

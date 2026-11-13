@@ -26,8 +26,14 @@ public struct UpdateSettings: Codable, Equatable, Sendable {
     public var installAutomatically = false
     public var includeBetas = false
 
-    /// Channels to accept beyond the default one.
-    public var allowedChannels: Set<String> { includeBetas ? [Self.betaChannel] : [] }
+    /// Channels to accept beyond the default one. Every appcast item is on the beta channel, so a pre-release
+    /// build always accepts it: without that, a beta never sees the next beta and a check says up to date.
+    public func allowedChannels(runningVersion: String?) -> Set<String> {
+        includeBetas || Self.isPrerelease(runningVersion) ? [Self.betaChannel] : []
+    }
+
+    /// A version string with a pre-release suffix, such as `0.2.0-beta.25`.
+    public static func isPrerelease(_ version: String?) -> Bool { version?.contains("-") == true }
 
     public init() {}
 }

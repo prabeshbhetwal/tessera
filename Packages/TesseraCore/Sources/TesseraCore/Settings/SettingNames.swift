@@ -1,0 +1,137 @@
+/// Plain names for the settings in the file, so a repair message reads "Reset the ring icon style to its default."
+/// instead of showing a JSON key path. Names follow the Settings window's wording (see `SettingsCatalog`). Every
+/// name is a noun phrase that starts with "the" so it fits "Reset … to its default." and "… from …".
+enum SettingNames {
+    /// Used for a path nothing below names, such as a key a newer Tessera added.
+    static let unknown = "a setting this version doesn’t recognise"
+
+    /// The name for `path` (a key path in the settings file; list positions are ignored). `item` is the top-level
+    /// list or map the path sits inside (`hotkeys`, `customThemes`, …), or nil for a path from the file's root.
+    static func name(for path: [String], inItem item: String? = nil) -> String {
+        let key = path.joined(separator: ".")
+        guard let item else { return root[key] ?? unknown }
+        if item == "customThemes" { return themes[key] ?? root[key] ?? unknown }
+        return items["\(item).\(key)"] ?? unknown
+    }
+
+    private static let items: [String: String] = [
+        "hotkeys.enabled": "the on/off switch",
+        "cycles.display": "the display choice",
+        "displayOverrides.gap": "the gap",
+        "displayOverrides.padding": "the padding",
+        "displayOverrides.isUserOverride": "the custom settings flag",
+    ]
+
+    /// Keys inside a custom theme that the root has no twin for. Its `preview.*` keys are the root's own.
+    private static let themes: [String: String] = [
+        "name": "the theme name",
+        "ring.fillHex": "the ring colour",
+        "ring.strokeHex": "the lines and icons colour",
+        "ring.opacity": "the ring tint",
+        "ring.gridHex": "the grid colour",
+        "accentHex": "the selected layout colour",
+        "previewHex": "the snap preview colour",
+        "labelHex": "the label colour",
+        "labelTextHex": "the label text colour",
+        "outlineHex": "the current frame outline colour",
+        "dimHex": "the dimming colour",
+    ]
+
+    private static let root: [String: String] = [
+        "trigger": "the trigger key set",
+        "trigger.keyCodes": "the trigger key set",
+        "sizing": "the column sizing section",
+        "sizing.minColumnWidth": "the minimum column width",
+        "sizing.idealColumnWidth": "the ideal column width",
+        "sizing.maxColumnWidth": "the maximum column width",
+        "sizing.minRowHeight": "the minimum row height",
+        "sizing.maxColumns": "the column limit",
+        "defaultGap": "the default gap",
+        "defaultPadding": "the default padding",
+        "displayOverrides": "the per-display setting list",
+        "ring": "the ring section",
+        "ring.deadZone": "the ring’s centre area",
+        "ring.flickDistance": "the point threshold",
+        "ring.wedges": "the ring’s direction list",
+        "ring.radius": "the ring radius",
+        "ring.thickness": "the ring thickness",
+        "ring.topBand": "the top band",
+        "ring.bottomBand": "the bottom band",
+        "ring.boundary": "the dashed circle where pointing begins",
+        "ring.columnNumbers": "the grid column number setting",
+        "ring.pointingHint": "the pointing hint",
+        "ring.pointingHintsSeen": "the count of pointing hints shown",
+        "ring.showRing": "the ring’s visibility",
+        "ring.showActionLabels": "the ring’s action label setting",
+        "ring.iconStyle": "the ring icon style",
+        "ring.frosted": "the ring’s frosted background",
+        "ring.showGrid": "the grid line setting",
+        "ring.directions": "the flick gesture",
+        "ring.pointing": "the pointing gesture",
+        "ring.clickToSpan": "click to span columns",
+        "ring.scrollChangesColumns": "scroll to change the column count",
+        "ring.tapTilesWindows": "press and release to tile all windows",
+        "preview": "the preview section",
+        "preview.previewStyle": "the preview fill",
+        "preview.outlineCurrent": "the outline of the current frame",
+        "preview.showLabel": "the preview label",
+        "preview.labelShowsSize": "the size in the label",
+        "preview.labelShowsSlot": "the slot name in the label",
+        "preview.showNeighbours": "the dimming of covered windows",
+        "preview.morph": "the preview animation",
+        "preview.opacity": "the preview fill opacity",
+        "preview.borderWidth": "the preview border width",
+        "preview.cornerRadius": "the preview corner radius",
+        "preview.useWindowCornerRadius": "the matching of the window’s corner radius",
+        "preview.labelPosition": "the label position",
+        "preview.dimStrength": "the neighbour dim strength",
+        "preview.springResponse": "the preview spring response",
+        "themeName": "the theme",
+        "customThemes": "the custom theme list",
+        "excludedBundleIDs": "the excluded app list",
+        "launchAtLogin": "launch at login",
+        "showMenuBarIcon": "the menu bar icon",
+        "hotkeys": "the hotkey list",
+        "cycles": "the cycle list",
+        "ringKeyNavigation": "keyboard navigation in the ring",
+        "announceSelection": "the VoiceOver announcement setting",
+        "hotkeysEnabled": "the global hotkeys setting",
+        "showHUD": "the on-screen message setting",
+        "hudPosition": "the message position",
+        "hudSeconds": "the message duration",
+        "menuBarIcon": "the menu bar icon style",
+        "menuBarItems": "the menu bar item section",
+        "menuBarItems.statusLine": "the menu’s status line",
+        "menuBarItems.snapSubmenu": "the Snap Front Window submenu",
+        "menuBarItems.columnsSubmenu": "the Columns submenu",
+        "menuBarItems.shortcuts": "the Shortcuts menu item",
+        "menuBarItems.undo": "the Undo Last Move menu item",
+        "menuBarItems.checkForUpdates": "the Check for Updates menu item",
+        "menuBarItems.explain": "the What Just Happened? menu item",
+        "menuBarItems.shortcutKeys": "the menu shortcuts setting",
+        "appearance": "the light or dark setting",
+        "searchUsesAppleIntelligence": "the Apple Intelligence search setting",
+        "snapDuration": "the snap duration",
+        "learnSplits": "learning from your adjustments",
+        "splitRestoresOrder": "restoring the last order",
+        "splitGapPlacement": "where empty space goes when the order changes",
+        "splitGapWhenGrowing": "how empty space behaves when a window grows",
+        "splitReflowsNeighbours": "resizing neighbours to fill the display",
+        "splitFillsClosedGap": "filling the space when a window closes",
+        "splitOnMinimise": "what happens when a window is minimised",
+        "splitOnCloseKeepsRunning": "what happens when a window closes but its app keeps running",
+        "splitTilesNewWindow": "making room when a window opens",
+        "splitNewWindowScope": "where Tessera makes room for a new window",
+        "splitNewWindowWait": "the wait before tiling a new app",
+        "learnedSplits": "the learned split list",
+        "updates": "the update section",
+        "updates.checkAutomatically": "the automatic update check setting",
+        "updates.interval": "the update frequency",
+        "updates.installAutomatically": "the automatic install setting",
+        "updates.includeBetas": "the beta versions setting",
+        "help": "the tips section",
+        "help.autoShow": "the automatic tips setting",
+        "help.dimScreen": "the dimmed screen behind tips",
+        "help.seenMoments": "the list of tips already shown",
+    ]
+}

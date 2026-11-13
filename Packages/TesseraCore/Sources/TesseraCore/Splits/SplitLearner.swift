@@ -8,7 +8,7 @@ public enum SplitRejection: Error, Equatable {
     public var message: String {
         switch self {
         case .noWindows: "No windows on this display"
-        case .overlap: "Windows overlap, so there's no split to remember"
+        case .overlap: "Windows overlap, so there’s no split to remember"
         }
     }
 }

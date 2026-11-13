@@ -2,25 +2,15 @@ import Foundation
 
 /// Loads, saves, exports and imports `settings.json` (spec §6.4, §7).
 ///
-/// Data-loss rule: a file that cannot be used is moved aside, never overwritten or deleted.
+/// Data-loss rule: a file that cannot be used is moved aside or copied first, never overwritten or deleted.
 /// Not for hot paths; callers keep their own in-memory copy.
 public actor SettingsStore {
-    public struct LoadResult: Sendable {
-        public let settings: TesseraSettings
-        /// Where the unusable file now lives, when `load()` had to set one aside.
-        /// If the move itself failed this is the original URL (the bad file is still in place).
-        public let recoveredFrom: URL?
-
-        public init(settings: TesseraSettings, recoveredFrom: URL?) {
-            self.settings = settings
-            self.recoveredFrom = recoveredFrom
-        }
-    }
-
     private let fileURL: URL
     private let now: @Sendable () -> Date
+    /// Set by `load()` when the file on disk must survive this session; `save` then refuses.
+    private var saveRefusal: SaveRefusal?
 
-    /// `now` is only used to name quarantined files; it is injectable for tests.
+    /// `now` is only used to name quarantined files and repair copies; it is injectable for tests.
     public init(fileURL: URL, now: @escaping @Sendable () -> Date = Date.init) {
         self.fileURL = fileURL
         self.now = now
@@ -28,46 +18,82 @@ public actor SettingsStore {
 
     /// Missing file gives defaults. A v1 file is migrated (M2 spec §7): the original bytes are copied to
     /// `settings.v1-backup.json` (never overwriting an existing backup; a numbered name is used instead),
-    /// then v2 is saved. Keys a file lacks take their default values (see `SettingsMigration`). Unreadable
-    /// JSON, a newer schema or failed validation moves the file to `settings.corrupt-<yyyyMMdd-HHmmss>.json`
-    /// (UTC) next to it and gives defaults.
+    /// then v2 is saved. Keys a file lacks take their default values (see `SettingsMigration`).
+    ///
+    /// A value this build can't read or that is out of range is repaired on its own (see `decode`); the original
+    /// bytes are first copied to `settings.pre-repair-<yyyyMMdd-HHmmss>.json` (UTC), then the repaired settings are
+    /// written to the file so the next launch finds nothing to repair. A file that is not a settings
+    /// object at all is moved to `settings.corrupt-<stamp>.json` and gives defaults. A newer schema, a read
+    /// error, or a bad file that could not be moved or copied gives defaults and leaves the file as it is, and
+    /// `save` refuses for the session (`LoadResult.saveRefusal`) so nothing is lost.
     public func load() -> LoadResult {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return LoadResult(settings: .defaults, recoveredFrom: nil)
         }
+        let original: Data
         do {
-            let original = try Data(contentsOf: fileURL)
-            let (settings, migratedFrom) = try Self.decode(original)
-            // Only touch the file once the migrated result is known to be usable. If the backup cannot be
-            // written the v1 file stays as it is and migrates again next launch.
-            if migratedFrom != nil, writeV1Backup(original) {
-                try? Self.write(settings, to: fileURL, createFolder: false)
-            }
-            return LoadResult(settings: settings, recoveredFrom: nil)
+            original = try Data(contentsOf: fileURL)
         } catch {
-            return LoadResult(settings: .defaults, recoveredFrom: setAsideUnusableFile())
+            return refuse(.unreadable)
         }
+        if let version = Self.schemaVersion(of: original), version > SettingsValidation.currentSchemaVersion {
+            return refuse(.newerSchema(version))
+        }
+        let decoded: (settings: TesseraSettings, migratedFrom: Int?, repairs: [String])
+        do {
+            decoded = try Self.decode(original)
+        } catch {
+            let moved = setAside()
+            if moved == nil { saveRefusal = .notSetAside }
+            return LoadResult(settings: .defaults, recoveredFrom: moved, saveRefusal: saveRefusal)
+        }
+        var repairBackup: URL?
+        if !decoded.repairs.isEmpty {
+            repairBackup = copyOriginal(original, as: "settings.pre-repair-\(Self.timestamp(now()))")
+            if repairBackup == nil { saveRefusal = .noRepairBackup }
+        }
+        // Only touch the file once the result is known to be usable and the original is kept: the v1 backup for a
+        // migration, the pre-repair copy for a repair. If a copy cannot be written the file stays as it is and is
+        // migrated or repaired again next launch. The write fixes the file, so the repair alert shows once, not
+        // on every launch; a failed write keeps today's behaviour (same repair, another copy, next launch).
+        if saveRefusal == nil, decoded.migratedFrom != nil || repairBackup != nil,
+           decoded.migratedFrom == nil || copyOriginal(original, as: "settings.v1-backup") != nil {
+            try? Self.write(decoded.settings, to: fileURL, createFolder: false)
+        }
+        return LoadResult(settings: decoded.settings, recoveredFrom: nil, repairs: decoded.repairs,
+                          repairBackup: repairBackup, saveRefusal: saveRefusal)
     }
 
-    /// The one path from file bytes to usable settings: migrate, decode, validate. Throws
-    /// `SettingsError.invalid` with a message safe to show. Used by `load`, `importSettings` and the UI.
-    public static func decode(_ data: Data) throws -> (settings: TesseraSettings, migratedFrom: Int?) {
+    /// The one path from file bytes to usable settings: migrate, decode, repair, validate. `repairs` names each
+    /// value reset or item dropped on the way (see `LenientSettingsDecoder` and `SettingsValidation.repair`).
+    /// Throws `SettingsError.invalid` with a message safe to show. Used by `load`, `importSettings` and the UI.
+    public static func decode(_ data: Data) throws -> (settings: TesseraSettings, migratedFrom: Int?, repairs: [String]) {
         // A file with no "help" key predates help settings: offer it the ⌃⌥/ default once.
         let predatesHelp = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["help"] == nil
-        let migration = try SettingsMigration.migrate(data)
-        let settings: TesseraSettings
-        do {
-            settings = try JSONDecoder().decode(TesseraSettings.self, from: migration.data)
-        } catch {
-            throw SettingsError.invalid("Not a valid Tessera settings file, or one from a newer version.")
+        // Without a version this build reads there is nothing to repair towards: the file is not usable.
+        let version = schemaVersion(of: data) ?? 0
+        if version > SettingsValidation.currentSchemaVersion {
+            throw SettingsError.invalid("These settings were saved by a newer version of Tessera.")
         }
-        try SettingsValidation.validate(settings)
-        return (predatesHelp ? HelpDefaults.offeringExplainHotkey(settings) : settings, migration.migratedFrom)
+        guard version >= 1 else { throw SettingsError.invalid("Not a valid Tessera settings file.") }
+        let migration = try SettingsMigration.migrate(data)
+        let decoded = try LenientSettingsDecoder.decode(migration.data)
+        let repaired = SettingsValidation.repair(decoded.settings)
+        try SettingsValidation.validate(repaired.settings)
+        let settings = predatesHelp ? HelpDefaults.offeringExplainHotkey(repaired.settings) : repaired.settings
+        return (settings, migration.migratedFrom, decoded.repairs + repaired.repairs)
+    }
+
+    /// The file's `schemaVersion`, or nil when it is not a JSON object with an integer version.
+    static func schemaVersion(of data: Data) -> Int? {
+        (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["schemaVersion"] as? Int
     }
 
     /// Atomic write; creates the folder if needed. Invalid settings are refused so a bad value can
     /// never turn the next launch into a recovery.
+    /// Throws `SaveRefusal` without writing when `load()` found a file this session must not overwrite.
     public func save(_ s: TesseraSettings) throws {
+        if let saveRefusal { throw saveRefusal }
         try SettingsValidation.validate(s)
         try Self.write(s, to: fileURL, createFolder: true)
     }
@@ -77,8 +103,9 @@ public actor SettingsStore {
         try Self.write(s, to: url, createFolder: false)
     }
 
-    /// Validates before returning. Throws `.invalid(firstProblem)` and touches nothing on disk.
-    public func importSettings(from url: URL) throws -> TesseraSettings {
+    /// Validates before returning. Throws `.invalid(firstProblem)` and touches nothing on disk. `repairs` names what
+    /// the import fixed on the way (see `decode`), so the caller can tell the person.
+    public func importSettings(from url: URL) throws -> (settings: TesseraSettings, repairs: [String]) {
         let name = url.lastPathComponent
         let data: Data
         do {
@@ -87,7 +114,8 @@ public actor SettingsStore {
             throw SettingsError.invalid("Could not read \(name): \(error.localizedDescription)")
         }
         do {
-            return try Self.decode(data).settings
+            let decoded = try Self.decode(data)
+            return (decoded.settings, decoded.repairs)
         } catch SettingsError.invalid(let problem) {
             throw SettingsError.invalid("\(name): \(problem)")
         }
@@ -107,37 +135,32 @@ public actor SettingsStore {
         try data.write(to: url, options: .atomic)
     }
 
-    /// Copies the v1 bytes next to the settings file. Returns false when no backup could be written.
-    private func writeV1Backup(_ original: Data) -> Bool {
-        let fm = FileManager.default
-        let folder = fileURL.deletingLastPathComponent()
-        for attempt in 0..<100 {
-            let suffix = attempt == 0 ? "" : "-\(attempt)"
-            let destination = folder.appendingPathComponent("settings.v1-backup\(suffix).json")
-            if fm.fileExists(atPath: destination.path) { continue }
-            return (try? original.write(to: destination, options: .withoutOverwriting)) != nil
-        }
-        return false
+    private func refuse(_ reason: SaveRefusal) -> LoadResult {
+        saveRefusal = reason
+        return LoadResult(settings: .defaults, recoveredFrom: nil, saveRefusal: reason)
     }
 
-    private func setAsideUnusableFile() -> URL? {
-        let fm = FileManager.default
-        guard fm.fileExists(atPath: fileURL.path) else { return nil }
+    /// Copies `original` next to the settings file as `<name>.json`, or `<name>-1.json` and so on when taken.
+    /// Never overwrites. Nil when no copy could be written.
+    private func copyOriginal(_ original: Data, as name: String) -> URL? {
+        guard let destination = freeName(name) else { return nil }
+        return (try? original.write(to: destination, options: .withoutOverwriting)) != nil ? destination : nil
+    }
+
+    /// Moves the unusable file to `settings.corrupt-<stamp>.json`. Nil when it could not be moved, so the caller
+    /// never reports a path as preserved that isn't.
+    private func setAside() -> URL? {
+        guard let destination = freeName("settings.corrupt-\(Self.timestamp(now()))") else { return nil }
+        return (try? FileManager.default.moveItem(at: fileURL, to: destination)) != nil ? destination : nil
+    }
+
+    /// The first unused of `<name>.json`, `<name>-1.json` … `<name>-99.json` beside the settings file. A numeric
+    /// suffix keeps two copies made in the same second from clobbering each other.
+    private func freeName(_ name: String) -> URL? {
         let folder = fileURL.deletingLastPathComponent()
-        let stamp = Self.timestamp(now())
-        // A numeric suffix keeps two recoveries in the same second from clobbering each other.
-        for attempt in 0..<100 {
-            let suffix = attempt == 0 ? "" : "-\(attempt)"
-            let destination = folder.appendingPathComponent("settings.corrupt-\(stamp)\(suffix).json")
-            if fm.fileExists(atPath: destination.path) { continue }
-            do {
-                try fm.moveItem(at: fileURL, to: destination)
-                return destination
-            } catch {
-                break
-            }
-        }
-        return fileURL
+        return (0..<100).lazy
+            .map { folder.appendingPathComponent("\(name)\($0 == 0 ? "" : "-\($0)").json") }
+            .first { !FileManager.default.fileExists(atPath: $0.path) }
     }
 
     private static func timestamp(_ date: Date) -> String {

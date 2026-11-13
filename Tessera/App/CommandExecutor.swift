@@ -82,8 +82,9 @@ final class CommandExecutor: CommandExecuting {
         case let .apply(target, selector):
             let (window, frame) = try await frontmost()
             let display = try resolve(selector, windowFrame: frame)
-            try await move(window, from: frame, to: TargetResolver.frame(for: target, display: display, current: frame))
-            return CommandResult(ok: true, message: appliedTitle(target, on: display))
+            let goal = TargetResolver.frame(for: target, display: display, current: frame)
+            let note = try await move(window, from: frame, to: goal)
+            return CommandResult(ok: true, message: appliedTitle(target, on: display) + (note.map { " · \($0)" } ?? ""))
         case let .cycle(name):
             return try await cycle(name)
         case let .columns(change, selector):
@@ -120,8 +121,11 @@ final class CommandExecutor: CommandExecuting {
             return CommandResult(ok: true, message: "Exported to \(url.path)")
         case let .importSettings(path):
             let url = try fileURL(path)
-            do { model.settings = try await store.importSettings(from: url) } catch { throw Self.failure(error) }
-            return CommandResult(ok: true, message: "Imported \(url.lastPathComponent)")
+            let imported: (settings: TesseraSettings, repairs: [String])
+            do { imported = try await store.importSettings(from: url) } catch { throw Self.failure(error) }
+            model.settings = imported.settings
+            let repaired = imported.repairs.isEmpty ? "" : " (\(imported.repairs.count) repaired)"
+            return CommandResult(ok: true, message: "Imported \(url.lastPathComponent)\(repaired)")
         }
     }
 
@@ -138,8 +142,9 @@ final class CommandExecutor: CommandExecuting {
             guard cycle.steps.indices.contains(index) else { break }
             let goal = TargetResolver.frame(for: cycle.steps[index], display: display, current: frame)
             if !Self.sameFrame(goal, frame) {
-                try await move(window, from: frame, to: goal)
-                return CommandResult(ok: true, message: appliedTitle(cycle.steps[index], on: display))
+                let note = try await move(window, from: frame, to: goal)
+                let title = appliedTitle(cycle.steps[index], on: display)
+                return CommandResult(ok: true, message: title + (note.map { " · \($0)" } ?? ""))
             }
         }
         return CommandResult(ok: true, message: "Window already fits every step")
@@ -158,8 +163,8 @@ final class CommandExecutor: CommandExecuting {
         } else {
             goal = Self.scale(frame, from: from.visibleFrame, to: to.visibleFrame)
         }
-        try await move(window, from: frame, to: goal)
-        return .success
+        guard let note = try await move(window, from: frame, to: goal) else { return .success }
+        return CommandResult(ok: true, message: note)
     }
 
     private func describeWindow() async throws(Failure) -> CommandResult {
@@ -190,8 +195,10 @@ final class CommandExecutor: CommandExecuting {
         guard Permissions.isAccessibilityTrusted else {
             throw Failure(message: "Tessera needs Accessibility permission to move windows")
         }
-        guard let window = await windows.frontmostWindow(), let frame = await windows.frame(of: window) else {
-            throw Failure(message: Self.noWindowMessage)
+        let window = await windows.frontmostWindow()
+        guard let window, let frame = await windows.frame(of: window) else {
+            // Failure path only: a full-screen, minimised or sheet window says so instead of "No window to move".
+            throw Failure(message: await windows.whyNoWindow(window) ?? Self.noWindowMessage)
         }
         if let bundle = window.bundleID, model.settings.excludedBundleIDs.contains(bundle) {
             throw Failure(message: "This app is excluded in Tessera settings")
@@ -213,10 +220,19 @@ final class CommandExecutor: CommandExecuting {
         return display
     }
 
-    private func move(_ window: WindowRef, from current: CGRect, to goal: CGRect) async throws(Failure) {
-        if case let .failed(reason) = await place(window, current: current, goal: goal) {
-            throw Failure(message: reason)
+    /// Nil, or a note to add to the result message when the app kept a different size.
+    private func move(_ window: WindowRef, from current: CGRect, to goal: CGRect) async throws(Failure) -> String? {
+        switch await place(window, current: current, goal: goal) {
+        case let .failed(reason): throw Failure(message: reason)
+        case let .constrained(landed): return Self.constrainedNote(window, goal: goal, landed: landed)
+        case .applied, .superseded: return nil
         }
+    }
+
+    /// "Slack kept its minimum size", for a move whose window landed at a different size from `goal`.
+    static func constrainedNote(_ window: WindowRef, goal: CGRect, landed: CGRect) -> String {
+        let grew = landed.width > goal.width + 1 || landed.height > goal.height + 1
+        return "\(HelpEvent.appName(window)) kept its \(grew ? "minimum" : "own") size"
     }
 
     /// Automation paths must be absolute (the CLI resolves relative ones); `~` is expanded.

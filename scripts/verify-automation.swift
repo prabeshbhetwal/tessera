@@ -48,6 +48,14 @@ import TesseraCore
             print("PASS: \(name)")
         }
         guard executor.calls == 3 else { throw Failure(message: "Invalid requests reached CommandBridge") }
+        // A second instance must neither steal the live socket nor remove it when it stops.
+        let rival = SocketServer(url: url)
+        rival.start()
+        rival.stop()
+        let survivor = try await Task.detached { try request(command + Data([10]), path: url.path, endRequest: true) }.value
+        guard survivor.ok else { throw Failure(message: "Second instance took over the live socket") }
+        print("PASS: live socket kept from a second instance")
+        guard executor.calls == 4 else { throw Failure(message: "Second-instance probe reached CommandBridge") }
         var mode = stat()
         guard lstat(url.path, &mode) == 0, mode.st_mode & 0o777 == 0o600 else {
             throw Failure(message: "Socket is not owner-only")

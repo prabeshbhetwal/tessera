@@ -10,16 +10,17 @@ struct DisplaysPane: View {
             if displays.isEmpty {
                 Section { Caption("No displays detected yet.") }
             }
-            ForEach(displays, id: \.id) { display in
+            let names = SplitLabel.numbered(displays.map(DisplayRow.screenName(of:)))
+            ForEach(Array(displays.enumerated()), id: \.element.id) { index, display in
                 // Only the first display's rows are search targets, so each result has one row to scroll to.
-                DisplayRow(model: model, display: display, tagged: display.id == displays.first?.id)
+                DisplayRow(model: model, display: display, name: names[index], tagged: display.id == displays.first?.id)
             }
 
             Section {
                 SliderRow(title: "Gap", value: $model.settings.defaultGap, range: 0...40, anchor: "New displays gap")
                 SliderRow(title: "Padding", value: $model.settings.defaultPadding, range: 0...40, anchor: "New displays padding")
             } header: {
-                InfoHeader("New displays", info: "Used by any display you haven't changed. Gap is the space between windows; padding is the space at the screen edges.")
+                InfoHeader("New displays", info: "Used by any display you haven’t changed. Gap is the space between windows; padding is the space at the screen edges.")
             }
 
             Section {
@@ -55,6 +56,8 @@ struct DisplaysPane: View {
 private struct DisplayRow: View {
     @Bindable var model: SettingsModel
     let display: DisplayContext
+    /// The display's name, numbered when another connected display shares it.
+    let name: String
     /// Whether this display's rows carry the search anchors.
     let tagged: Bool
 
@@ -69,7 +72,7 @@ private struct DisplayRow: View {
         )
     }
 
-    private var name: String {
+    static func screenName(of display: DisplayContext) -> String {
         let center = CGPoint(x: display.visibleFrame.midX, y: display.visibleFrame.midY)
         return NSScreen.screens.first { $0.frame.contains(center) }?.localizedName ?? "Display"
     }
@@ -101,6 +104,8 @@ private struct DisplayRow: View {
                 if override != nil {
                     Button("Use Automatic") { model.settings.displayOverrides[key] = nil }
                         .controlSize(.small)
+                        .accessibilityLabel("Use automatic settings for \(name)")
+                        .help("Go back to the automatic columns, gap and padding")
                 }
             }
         } footer: {

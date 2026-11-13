@@ -9,6 +9,9 @@ struct AdvancedSection: View {
     @Bindable var model: SettingsModel
     @State private var exporting = false
     @State private var importing = false
+    /// A decoded file waiting for the person to confirm it replaces every setting, and what decoding fixed in it.
+    @State private var pendingImport: (settings: TesseraSettings, repairs: [String])?
+    @State private var confirmingImport = false
     @State private var ioMessage: Outcome?
     @State private var cliInstalled = CLIInstaller.isInstalled
     @State private var cliMessage: CLIOutcome?
@@ -19,17 +22,28 @@ struct AdvancedSection: View {
         Section {
             DisclosureGroup {
                 HStack {
-                    Button("Export settings…") { exporting = true }
+                    Button("Export Settings…") { exporting = true }
                         .fileExporter(
                             isPresented: $exporting,
                             document: SettingsDocument(settings: model.settings),
                             contentType: .json,
                             defaultFilename: "Tessera Settings"
                         ) { result in exported(result) }
-                    Button("Import settings…") { importing = true }
+                    Button("Import Settings…") { importing = true }
                         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                             importSettings(result)
                         }
+                }
+                .confirmationDialog("Replace all settings with this file?", isPresented: $confirmingImport,
+                                    titleVisibility: .visible, presenting: pendingImport) { imported in
+                    Button("Replace Settings", role: .destructive) {
+                        model.settings = imported.settings
+                        pendingImport = nil
+                        ioMessage = .success("Settings imported.")
+                    }
+                    Button("Cancel", role: .cancel) { pendingImport = nil }
+                } message: { imported in
+                    Text(Self.importMessage(repairs: imported.repairs))
                 }
                 if let ioMessage { ioCallout(ioMessage) }
 
@@ -39,16 +53,16 @@ struct AdvancedSection: View {
                 }
                 switch cliMessage {
                 case .installed(let folder):
-                    Callout(.success, "Installed. If your shell can't find tessera, add \(folder) to your PATH:") {
-                        Button("Copy") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString("export PATH=\"\(folder):$PATH\"", forType: .string)
-                        }
-                        .controlSize(.small)
+                    let exportLine = "export PATH=\"\(folder):$PATH\""
+                    Callout(.success, "Installed. If your shell can’t find tessera, add \(folder) to your PATH:")
+                    // The copy action sits on the line it copies.
+                    HStack(spacing: 6) {
+                        Text(exportLine)
+                            .font(.callout.monospaced())
+                            .textSelection(.enabled)
+                        CopyButton(text: exportLine, label: "Copy command")
+                        Spacer(minLength: 0)
                     }
-                    Text("export PATH=\"\(folder):$PATH\"")
-                        .font(.callout.monospaced())
-                        .textSelection(.enabled)
                 case .failed(let reason):
                     Callout(.warning, reason) {
                         Button("Try Again", action: installCLI).controlSize(.small)
@@ -77,6 +91,15 @@ struct AdvancedSection: View {
         }
     }
 
+    /// The warning, then what the file needed fixing (the same bullets as the launch notice), so nothing is dropped silently.
+    private static func importMessage(repairs: [String]) -> String {
+        let warning = "This replaces every setting, including shortcuts and cycles. Export first to keep a copy."
+        guard !repairs.isEmpty else { return warning }
+        let what = repairs.count == 1 ? "1 setting" : "\(repairs.count) settings"
+        return warning + "\n\nTessera fixed \(what) in this file that it couldn’t use and kept everything else."
+            + SettingsStore.LoadResult.repairList(repairs)
+    }
+
     private func exported(_ result: Result<URL, any Error>) {
         switch result {
         case .success:
@@ -84,20 +107,22 @@ struct AdvancedSection: View {
         case .failure(let error):
             guard !Self.cancelled(error) else { return }
             Self.log.error("Settings export failed: \(error.localizedDescription, privacy: .private)")
-            ioMessage = .failure("Couldn't export the settings. Choose another folder and try again.", retry: .export)
+            ioMessage = .failure("Couldn’t export the settings. Choose another folder and try again.", retry: .export)
         }
     }
 
     private func importSettings(_ result: Result<URL, any Error>) {
         do {
-            model.settings = try SettingsDocument.importSettings(from: result.get())
-            ioMessage = .success("Settings imported.")
+            // Decoded and validated now, applied only once confirmed: an invalid file never reaches the dialog.
+            pendingImport = try SettingsDocument.importSettings(from: result.get())
+            ioMessage = nil
+            confirmingImport = true
         } catch SettingsError.invalid(let problem) {
             ioMessage = .failure("Import rejected: \(problem)", retry: .importing)
         } catch {
             guard !Self.cancelled(error) else { return }
             Self.log.error("Settings import failed: \(error.localizedDescription, privacy: .private)")
-            ioMessage = .failure("Couldn't read that file as Tessera settings. Choose a file exported from Tessera.",
+            ioMessage = .failure("Couldn’t read that file as Tessera settings. Choose a file exported from Tessera.",
                                  retry: .importing)
         }
     }
@@ -117,7 +142,7 @@ struct AdvancedSection: View {
         switch error as? CLIInstaller.InstallError {
         case .missingBinary: "The command-line tool is missing from this copy of Tessera. Reinstall Tessera, then try again."
         case .occupied: "Another file named tessera is already in that folder. Remove or rename it, then try again."
-        case nil: "Couldn't install the command-line tool. Check that the folder is writable, then try again."
+        case nil: "Couldn’t install the command-line tool. Check that the folder is writable, then try again."
         }
     }
 
@@ -156,9 +181,10 @@ struct SettingsDocument: FileDocument {
     }
 
     /// Same migrate → decode → validate path as the store, so the UI and the CLI accept the same files.
-    static func importSettings(from url: URL) throws -> TesseraSettings {
+    static func importSettings(from url: URL) throws -> (settings: TesseraSettings, repairs: [String]) {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        return try SettingsStore.decode(Data(contentsOf: url)).settings
+        let decoded = try SettingsStore.decode(Data(contentsOf: url))
+        return (decoded.settings, decoded.repairs)
     }
 }

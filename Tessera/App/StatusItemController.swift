@@ -8,13 +8,15 @@ import TesseraCore
 /// state once it changed after launch, leaving only Quit; its `isInserted` binding also once looped and
 /// froze the app. An `NSStatusItem` whose menu is refreshed each time it opens has neither problem.
 ///
-/// The icon and the optional items come from settings (General › Menu bar); Settings… and Quit always show.
+/// The icon and the optional items come from settings (General › Menu bar); About Tessera, Settings… and Quit always show.
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
     /// Drives the icon and which items are enabled. Set by the app delegate.
     var accessibilityGranted = Permissions.isAccessibilityTrusted {
         didSet { if accessibilityGranted != oldValue { updateIcon() } }
     }
+    /// Accessibility reads as granted but the event tap can't be created (a stale entry). Set by the app delegate.
+    var tapFailed = false
 
     /// Mirrors `UpdateService.updateWaiting`, so the badge appears without the menu being opened.
     private var updateWaiting = false {
@@ -36,6 +38,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let updates: UpdateService
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var icon: MenuBarIcon = .tiles
+    private let aboutItem = NSMenuItem(title: "About Tessera", action: #selector(openAbout), keyEquivalent: "")
     private let status = NSMenuItem()
     private let hotkeysOffItem = NSMenuItem(title: "Hotkeys Off", action: #selector(openShortcuts), keyEquivalent: "")
     private let explainItem = NSMenuItem(title: "What Just Happened?", action: #selector(explain), keyEquivalent: "")
@@ -60,7 +63,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.autoenablesItems = false
         menu.delegate = self
         status.isEnabled = false
-        for entry in [hotkeysOffItem, explainItem, settingsItem, shortcutsItem, undoItem, checkItem] { entry.target = self }
+        for entry in [aboutItem, hotkeysOffItem, explainItem, settingsItem, shortcutsItem, undoItem, checkItem] { entry.target = self }
         snapItem.submenu = Self.submenu(
             [("Tile All Windows", .tileWindows(display: .current)), ("Remember Split", .rememberSplit(display: .current)),
              ("Tile Evenly", .tileEvenly(display: .current))]
@@ -68,8 +71,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             target: self, separatorsAfter: [2, 4, 8])
         showColumns(for: nil)
         let quit = NSMenuItem(title: "Quit Tessera", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        for entry in [status, hotkeysOffItem, explainItem, statusSeparator, snapItem, columnsItem, actionsSeparator,
-                      settingsItem, shortcutsItem, undoItem, checkItem, .separator(), quit] {
+        for entry in [aboutItem, .separator(), status, hotkeysOffItem, explainItem, statusSeparator, snapItem, columnsItem,
+                      actionsSeparator, settingsItem, shortcutsItem, undoItem, checkItem, .separator(), quit] {
             menu.addItem(entry)
         }
         item.menu = menu
@@ -95,7 +98,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let items = s.menuBarItems
         status.title = granted
             ? "Hold \(ModifierKey.describe(s.trigger.keyCodes)) to snap"
-            : "Accessibility not granted"
+            : tapFailed ? "Tessera can’t read the trigger" : "Accessibility not granted"
         // The status line always shows when setup is unfinished: it says why the rest is greyed out.
         status.isHidden = granted && !items.statusLine
         hotkeysOffItem.isHidden = s.hotkeysEnabled
@@ -194,8 +197,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         run(box.command)
     }
 
-    @objc private func openSettings() { presenter()?.showSettings() }
+    @objc private func openSettings() {
+        // Settings would open (the grant reads as done), but the repair lives in setup's Accessibility step.
+        if tapFailed { presenter()?.showOnboarding(startStep: OnboardingView.accessibilityStep) } else { presenter()?.showSettings() }
+    }
     @objc private func openShortcuts() { presenter()?.showSettings(pane: .shortcuts) }
+    @objc private func openAbout() { presenter()?.showSettings(pane: .about) }
     @objc private func explain() { run(.explain) }
     @objc private func undoLastMove() { run(.undo) }
     @objc private func checkForUpdates() { updates.checkForUpdates() }

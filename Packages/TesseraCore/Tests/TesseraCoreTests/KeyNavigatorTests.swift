@@ -49,6 +49,18 @@ private func reduce(_ s: NavState, _ k: NavKey, _ ds: [DisplayContext] = display
         #expect(KeyNavigator.start(windowFrame: nil, displays: []) == nil)
     }
 
+    /// Centre off every screen but the window mostly on one: the ring keyboard starts there (largest overlap),
+    /// the same display `tessera apply --display current` picks, not display 0.
+    @Test func startWithCentreOffScreenUsesLargestOverlapLikeTheCLI() {
+        // `far` spans x 5352...6852; the window's centre (6900) is past it, 152 of its 400 width overlap.
+        let w = CGRect(x: 6700, y: 100, width: 400, height: 400)
+        let s = KeyNavigator.start(windowFrame: w, displays: displays)
+        #expect(s == state(2, 2...2))   // far is sorted index 2, 3 columns, clamped to the last
+        let cli = DisplayResolver.resolve(.current, displays: displays, windowFrame: w, cursor: .zero)
+        #expect(cli?.id == far.id)
+        #expect(DisplayResolver.ordered(displays)[s?.displayIndex ?? -1].id == cli?.id)
+    }
+
     // MARK: horizontal
 
     @Test func leftRightMoveOneColumnAndCollapseSpan() {

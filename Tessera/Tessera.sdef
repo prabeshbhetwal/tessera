@@ -53,7 +53,7 @@
             <direct-parameter type="text"/>
         </command>
 
-        <command name="set columns" code="TessScol" description="Set a display's column count.">
+        <command name="set columns" code="TessScol" description="Set a display’s column count.">
             <cocoa class="TesseraSetColumnsCommand"/>
             <direct-parameter type="integer"/>
             <parameter name="display" code="TDsp" type="text" optional="yes" description="&quot;current&quot; (default), &quot;cursor&quot;, a number, or &quot;id:…&quot;.">
@@ -103,7 +103,7 @@
             <result type="window info"/>
         </command>
 
-        <command name="open settings" code="TessOset" description="Open Tessera's Settings window.">
+        <command name="open settings" code="TessOset" description="Open Tessera’s Settings window.">
             <cocoa class="TesseraOpenSettingsCommand"/>
         </command>
     </suite>

@@ -249,12 +249,14 @@ The next **Tile All Windows** with the same apps on the same display reuses it. 
 | Resize neighbours to fill the display | On | Neighbours follow a resized window's edges. Needs **Learn from my adjustments** on. |
 | Fill the space when a window closes | On | The apps left go back to their split, or the window beside the space you used last grows into it. Needs **Learn from my adjustments** on. |
 | When a window is minimised | Re-tile remaining windows | Re-tile: the rest cover its space as for a close, and the window fits back in when restored. **Leave the space empty**: nothing moves. Needs **Fill the space when a window closes** on. |
+| When a window closes but its app keeps running | Re-tile remaining windows | The same two choices as the minimise row, for a window that closes while its app keeps running. Re-tile: the rest cover its space. **Leave the space empty**: nothing moves. Needs **Fill the space when a window closes** on. |
 | Make room when a window opens | On | A new window joins the side-by-side group: in your split for those apps, or equal shares. Needs **Learn from my adjustments** on. |
 | Make room on | Also wherever the apps have a split | Also arranges an untiled display when you open an app and the apps on it have a split. **Displays already tiled** only makes room beside windows already side by side. Settings saved before this default changed keep their choice. |
+| Wait before tiling a new app | 0 | How long a window opened beside tiled windows must stay open before it is tiled in equal shares (up to 60 seconds). Apps you've arranged together before get their split straight away. 0 tiles right away. Needs **Learn from my adjustments** and **Make room when a window opens** on. |
 | Restore last order | Off | Off: windows keep their current order and take their app's learned **size**. On: each app goes back to its exact learned **position**. |
 | Empty space when order changes | Stays in place | When windows are in a new order, a learned gap either stays where it was or follows the window it sat beside. |
 
-Below the settings, **Learned splits** lists each display once, with how many splits it holds. **Manage…** opens that display's splits: search by app, click a split's **⊖** to forget it, or select several and press Delete. **Forget All on This Display…** clears one display; **Forget All…** in the pane clears every display. A forgotten app set tiles in equal shares again.
+Below the settings, **Learned splits** lists each display once, with how many splits it holds. A display that isn't connected is labelled **Not connected**. **Manage…** opens that display's splits: search by app, click a split's **⊖** to forget it, or select several and press Delete. **Forget All on This Display…** clears one display; **Forget All…** in the pane clears every display. A forgotten app set tiles in equal shares again.
 
 ---
 
@@ -299,11 +301,13 @@ The buttons only act on the windows the card is about. If they've changed since 
 
 | Item | What it does |
 |---|---|
-| Hold ⌃⌥⌘ to snap | A reminder of your trigger. Reads "Accessibility not granted" until you allow it. |
+| About Tessera | Opens About: the version, links and **Report an Issue**. |
+| Hold ⌃⌥⌘ to snap | A reminder of your trigger. Reads "Accessibility not granted" until you allow it, and "Tessera can't read the trigger" when Accessibility is allowed but macOS still won't let Tessera read it (usually a stale entry from an older build). **Finish Setup…** then opens setup at Accessibility, where **Fix permission** resets the entry. |
+| Hotkeys Off | Shown only while hotkeys are paused. Opens **Settings › Shortcuts**, where **Use global hotkeys** turns them back on. |
 | What Just Happened? | Same as its hotkey (⌃⌥/ by default): explains the latest thing Tessera did. |
 | Snap Front Window › | Tile All Windows, Remember Split, Tile Evenly, then every layout (Maximise, Centre, halves, quarters). |
-| Columns › | One More Column, One Fewer Column, 2–8 Columns, for the front window's display. |
-| Settings… | Opens Settings (⌃⌥⌘, by default; ⌘, while the menu is open if you clear that hotkey). Reads **Finish Setup…** until Accessibility is allowed. |
+| Columns › | One More Column, One Fewer Column, then one item for each column count the front window's display allows (see [Columns and displays](#3-columns-and-displays)). The current count is ticked, and One More or One Fewer is greyed at the ends of the range. |
+| Settings… | Opens Settings (⌃⌥⌘, by default; ⌘, while the menu is open if you clear that hotkey). Reads **Finish Setup…** until Accessibility is allowed, and also when Tessera can't read the trigger; it then opens setup at Accessibility. |
 | Shortcuts… | Opens Settings › Shortcuts. |
 | Undo Last Move | Same as ⌃⌥Z. |
 | Check for Updates… | Reads **Update Available…** when a new version is waiting. |
@@ -331,14 +335,14 @@ Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera agai
 ### General
 - **App:** **Launch at login** (you may need to approve it in System Settings › General › Login Items); **Light or dark** (Light, Dark or Match System, for Tessera's own windows); and whether Settings search may use Apple Intelligence to understand what you type.
 - **Menu bar:** show or hide the icon, pick its picture (Tiles, Badge, Slot, Mosaic, Ring, Split, Columns, Quarters; Tiles matches the app icon), and choose which menu items appear and whether each shows its shortcut.
-- **Messages:** short on-screen confirmations such as "5 columns". Choose the position (Top, Centre, Bottom) and how long they stay (1.2 s by default).
+- **Messages:** short on-screen confirmations such as "5 columns", shown while **Show messages** is on. Failure messages, such as a move that didn't happen or settings that couldn't be saved, always show, even with it off. Choose the position (Top, Centre, Bottom) and how long they stay (1.2 s by default).
 - **Tips:** tips that appear on their own, the dim behind them, and **Show Tips Again**. See [What Just Happened?](#8a-what-just-happened).
-- **Advanced:** **Import and export** saves all settings to one JSON file, or loads them (import replaces every setting; an invalid file is rejected and nothing changes). **Install Command-Line Tool** links `tessera` into `~/.local/bin`. See [Automation](#11-automation).
+- **Advanced:** **Export Settings…** saves all settings to one JSON file. **Import Settings…** loads one after you confirm. It replaces every setting, including shortcuts and cycles, so export first to keep a copy; an invalid file is rejected and nothing changes. **Install Command-Line Tool** links `tessera` into `~/.local/bin`. See [Automation](#11-automation).
 
-**Restore Defaults** resets General. It doesn't touch the trigger; that's in Ring.
+**Restore Defaults…** resets General, after you confirm. It doesn't touch the trigger; that's in Ring.
 
 ### Updates
-Shows when Tessera last checked, with **Check Now** to check straight away. Below that: check automatically (daily, weekly, fortnightly or monthly), download and install automatically, and include beta versions.
+Shows when Tessera last checked, with **Check Now** to check straight away. Below that: check automatically (daily, weekly, fortnightly or monthly), download and install automatically, and include beta versions. That switch matters only on a stable build: a beta build always receives beta updates, and the switch is then on and locked.
 
 ### Excluded Apps
 While an excluded app is in front, the trigger and hotkeys do nothing. Its windows are also left out of Tile. Use **Choose App…** to add one.
@@ -362,27 +366,27 @@ See [Learned splits](#7-learned-splits).
 ### Ring
 How the ring behaves. Its look and colours are in [Appearance](#appearance).
 - **Trigger:** click the chord, hold the modifier keys you want, and release. Delete resets it to the default. A single-key chord opens the ring every time you press that key.
-- **Gestures:** turn Directions (flick), Pointing, Click to span, Scroll to change columns, and Tap to tile on or off. With both Directions and Pointing off, use the arrow keys and Return while holding the trigger, or the hotkeys.
+- **Gestures:** five switches: **Flick towards a layout**, **Point for a column of the grid**, **Click while pointing to span several columns**, **Scroll while holding to change the column count**, and **Press and release without moving to tile all windows**. With both **Flick towards a layout** and **Point for a column of the grid** off, use the arrow keys and Return while holding the trigger, or the hotkeys.
 - **Directions:** click a wedge, or use ← →, then choose its layout.
 - **Size and zones:** radius, thickness, point threshold, and the top and bottom bands. If you slip into pointing by accident, raise the point threshold.
 
-**Restore Defaults** resets these and the trigger. It leaves the ring's look alone.
+**Restore Defaults…** resets these and the trigger, after you confirm. It leaves the ring's look alone.
 
 ### Appearance
-- **Theme:** Default, Minimal or Glass, or one you save yourself. Changing a colour on a built-in theme saves your look as a new theme; the built-in one stays as shipped.
+- **Theme:** Default, Minimal or Glass, or one you save yourself with **Save Theme**. Changing a colour on a built-in theme saves your look as a new theme; the built-in one stays as shipped. Deleting a saved theme asks you to confirm first.
 - **Ring:** show or hide the ring (the gestures keep working), action names and input hints, layout icons (layout pictures or arrows), the dashed circle where pointing begins, and the frosted background.
 - **Grid and hints:** grid lines, column numbers, and the "click to add columns" hint (with **Show the hint again**).
 - **Ring colours:** ring, ring tint, lines and icons, the selected layout, and the grid. Colours for the snap preview, its label, its outline and the dimming are in **Preview and label colours**.
-- **Preview fill:** Tinted box (instant), Window snapshot (needs Screen Recording), or App icon. Also fill opacity, border width and corner radius.
-- **Label:** show the size, the slot, or both, in the centre or at the bottom.
+- **Fill the preview with:** Tinted box (instant), Window snapshot (needs Screen Recording), or App icon. Also fill opacity, border width and corner radius.
+- **Label:** **Show a label on the preview** turns it on. **Size in points** and **Slot name** choose what it shows (with both off, no label appears), and **Position** puts it in the centre or at the bottom.
 - **Around the preview:** dim the windows it covers (and how strongly), and outline where the window is now.
 - **Show on Screen:** shows the real ring and preview for three seconds, so you can judge a theme without holding the trigger. **Preview Shortcut** shows a hotkey confirmation. Neither moves a window.
 
-**Restore Defaults** resets the look, including the ring switches above. It keeps the themes you saved.
+**Restore Defaults…** resets the look, after you confirm, including the ring switches above. It keeps the themes you saved.
 
 ### Motion
 - **Snap speed:** Instant, Snappy (0.12 s), Smooth (0.2 s), Fluid (0.3 s) or Relaxed (0.45 s), or drag to any duration. Applies to the ring and hotkeys alike.
-- **Preview morph:** animate the preview between selections, with an adjustable spring.
+- **Animate the ring and preview:** the preview glides between selections, and the ring and shortcut confirmations fade in. **Spring response** sets how snappy the glide is; 0 turns the animation off.
 
 > With **Reduce Motion** on in System Settings › Accessibility › Display, windows and the preview jump instead of animating.
 
@@ -418,7 +422,17 @@ tessera settings import ~/tessera.json
 ```
 
 - `--display` accepts `current`, `cursor`, a number (left to right, from 1) or `id:KEY`.
-- Negative columns count from the right: `-1` is the last. Use `..` for ranges with negatives, as in `-2..-1`.
+- Negative columns count from the right: `-1` is the last. Use `..` for ranges with negatives, as in `-2..-1`. Column 0 is rejected, and a range can't mix positive and negative columns, so `-1..2` and `2..-1` are errors.
+
+**Exit codes:** a script can check `$?`.
+
+| Code | Meaning |
+|---|---|
+| 0 | The command succeeded. |
+| 1 | The command failed, or Tessera's reply couldn't be read. Also: the socket path is too long for a Unix socket, or the socket couldn't be created. |
+| 2 | Usage error: the command or its arguments weren't understood. The usage is printed. |
+| 3 | Tessera isn't running, or the connection to it dropped. |
+| 4 | Tessera didn't answer within 60 seconds. The command may still have run, so check before running it again. |
 
 ### URL scheme
 
@@ -456,3 +470,10 @@ Search for "Tessera" in the Shortcuts app. Actions: Apply Columns, Perform Actio
 | Tile uses an old layout you no longer want | Forget it in Settings › Splits, or use Tile Evenly. |
 | A hotkey shows a warning | It clashes with a macOS shortcut. It still works, but pick another key if the system one matters to you. |
 | Windows jump instead of gliding | Reduce Motion is on, or Snap speed is set to Instant. |
+
+### Settings file
+
+Settings are kept in `~/Library/Application Support/Tessera/settings.json`.
+
+- **A value this version can't use**, or one out of range, goes back to its default and everything else is kept. A copy of the original file is saved beside it as `settings.pre-repair-<date>.json`, and Tessera shows a notice listing what changed.
+- **A file saved by a newer Tessera** is left untouched. Tessera starts with defaults and doesn't save changes until you update Tessera.

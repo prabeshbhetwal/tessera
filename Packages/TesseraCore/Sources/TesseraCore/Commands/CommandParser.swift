@@ -220,7 +220,8 @@ public enum CommandParser {
     }
 
     /// `2`, `2-4`, `2..4`, `-1`, `-2..-1`. A `..` always splits; otherwise a dash after the first character does.
-    /// Ranges must run low to high, so a range mixing positive and negative columns (`2..-1`) cannot be expressed.
+    /// Column 0 does not exist, and a range cannot mix positive and negative columns (`2..-1`, `-1..2`): both are
+    /// errors rather than guesses. Ranges must run low to high.
     private static func parseColumns(_ text: String) throws -> ClosedRange<Int> {
         func number(_ s: Substring) throws -> Int {
             guard let v = Int(s) else { throw invalid("columns '\(text)': '\(s)' is not a whole number") }
@@ -237,11 +238,11 @@ public enum CommandParser {
             lo = try number(text[...])
             hi = lo
         }
-        guard lo <= hi else {
-            let mixed = (lo > 0) != (hi > 0) && lo != 0 && hi != 0
-            throw invalid("columns '\(text)': start is after end"
-                + (mixed ? " (ranges mixing positive and negative columns are not supported)" : ""))
+        guard lo != 0, hi != 0 else { throw invalid("columns '\(text)': column 0 does not exist (columns start at 1, -1 is the last)") }
+        guard (lo > 0) == (hi > 0) else {
+            throw invalid("columns '\(text)': ranges mixing positive and negative columns are not supported")
         }
+        guard lo <= hi else { throw invalid("columns '\(text)': start is after end") }
         return lo...hi
     }
 

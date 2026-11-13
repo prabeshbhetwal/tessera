@@ -70,7 +70,13 @@ final class ShortcutReceipt {
         symbol.isHidden = action != nil
         symbol.contentTintColor = title.textColor
         symbol.frame = CGRect(x: 36, y: 33, width: 16, height: 16)
+        // Restores full opacity through the animator so a fade-out still running from the last receipt is cancelled.
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0
+            panel.animator().alphaValue = 1
+        }
         panel.orderFrontRegardless()
+        VoiceOverAnnouncement.post(text)
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         if !reduceMotion, settings.preview.morph {
             let fade = CABasicAnimation(keyPath: "opacity")
@@ -81,8 +87,18 @@ final class ShortcutReceipt {
         }
         task = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(settings.hudSeconds))
-            guard !Task.isCancelled, let self else { return }
-            self.panel?.orderOut(nil)
+            guard !Task.isCancelled, let panel = self?.panel else { return }
+            if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                panel.orderOut(nil)
+                return
+            }
+            // Same 0.25 s fade as the message HUD.
+            await NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.25
+                panel.animator().alphaValue = 0
+            }
+            guard !Task.isCancelled else { return }
+            panel.orderOut(nil)
         }
     }
 

@@ -127,6 +127,7 @@ private struct HotkeyRow: View {
                     Button(action: remove) { Image(systemName: "minus.circle") }
                         .buttonStyle(.borderless)
                         .accessibilityLabel("Remove \(summary)")
+                        .help("Remove this shortcut")
                 }
                 if let conflict {
                     Caption(conflict).accessibilityLabel("Warning: \(conflict)")

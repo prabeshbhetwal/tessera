@@ -30,7 +30,7 @@ class TesseraScriptCommand: NSScriptCommand {
                 scriptCommand.resumeExecution(withResult: scriptCommand.scriptValue(for: result))
             } else {
                 scriptCommand.scriptErrorNumber = -10000 // errAEEventFailed
-                scriptCommand.scriptErrorString = result.message ?? "Tessera couldn't do that."
+                scriptCommand.scriptErrorString = result.message ?? "Tessera couldn’t do that."
                 scriptCommand.resumeExecution(withResult: nil)
             }
         }

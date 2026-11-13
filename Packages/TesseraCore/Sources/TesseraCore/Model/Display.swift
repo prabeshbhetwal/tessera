@@ -85,7 +85,12 @@ public struct DisplayContext: Equatable, Sendable {
 extension Collection where Element == DisplayContext {
     /// The display whose whole screen contains `point`. The menu bar and Dock strips count, so the cursor
     /// never falls into a dead zone; points outside every screen return nil.
+    ///
+    /// `CGRect.contains` leaves out the max edges, but a cursor on the top pixel row maps to y == maxY (CGEvent
+    /// y 0 is AppKit y = height). So a point no display strictly contains falls back to closed edges. Strict
+    /// wins first, which keeps a point on a shared edge with the display that starts there.
     public func display(at point: CGPoint) -> DisplayContext? {
         first { $0.frame.contains(point) }
+            ?? first { ($0.frame.minX...$0.frame.maxX).contains(point.x) && ($0.frame.minY...$0.frame.maxY).contains(point.y) }
     }
 }

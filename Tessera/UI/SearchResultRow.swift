@@ -27,8 +27,8 @@ struct ResultRow: View {
             .accessibilityAction(.default, onOpen)
             Spacer(minLength: 8)
             if let isOn {
-                // The row's text already names the setting; the switch only adds its state.
-                Toggle("Quick switch", isOn: isOn)
+                // Named for the setting, so VoiceOver tells the rows' switches apart.
+                Toggle(entry.title, isOn: isOn)
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.mini)

@@ -22,7 +22,7 @@ enum SearchQuickToggles {
         let all: [String: Switch] = [
             "general/Apple Intelligence search": Switch(path: \.searchUsesAppleIntelligence),
             "general/Show the menu bar icon": Switch(path: \.showMenuBarIcon),
-            "general/Show each item's shortcut": Switch(path: \.menuBarItems.shortcutKeys, enabled: menuBar),
+            "general/Show each item’s shortcut": Switch(path: \.menuBarItems.shortcutKeys, enabled: menuBar),
             "general/Status line (how to snap)": Switch(path: \.menuBarItems.statusLine, enabled: menuBar),
             "general/What Just Happened?": Switch(path: \.menuBarItems.explain, enabled: menuBar),
             "general/Snap Front Window submenu": Switch(path: \.menuBarItems.snapSubmenu, enabled: menuBar),
@@ -52,7 +52,7 @@ enum SearchQuickToggles {
             }),
             "overlay/Frosted background": Switch(path: \.ring.frosted, enabled: ringShown),
             "overlay/Grid lines while picking a column": Switch(path: \.ring.showGrid),
-            "overlay/Number the grid's columns": Switch(path: \.ring.showColumnNumbers, enabled: { $0.ring.showGrid }),
+            "overlay/Number the grid’s columns": Switch(path: \.ring.showColumnNumbers, enabled: { $0.ring.showGrid }),
             "overlay/Pointing hint": Switch(path: \.ring.showPointingHint, enabled: pointing),
             "motion/Animate the preview between selections": Switch(path: \.preview.morph),
             "updates/Check for updates automatically": Switch(path: \.updates.checkAutomatically),
