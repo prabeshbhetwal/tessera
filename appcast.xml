@@ -3,6 +3,22 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.26</title>
+            <pubDate>Fri, 13 Nov 2026 13:12:37 +0000</pubDate>
+            <sparkle:version>20261113.131053</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.26</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- Settings has a live stage beside the panes. It acts out what you point at, and you can drag the ring to resize it, drag column edges and split seams, and pick preview fills from pictures. On narrow screens the stage folds behind a Preview button.
+- Splits now recover across displays, Spaces and new windows. A fixed-size window no longer leaves a hole, and a window that landed off its slot is never resized while others settle.
+- Undo now undoes the latest command you started, including a move still under way, and ends any split recovery in progress.
+- Window moves report honestly when they fail, and placements are checked after each move.
+- Shortcut recorders no longer clash, and there is a display picker.
+- Reliability: settings load tolerates damaged files, settings save on quit, and the keyboard tap and window watchers recover on their own.
+- VoiceOver, confirmations and wording polished throughout.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.26/Tessera-0.2.0-beta.26.zip" length="6400227" type="application/octet-stream" sparkle:edSignature="GKwDIYPm4ME7573Dj3EyDQSdOcIA5yBwtQc/ZPPtE7epaah1/iZICegHYkhEXGVSgToCA0XOkKXt5whG+2NvCg==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.25</title>
             <pubDate>Thu, 12 Nov 2026 05:41:58 +0000</pubDate>
             <sparkle:version>20261112.053640</sparkle:version>
