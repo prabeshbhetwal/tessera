@@ -53,14 +53,28 @@ enum SettingsSnapshots {
                 window.orderOut(nil)
             }
         }
+        // A screen too narrow for the stage: the Ring pane at 960 pt wide, where the stage folds away.
+        let narrow = SettingsNavigation()
+        narrow.pane = .ring
+        render(SettingsView(model: model, navigation: narrow, displays: displays), size: CGSize(width: 960, height: SettingsView.height),
+               to: folder.appendingPathComponent("narrow-ring.png"))
+        // Appearance scrolled to the preview fill pictures, as a search result would reveal them.
+        if let entry = SettingsCatalog.entries.first(where: { $0.anchor == "Fill the preview with" }) {
+            let revealed = SettingsNavigation()
+            revealed.reveal(entry)
+            render(SettingsView(model: model, navigation: revealed, displays: displays),
+                   size: CGSize(width: SettingsView.width, height: SettingsView.height),
+                   to: folder.appendingPathComponent("overlay-fill.png"))
+        }
         // The stage alone in states only pointing at a control reaches.
         let cued: [(String, DemoCue, SettingsPane)] = [("ring-size", .ringSize("Radius"), .ring),
                                                      ("ring-threshold", .flickDistance, .ring),
-                                                     ("splits-close", .fillGap, .splits)]
+                                                     ("splits-close", .fillGap, .splits),
+                                                     ("splits-seam", .reflow, .splits)]
         for (name, cue, pane) in cued {
             let cues = DemoCueState()
             cues.cue = cue
-            cues.ringEdit = { _ in }
+            cues.apply = { _ in }
             render(SettingsDemo(pane: pane, settings: model.settings).environment(cues),
                    size: CGSize(width: StageColumn<EmptyView>.width, height: SettingsView.height),
                    to: folder.appendingPathComponent("stage-\(name).png"))
