@@ -26,8 +26,34 @@ actor WindowService {
     static let timeout: Float = 0.3
     static let enhancedUI = "AXEnhancedUserInterface"
     static let frameInterval: Duration = .milliseconds(16)
+    static let changedMessage = "Display or Space changed; try again"
+
+    /// Display topology and Space versions, shared with the producers that queue moves (see `WindowMutationScope`).
+    nonisolated let mutationContext: WindowMutationContext
+    /// The AX boundary. The defaults talk to the real windows; the native checks in `scripts/` inject fixtures.
+    let readFrame: @Sendable (WindowRef) -> CGRect?
+    let writeOverride: (@Sendable (CGRect, WindowRef, Bool) -> Bool)?
+    let visibleOverride: (@Sendable (CGRect, CGFloat, Set<String>, [WindowRef]) -> [(window: WindowRef, frame: CGRect)])?
+    let removalOverride: (@Sendable (WindowRef) -> Bool?)?
+    private let fullscreen: @Sendable (WindowRef) -> Bool
+
+    init(readFrame: @escaping @Sendable (WindowRef) -> CGRect? = { AX.frame($0.element) },
+         writeFrame: (@Sendable (CGRect, WindowRef, Bool) -> Bool)? = nil,
+         visibleWindows: (@Sendable (CGRect, CGFloat, Set<String>, [WindowRef]) -> [(window: WindowRef, frame: CGRect)])? = nil,
+         removalKind: (@Sendable (WindowRef) -> Bool?)? = nil,
+         mutationContext: WindowMutationContext = WindowMutationContext(),
+         fullscreen: @escaping @Sendable (WindowRef) -> Bool = { AX.bool($0.element, "AXFullScreen") == true }) {
+        self.readFrame = readFrame
+        writeOverride = writeFrame
+        visibleOverride = visibleWindows
+        removalOverride = removalKind
+        self.mutationContext = mutationContext
+        self.fullscreen = fullscreen
+    }
 
     var undo = WindowUndoHistory()
+    /// Verified landings, so a close that arrives before a watch refreshes its baseline still knows where a window was.
+    var placements: [UndoKey: (placement: WindowPlacementSnapshot, at: ContinuousClock.Instant)] = [:]
     /// The generation of each window's latest move, so a glide still running gives way to the newer
     /// move. Generations come from one monotonic counter, so a value never repeats after a reset.
     var generations: [UndoKey: Int] = [:]
@@ -36,7 +62,8 @@ actor WindowService {
     /// the real starting frame, not from mid-air.
     var glideStart: [UndoKey: CGRect] = [:]
     /// Moves not yet recorded for undo (gliding, or waiting to re-check a write), so ⌃⌥Z can stop and reverse them.
-    var inFlight: [UndoKey: (window: WindowRef, before: CGRect, batch: Int?, generation: Int, order: Int)] = [:]
+    var inFlight: [UndoKey: (window: WindowRef, before: CGRect, placement: WindowPlacementSnapshot, batch: Int?,
+                             generation: Int, order: Int)] = [:]
     /// Batches handed out and not yet merged, with the order they started in (see `WindowUndoHistory.Step.order`),
     /// and those of them Undo cancelled midway.
     var batchOrders: [Int: Int] = [:]
@@ -63,35 +90,47 @@ actor WindowService {
     /// Current frame in AppKit coordinates.
     func frame(of window: WindowRef) -> CGRect? {
         AXUIElementSetMessagingTimeout(window.element, Self.timeout)
-        // The main display is NSScreen.screens[0]; CG keeps this readable off the main actor.
-        let primaryHeight = CGDisplayBounds(CGMainDisplayID()).height
-        return AX.frame(window.element).map { CoordinateSpace.fromAX($0, primaryHeight: primaryHeight) }
+        // CG keeps the primary height readable off the main actor.
+        let primaryHeight = (WindowMutationScope.ticket ?? mutationContext.capture()).topology.primaryHeight
+        return readFrame(window).map { CoordinateSpace.fromAX($0, primaryHeight: primaryHeight) }
     }
 
     /// `duration` > 0 glides the window there first (time-based, so a slow app just gets fewer frames). The undo step
-    /// is tagged `batch` (see `newBatch`).
+    /// is tagged `batch` (see `newBatch`). A display or Space change on the displays involved stops the move at the
+    /// next write: the producer's ticket (`WindowMutationScope`) no longer matches.
     func apply(_ target: CGRect, to window: WindowRef, primaryHeight: CGFloat, crossingDisplays: Bool,
                duration: Double = 0, batch: Int? = nil) async -> ApplyResult {
         // Undo already took this batch back; its remaining moves must not land after it.
         if let batch, cancelledBatches.contains(batch) { return .superseded }
+        guard !Task.isCancelled else { return .superseded }
+        let ticket = WindowMutationScope.ticket ?? mutationContext.capture()
+        guard mutationContext.isCurrent(ticket, on: [], refreshSpaces: true) else { return .failed(Self.changedMessage) }
         let element = window.element
         AXUIElementSetMessagingTimeout(element, Self.timeout)
-        guard let now = AX.frame(element) else { return .failed(Self.unreadableMessage) }
+        guard let now = readFrame(window) else { return .failed(Self.unreadableMessage) }
+        // A full-screen window accepts a write and stays put: refuse before writing, with nothing to undo.
+        guard !fullscreen(window) else { return .failed(Self.fullScreenMessage) }
 
         let goal = CoordinateSpace.toAX(target, primaryHeight: primaryHeight)
+        guard let destination = ticket.topology.key(containing: goal) else { return .failed(Self.changedMessage) }
+        let displayKeys = Set([destination] + [ticket.topology.key(containing: now)].compactMap { $0 })
+        let valid = { [mutationContext] in !Task.isCancelled && mutationContext.isCurrent(ticket, on: displayKeys) }
+        guard valid() else { return .failed(Self.changedMessage) }
+
         let key = Self.key(for: window)
         let before = glideStart[key] ?? now
+        let placement = ticket.topology.placement(before)
         nextGeneration += 1
         let generation = nextGeneration
         generations[key] = generation
         // A Tile's moves all take the order of the Tile, so a move started after it undoes first.
         let order = batch.flatMap { batchOrders[$0] } ?? generation
-        inFlight[key] = (window, before, batch, generation, order)
+        inFlight[key] = (window, before, placement, batch, generation, order)
         glideStart[key] = before
-        // A move this one took over had already moved the window: on failure, keep that earlier move undoable.
+        // On failure, a window this move (or one it took over) already moved stays undoable.
         func failed(_ reason: String) -> ApplyResult {
-            if !Self.matches(before, now) {
-                undo.push(before, for: window, key: key, batch: batch, order: order, placement: Self.placement(before))
+            if let actual = readFrame(window), !Self.matches(actual, before) {
+                undo.push(before, for: window, key: key, batch: batch, order: order, placement: placement)
             }
             return .failed(reason)
         }
@@ -101,39 +140,45 @@ actor WindowService {
         }
         if duration > 0, now != goal {
             // False when a newer move or Undo took over mid-flight; that one does the final write and records undo.
-            guard await glide(window, from: now, to: goal, duration: duration, key: key, generation: generation) else {
-                return .superseded
+            guard await glide(window, from: now, to: goal, duration: duration, key: key, generation: generation,
+                              valid: valid) else {
+                return generations[key] == generation ? failed(Self.changedMessage) : .superseded
             }
         }
 
         // Some apps apply a frame a beat late: read it back, and write again (twice at most) until it holds.
         var readBack: CGRect?
         for attempt in 0..<3 {
-            if let error = setFrame(goal, on: window, crossingDisplays: crossingDisplays) {
+            if let error = setFrame(goal, on: window, crossingDisplays: crossingDisplays, valid: valid) {
+                guard valid() else { return failed(Self.changedMessage) }
                 return failed(Self.unmovableReason(of: element) ?? Self.reason(for: error))
             }
-            readBack = AX.frame(element)
+            readBack = readFrame(window)
             guard let landed = readBack, !Self.matches(landed, goal), attempt < 2 else { break }
-            // A full-screen window accepts the write and stays put: nothing moved, nothing to undo.
-            if attempt == 0, let reason = Self.unmovableReason(of: element) { return failed(reason) }
+            if attempt == 0, writeOverride == nil, let reason = Self.unmovableReason(of: element) { return failed(reason) }
             try? await Task.sleep(for: .milliseconds(40))
             guard generations[key] == generation else { return .superseded }
+            guard valid() else { return failed(Self.changedMessage) }
         }
         guard var actual = readBack else { return failed(Self.unreadableMessage) }
 
         // A size-constrained window is re-anchored to the targeted edges, bottom and right included.
-        let anchored = WindowRecovery.anchoredOrigin(goal: goal, size: actual.size, display: Self.displayBounds(for: goal))
-        if abs(actual.width - goal.width) > 1 || abs(actual.height - goal.height) > 1,
-           anchored != actual.origin, AX.setPosition(element, anchored) == .success {
-            actual.origin = anchored
+        let bounds = ticket.topology.displays.first { $0.key == destination }?.bounds ?? Self.displayBounds(for: goal)
+        let anchored = WindowRecovery.anchoredOrigin(goal: goal, size: actual.size, display: bounds)
+        if abs(actual.width - goal.width) > 1 || abs(actual.height - goal.height) > 1, anchored != actual.origin,
+           setFrame(CGRect(origin: anchored, size: actual.size), on: window, crossingDisplays: false, valid: valid,
+                    positionOnly: true) == nil {
+            actual = readFrame(window) ?? CGRect(origin: anchored, size: actual.size)
         }
         // The app acknowledged the writes but the window never moved: nothing to undo.
         if Self.matches(actual, now), !Self.matches(now, goal),
            max(abs(actual.minX - anchored.x), abs(actual.minY - anchored.y)) > 2 {
             return failed(Self.refusedMessage)
         }
+        guard valid() else { return failed(Self.changedMessage) }
 
-        undo.push(before, for: window, key: key, batch: batch, order: order, placement: Self.placement(before))
+        rememberPlacement(actual, of: window)
+        undo.push(before, for: window, key: key, batch: batch, order: order, placement: placement)
         let landed = CoordinateSpace.fromAX(actual, primaryHeight: primaryHeight)
         return Self.isConstrained(landed: actual.size, goal: goal.size) ? .constrained(landed) : .applied(landed)
     }
@@ -181,60 +226,6 @@ actor WindowService {
             if let targetFrame, pid == window.pid, bounds == targetFrame { return nil }
             return CoordinateSpace.fromAX(bounds, primaryHeight: primaryHeight)
         }
-    }
-
-    /// Standard windows of regular apps whose centre is on `display` (AppKit frame), with their AppKit
-    /// frames, for tiling. Skips Tessera, apps in `excluding`, minimised and hidden windows (they are not on
-    /// screen), full-screen windows, panels and dialogs, and anything smaller than a tiny utility window. Front-most first.
-    func visibleWindows(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>) -> [(window: WindowRef, frame: CGRect)] {
-        visibleWindowsCounted(on: display, primaryHeight: primaryHeight, excluding: excluding).found
-    }
-
-    /// `visibleWindows`, plus how many apps with windows there were skipped because their Accessibility read failed
-    /// (timed out or refused), so Tile can say so instead of ignoring them.
-    func visibleWindowsCounted(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>)
-        -> (found: [(window: WindowRef, frame: CGRect)], skipped: Int) {
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return ([], 0) }
-        let ownPID = ProcessInfo.processInfo.processIdentifier
-        var framesByPID: [pid_t: [CGWindowID: CGRect]] = [:]
-        var depth: [CGWindowID: Int] = [:]  // the list runs front to back
-        for (z, info) in list.enumerated() {
-            guard (info[kCGWindowLayer as String] as? Int) == 0,
-                  let pid = info[kCGWindowOwnerPID as String] as? pid_t, pid != ownPID,
-                  let id = info[kCGWindowNumber as String] as? CGWindowID,
-                  let dict = info[kCGWindowBounds as String] as? NSDictionary,
-                  let bounds = CGRect(dictionaryRepresentation: dict as CFDictionary),
-                  bounds.width >= 120, bounds.height >= 80 else { continue }
-            let frame = CoordinateSpace.fromAX(bounds, primaryHeight: primaryHeight)
-            guard display.contains(CGPoint(x: frame.midX, y: frame.midY)) else { continue }
-            framesByPID[pid, default: [:]][id] = frame
-            depth[id] = z
-        }
-
-        var result: [(window: WindowRef, frame: CGRect)] = []
-        var skipped = 0
-        for (pid, frames) in framesByPID {
-            guard let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular,
-                  !excluding.contains(app.bundleIdentifier ?? "") else { continue }
-            let axApp = AXUIElementCreateApplication(pid)
-            AXUIElementSetMessagingTimeout(axApp, Self.timeout)
-            guard let windows = AX.value(axApp, kAXWindowsAttribute) as? [AXUIElement] else {
-                skipped += 1
-                Self.log.notice("skipped \(app.bundleIdentifier ?? "?", privacy: .public): its windows couldn't be read")
-                continue
-            }
-            for element in windows {
-                AXUIElementSetMessagingTimeout(element, Self.timeout)
-                // A full-screen window has a Space of its own: tiling or a split must not pull it out.
-                guard let id = SPI.windowID(of: element), let frame = frames[id],
-                      (AX.value(element, kAXSubroleAttribute) as? String) == kAXStandardWindowSubrole,
-                      AX.bool(element, "AXFullScreen") != true else { continue }
-                result.append((WindowRef(element: element, pid: pid, windowID: id, bundleID: app.bundleIdentifier), frame))
-            }
-        }
-        let sorted = result.sorted { depth[$0.window.windowID ?? 0, default: .max] < depth[$1.window.windowID ?? 0, default: .max] }
-        return (sorted, skipped)
     }
 
     // MARK: - Private

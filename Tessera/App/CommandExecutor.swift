@@ -16,7 +16,7 @@ final class CommandExecutor: CommandExecuting {
     }
 
     let model: SettingsModel
-    private let displays: DisplayService
+    let displays: DisplayService
     let windows: WindowService
     private let presenter: WindowPresenter
     private let store: SettingsStore
@@ -37,7 +37,13 @@ final class CommandExecutor: CommandExecuting {
         self.splitWatcher = SplitWatchers(windows: windows, displays: displays, model: model)
     }
 
+    /// Runs `command` under one mutation ticket, so a display or Space change stops every move it makes.
     func execute(_ command: Command, source: CommandSource) async -> CommandResult {
+        let ticket = WindowMutationScope.ticket ?? windows.mutationContext.capture()
+        return await WindowMutationScope.$ticket.withValue(ticket) { await executeScoped(command, source: source) }
+    }
+
+    private func executeScoped(_ command: Command, source: CommandSource) async -> CommandResult {
         do {
             return try await run(command, source: source)
         } catch {
@@ -46,19 +52,6 @@ final class CommandExecutor: CommandExecuting {
     }
 
     // MARK: - Shared with Coordinator
-
-    /// Moves `window` to `goal`, using the cross-display write order when the window changes display. `batch` tags the
-    /// undo step (`WindowService.newBatch`).
-    func place(_ window: WindowRef, current: CGRect?, goal: CGRect, batch: Int? = nil) async -> ApplyResult {
-        // Tessera's own moves must not teach a split: the watcher ignores them until they settle, and keeps watching.
-        splitWatcher.beginOwnMove()
-        defer { splitWatcher.endOwnMove() }
-        let list = displays.displays
-        let from = current.flatMap { list.display(at: CGPoint(x: $0.midX, y: $0.midY))?.id }
-        let to = list.first { $0.visibleFrame.intersects(goal) }?.id
-        return await windows.apply(goal, to: window, primaryHeight: DisplayService.primaryHeight,
-                                   crossingDisplays: from != to, duration: model.glideSeconds, batch: batch)
-    }
 
     /// Changes `display`'s column count, clamped to its range, and saves it as an override.
     /// Returns the new count, or nil when nothing changed.
@@ -216,6 +209,11 @@ final class CommandExecutor: CommandExecuting {
         guard let display = DisplayResolver.resolve(selector, displays: displays.displays,
                                                     windowFrame: windowFrame, cursor: NSEvent.mouseLocation) else {
             throw Failure(message: "No such display")
+        }
+        let ticket = WindowMutationScope.ticket ?? windows.mutationContext.capture()
+        guard ticket.topology.contains(display),
+              windows.mutationContext.isCurrent(ticket, on: [display.id.storageKey], refreshSpaces: true) else {
+            throw Failure(message: "Displays are changing; try again")
         }
         return display
     }

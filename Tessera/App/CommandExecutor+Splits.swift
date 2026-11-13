@@ -21,8 +21,12 @@ extension CommandExecutor {
         let front = await windows.frontmostWindow()
         let frontFrame: CGRect? = if let front { await windows.frame(of: front) } else { nil }
         let display = try resolve(selector == .current && frontFrame == nil ? .cursor : selector, windowFrame: frontFrame)
+        let ticket = WindowMutationScope.ticket ?? windows.mutationContext.capture()
         let (found, skipped) = await windows.visibleWindowsCounted(
             on: display.frame, primaryHeight: DisplayService.primaryHeight, excluding: Set(model.settings.excludedBundleIDs))
+        // The windows were read on the Space and display layout the command started on, or not at all.
+        guard windows.mutationContext.isCurrent(ticket, on: [display.id.storageKey], refreshSpaces: true),
+              displays.displays.contains(display) else { throw Failure(message: "Display or Space changed; try again") }
         return (display, found, skipped)
     }
 
@@ -75,10 +79,26 @@ extension CommandExecutor {
         let (display, found, skipped) = try await windowsOnDisplayCounted(selector)
         let skippedNote = skipped > 0 ? " (\(skipped) skipped)" : ""
         guard !found.isEmpty else { throw Failure(message: "No windows to tile on this display" + skippedNote) }
+        // Tile supersedes automatic split work on this display: queued fills and joins there are dropped.
+        let original = WindowMutationScope.ticket ?? windows.mutationContext.capture()
+        guard let ticket = windows.mutationContext.overridingLayouts(original, on: [display.id.storageKey]) else {
+            throw Failure(message: "Display or Space changed; try again")
+        }
+        splitWatcher.explicitLayout(on: [display.id.storageKey], ticket: ticket)
+        splitWatcher.relinquish([display.id.storageKey], windows: found.map(\.window))
+        do {
+            return try await WindowMutationScope.$ticket.withValue(ticket) {
+                try await tileOnDisplay(display, found: found, skippedNote: skippedNote, evenly: evenly, source: source)
+            }
+        } catch let error as Failure { throw error }
+        catch { throw Failure(message: "Tiling interrupted; try again") }
+    }
+
+    private func tileOnDisplay(_ display: DisplayContext, found: [(window: WindowRef, frame: CGRect)],
+                               skippedNote: String, evenly: Bool, source: CommandSource) async throws(Failure)
+        -> CommandResult {
         let portrait = display.range.isPortrait
         let ordered = onScreenOrder(found, portrait: portrait)
-        // An earlier Tile's watch would learn adjustments made after this one.
-        if evenly { splitWatcher.stop() }
         let (slots, learned) = evenly
             ? (GridGeometry.tiles(ordered.count, display: display), false)
             : splitFrames(for: ordered, display: display)
@@ -88,7 +108,9 @@ extension CommandExecutor {
         let batch = await windows.newBatch()
         let outcomes = await withTaskGroup(of: (Int, ApplyResult).self) { group in
             for (index, (entry, slot)) in zip(ordered, slots).enumerated() {
-                group.addTask { (index, await self.place(entry.window, current: entry.frame, goal: slot, batch: batch)) }
+                group.addTask {
+                    (index, await self.place(entry.window, current: entry.frame, goal: slot, batch: batch, manual: false))
+                }
             }
             var results = [ApplyResult](repeating: .superseded, count: ordered.count)
             for await (index, result) in group { results[index] = result }
@@ -133,7 +155,7 @@ extension CommandExecutor {
     }
 
     func undoLast() async throws(Failure) {
-        splitWatcher.stop()
+        splitWatcher.cancelPendingWork()
         // Bracketed so the restore is never read as a hand adjustment; its end re-arms the watchers.
         splitWatcher.beginOwnMove()
         // Apps excluded since the move are left alone: no command moves an excluded app's windows.
