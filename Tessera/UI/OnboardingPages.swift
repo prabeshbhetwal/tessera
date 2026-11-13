@@ -11,7 +11,7 @@ struct OnboardingTilingStep: View {
                 GestureHint("arrow.left.and.right", "Drag the edge between two windows: the one beside it follows, and Tessera saves the layout as your split for those apps.")
                 GestureHint("rectangle.3.group", "Tile All Windows again any time to put those apps back the way you left them.")
                 GestureHint("xmark.rectangle", "Close a window and the others fill its space: your split for the apps left, or the window beside it you used last.")
-                GestureHint("arrow.uturn.backward", "Not what you wanted? Undo (⌃⌥Z by default) puts the windows back. Settings › Splits turns any of this off.")
+                GestureHint("arrow.uturn.backward", "Not what you wanted? Undo Last Move (⌃⌥Z by default) puts the windows back. Settings › Splits turns any of this off.")
             }
             .frame(maxWidth: 480)
         }
@@ -60,7 +60,7 @@ struct GestureHint: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)

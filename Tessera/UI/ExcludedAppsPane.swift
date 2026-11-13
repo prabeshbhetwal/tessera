@@ -14,6 +14,11 @@ struct ExcludedAppsPane: View {
         return model.settings.excludedBundleIDs.filter { Self.name(for: $0).localizedCaseInsensitiveContains(text) }
     }
 
+    /// Running apps not already excluded.
+    private var addable: [(bundleID: String, name: String)] {
+        Self.runningApps().filter { !model.settings.excludedBundleIDs.contains($0.bundleID) }
+    }
+
     var body: some View {
         Form {
             Section {
@@ -28,7 +33,7 @@ struct ExcludedAppsPane: View {
                     }
                 }
                 if shown.isEmpty {
-                    Text(model.settings.excludedBundleIDs.isEmpty ? "No excluded apps" : "No apps match \u{201C}\(query)\u{201D}")
+                    Text(model.settings.excludedBundleIDs.isEmpty ? "No excluded apps. Add one below." : "No apps match \u{201C}\(query)\u{201D}")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -36,10 +41,7 @@ struct ExcludedAppsPane: View {
                 ForEach(shown, id: \.self) { bundleID in
                     HStack {
                         AppIcon(bundleID: bundleID)
-                        VStack(alignment: .leading) {
-                            Text(Self.name(for: bundleID))
-                            Caption(bundleID)
-                        }
+                        Text(Self.name(for: bundleID))
                         Spacer()
                         Button {
                             model.settings.excludedBundleIDs.removeAll { $0 == bundleID }
@@ -48,14 +50,18 @@ struct ExcludedAppsPane: View {
                         }
                         .buttonStyle(.borderless)
                         .accessibilityLabel("Remove \(Self.name(for: bundleID))")
+                        .help("Remove from excluded apps")
                     }
+                    // The bundle identifier is for the curious, not for every row.
+                    .help(bundleID)
                 }
                 HStack {
                     Menu("Add Running App") {
-                        ForEach(Self.runningApps(), id: \.bundleID) { app in
+                        ForEach(addable, id: \.bundleID) { app in
                             Button(app.name) { add(app.bundleID) }
                         }
                     }
+                    .disabled(addable.isEmpty)
                     .fixedSize()
                     Button("Choose App…") { choosing = true }
                         .fileImporter(isPresented: $choosing, allowedContentTypes: [.application]) { result in
@@ -82,7 +88,9 @@ struct ExcludedAppsPane: View {
 
     static func name(for bundleID: String) -> String {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return bundleID }
-        return FileManager.default.displayName(atPath: url.path)
+        // Finder's display name keeps ".app" when the user shows extensions; the app's name doesn't include it.
+        let name = FileManager.default.displayName(atPath: url.path)
+        return name.hasSuffix(".app") ? String(name.dropLast(4)) : name
     }
 
     static func runningApps() -> [(bundleID: String, name: String)] {

@@ -7,6 +7,7 @@ struct OverlayPane: View {
     @Bindable var model: SettingsModel
     @State private var newThemeName = ""
     @State private var screenCaptureAllowed = Permissions.isScreenCaptureAllowed
+    @State private var confirmingDelete = false
 
     /// Name of the theme that takes edits made to a built-in theme.
     private static let editedName = SettingsModel.editedThemeName
@@ -17,6 +18,7 @@ struct OverlayPane: View {
     private var nameTakenByBuiltIn: Bool { Theme.builtIn.contains { $0.name == trimmedName } }
     /// "Custom" is where colour edits to a built-in theme land, overwriting it each time.
     private var nameReserved: Bool { trimmedName == Self.editedName }
+    private var canSave: Bool { !(trimmedName.isEmpty || nameTakenByBuiltIn || nameReserved) }
 
     var body: some View {
         let s = model.settings.preview
@@ -51,8 +53,9 @@ struct OverlayPane: View {
                 .settingAnchor("Theme")
                 HStack {
                     TextField("Save the current look as", text: $newThemeName, prompt: Text("Theme name"))
-                    Button("Save") { saveTheme() }
-                        .disabled(trimmedName.isEmpty || nameTakenByBuiltIn || nameReserved)
+                        .onSubmit { if canSave { saveTheme() } }
+                    Button("Save Theme") { saveTheme() }
+                        .disabled(!canSave)
                 }
                 if nameTakenByBuiltIn {
                     Caption("\(trimmedName) is a built-in theme. Pick another name.")
@@ -64,11 +67,13 @@ struct OverlayPane: View {
                 if let customIndex {
                     HStack {
                         Spacer()
-                        Button("Delete \u{201C}\(model.settings.customThemes[customIndex].name)\u{201D}", role: .destructive) {
-                            model.settings.customThemes.remove(at: customIndex)
-                            model.settings.themeName = Theme.default.name
-                            applyPreview(of: .default)
-                        }
+                        let name = model.settings.customThemes[customIndex].name
+                        Button("Delete \u{201C}\(name)\u{201D}\u{2026}", role: .destructive) { confirmingDelete = true }
+                            .confirmationDialog("Delete the theme \u{201C}\(name)\u{201D}?", isPresented: $confirmingDelete,
+                                                titleVisibility: .visible) {
+                                Button("Delete Theme", role: .destructive) { deleteSelectedTheme() }
+                                Button("Cancel", role: .cancel) {}
+                            }
                     }
                 }
             } header: {
@@ -118,7 +123,8 @@ struct OverlayPane: View {
                     }
                 }
                 SliderRow(title: "Fill opacity", value: preview(\.opacity), range: 0...1, step: 0.05, format: SliderRow.percent)
-                SliderRow(title: "Border width", value: preview(\.borderWidth), range: 0...10, step: 0.5)
+                SliderRow(title: "Border width", value: preview(\.borderWidth), range: 0...10, step: 0.5,
+                          format: { String(format: "%g pt", $0) })
                 Toggle("Match the window's corner radius", isOn: preview(\.useWindowCornerRadius)).settingAnchor("Match the window's corner radius")
                 SliderRow(title: "Corner radius", value: preview(\.cornerRadius), range: 0...30)
                     .disabled(s.useWindowCornerRadius)
@@ -157,6 +163,10 @@ struct OverlayPane: View {
         }
         .formStyle(.grouped)
         .onAppear { screenCaptureAllowed = Permissions.isScreenCaptureAllowed }
+        // The permission is granted in System Settings, so re-read it when the person comes back to Tessera.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            screenCaptureAllowed = Permissions.isScreenCaptureAllowed
+        }
     }
 
     private static func caption(for style: PreviewStyle) -> String {
@@ -192,6 +202,13 @@ struct OverlayPane: View {
     }
 
     private func colorBinding(_ field: WritableKeyPath<Theme, String>) -> Binding<Color> { model.themeColor(field) }
+
+    private func deleteSelectedTheme() {
+        guard let customIndex else { return }
+        model.settings.customThemes.remove(at: customIndex)
+        model.settings.themeName = Theme.default.name
+        applyPreview(of: .default)
+    }
 
     private func saveTheme() {
         let base = theme

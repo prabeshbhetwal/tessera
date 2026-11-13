@@ -18,19 +18,27 @@ enum SplitLabel {
         return names.map { $0.count > 1 ? "\($0.name) ×\($0.count)" : $0.name }.joined(separator: ", ")
     }
 
-    /// The name of the key's display, or "Disconnected display" when it is not among `displays` or has no screen.
+    /// The name of the key's display, or "Not connected" when it is not among `displays` or has no screen.
     static func display(_ key: SplitKey, displays: [DisplayContext]) -> String {
         guard let display = displays.first(where: { $0.id.storageKey == key.display }),
               let screen = NSScreen.screens.first(where: { $0.frame == display.frame }) else {
-            return "Disconnected display"
+            return "Not connected"
         }
         return screen.localizedName
     }
 
+    /// Repeated names get a count so they can be told apart: "Studio Display", "Studio Display 2".
+    static func numbered(_ names: [String]) -> [String] {
+        var seen: [String: Int] = [:]
+        return names.map { name in
+            let count = (seen[name] ?? 0) + 1
+            seen[name] = count
+            return count > 1 ? "\(name) \(count)" : name
+        }
+    }
+
     private static func appName(_ bundleID: String) -> String {
         guard bundleID != SplitKey.unknownApp else { return "Unknown app" }
-        let name = ExcludedAppsPane.name(for: bundleID)
-        // `name` equals the bundle ID when no application was found; that fallback is never trimmed.
-        return name != bundleID && name.hasSuffix(".app") ? String(name.dropLast(4)) : name
+        return ExcludedAppsPane.name(for: bundleID)
     }
 }

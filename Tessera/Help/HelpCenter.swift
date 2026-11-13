@@ -100,7 +100,7 @@ final class HelpCenter {
     /// `event` from its first step, on request: the card takes the keyboard and ‹ › browse the journal.
     private func open(_ event: HelpEvent) {
         guard display(for: event) != nil else {
-            showHUD("That display isn't connected now")
+            showHUD("That display isn\u{2019}t connected.")
             return
         }
         show(Tour(event: event, steps: steps(for: event), presentation: dimmed(.full), keyable: true))

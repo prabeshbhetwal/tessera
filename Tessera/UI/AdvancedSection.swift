@@ -9,6 +9,9 @@ struct AdvancedSection: View {
     @Bindable var model: SettingsModel
     @State private var exporting = false
     @State private var importing = false
+    /// A decoded file waiting for the person to confirm it replaces every setting.
+    @State private var pendingImport: TesseraSettings?
+    @State private var confirmingImport = false
     @State private var ioMessage: Outcome?
     @State private var cliInstalled = CLIInstaller.isInstalled
     @State private var cliMessage: CLIOutcome?
@@ -19,17 +22,28 @@ struct AdvancedSection: View {
         Section {
             DisclosureGroup {
                 HStack {
-                    Button("Export settings…") { exporting = true }
+                    Button("Export Settings…") { exporting = true }
                         .fileExporter(
                             isPresented: $exporting,
                             document: SettingsDocument(settings: model.settings),
                             contentType: .json,
                             defaultFilename: "Tessera Settings"
                         ) { result in exported(result) }
-                    Button("Import settings…") { importing = true }
+                    Button("Import Settings…") { importing = true }
                         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                             importSettings(result)
                         }
+                }
+                .confirmationDialog("Replace all settings with this file?", isPresented: $confirmingImport,
+                                    titleVisibility: .visible, presenting: pendingImport) { settings in
+                    Button("Replace Settings", role: .destructive) {
+                        model.settings = settings
+                        pendingImport = nil
+                        ioMessage = .success("Settings imported.")
+                    }
+                    Button("Cancel", role: .cancel) { pendingImport = nil }
+                } message: { _ in
+                    Text("This replaces every setting, including shortcuts and cycles. Export first to keep a copy.")
                 }
                 if let ioMessage { ioCallout(ioMessage) }
 
@@ -39,16 +53,16 @@ struct AdvancedSection: View {
                 }
                 switch cliMessage {
                 case .installed(let folder):
-                    Callout(.success, "Installed. If your shell can't find tessera, add \(folder) to your PATH:") {
-                        Button("Copy") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString("export PATH=\"\(folder):$PATH\"", forType: .string)
-                        }
-                        .controlSize(.small)
+                    let exportLine = "export PATH=\"\(folder):$PATH\""
+                    Callout(.success, "Installed. If your shell can't find tessera, add \(folder) to your PATH:")
+                    // The copy action sits on the line it copies.
+                    HStack(spacing: 6) {
+                        Text(exportLine)
+                            .font(.callout.monospaced())
+                            .textSelection(.enabled)
+                        CopyButton(text: exportLine, label: "Copy command")
+                        Spacer(minLength: 0)
                     }
-                    Text("export PATH=\"\(folder):$PATH\"")
-                        .font(.callout.monospaced())
-                        .textSelection(.enabled)
                 case .failed(let reason):
                     Callout(.warning, reason) {
                         Button("Try Again", action: installCLI).controlSize(.small)
@@ -90,8 +104,10 @@ struct AdvancedSection: View {
 
     private func importSettings(_ result: Result<URL, any Error>) {
         do {
-            model.settings = try SettingsDocument.importSettings(from: result.get())
-            ioMessage = .success("Settings imported.")
+            // Decoded and validated now, applied only once confirmed: an invalid file never reaches the dialog.
+            pendingImport = try SettingsDocument.importSettings(from: result.get())
+            ioMessage = nil
+            confirmingImport = true
         } catch SettingsError.invalid(let problem) {
             ioMessage = .failure("Import rejected: \(problem)", retry: .importing)
         } catch {

@@ -71,11 +71,14 @@ struct CyclesEditor: View {
             Button { move(cycle: c, step: s, by: -1) } label: { Image(systemName: "chevron.up") }
                 .disabled(s == 0)
                 .accessibilityLabel("Move step \(s + 1) up")
+                .help("Move step up")
             Button { move(cycle: c, step: s, by: 1) } label: { Image(systemName: "chevron.down") }
                 .disabled(s == count - 1)
                 .accessibilityLabel("Move step \(s + 1) down")
+                .help("Move step down")
             Button { cycles[c].steps.remove(at: s) } label: { Image(systemName: "minus.circle") }
                 .accessibilityLabel("Remove step \(s + 1)")
+                .help("Remove step")
         }
         .buttonStyle(.borderless)
         .onKeyPress(keys: [.upArrow, .downArrow]) { press in
@@ -182,6 +185,7 @@ struct ColumnStepper: View {
             .accessibilityLabel("\(title) column")
             .accessibilityValue(value < 0 ? "\(value.magnitude) from the right" : "\(value)")
         }
+        .help("Negative numbers count from the right")
         .fixedSize()
     }
 }

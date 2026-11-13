@@ -33,22 +33,27 @@ struct RingPane: View {
             }
 
             Section {
-                Toggle("Directions: flick towards a layout", isOn: ring.directions).settingAnchor("Directions: flick towards a layout")
-                Toggle("Pointing: a longer move picks a column of the grid", isOn: ring.pointing).settingAnchor("Pointing: a longer move picks a column of the grid")
+                Toggle("Flick towards a layout", isOn: ring.directions).settingAnchor("Directions: flick towards a layout")
+                Toggle("Point for a column of the grid", isOn: ring.pointing).settingAnchor("Pointing: a longer move picks a column of the grid")
                 Toggle("Click while pointing to span several columns", isOn: ring.clickToSpan).settingAnchor("Click while pointing to span several columns")
                     .disabled(!r.pointing)
                 Toggle("Scroll while holding to change the column count", isOn: ring.scrollChangesColumns).settingAnchor("Scroll while holding to change the column count")
                 Toggle("Press and release without moving to tile all windows", isOn: ring.tapTilesWindows).settingAnchor("Press and release without moving to tile all windows")
             } header: {
                 InfoHeader("Gestures", info: "A short move towards an icon picks that layout. Keep going further out to point at a column. "
-                    + "To cancel, let go in the middle of the ring, press Esc or right-click.")
+                    + "To cancel, let go in the middle of the ring or right-click.")
             } footer: {
-                if r.tapTilesWindows && (r.directions || r.pointing) {
-                    Footer("Pressing and letting go without moving tiles every window on that display.")
-                } else if !r.directions && !r.pointing {
-                    Footer(model.settings.ringKeyNavigation
-                        ? "Mouse gestures are off. While holding the trigger, use the arrow keys and Return."
-                        : "Gestures and ring keys are both off, so holding the trigger does nothing.")
+                VStack(alignment: .leading, spacing: 4) {
+                    if r.tapTilesWindows && (r.directions || r.pointing) {
+                        Footer("Pressing and letting go without moving tiles every window on that display.")
+                    } else if !r.directions && !r.pointing {
+                        Footer(model.settings.ringKeyNavigation
+                            ? "Mouse gestures are off. While holding the trigger, use the arrow keys and Return."
+                            : "Gestures and ring keys are both off, so holding the trigger does nothing.")
+                    }
+                    if !r.pointing {
+                        Footer("Turn on pointing to span columns with a click.")
+                    }
                 }
             }
 

@@ -22,6 +22,7 @@ struct SearchField: NSViewRepresentable {
         field.target = context.coordinator
         field.action = #selector(Coordinator.changed(_:))
         field.setAccessibilityLabel("Search Tessera settings")
+        field.setAccessibilityHelp("Up and Down choose a result, Return opens it, Option-Return flips its switch.")
         field.toolTip = "Search Tessera settings (⌘F)"
         return field
     }

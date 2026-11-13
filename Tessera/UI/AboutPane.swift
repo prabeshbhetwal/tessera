@@ -1,10 +1,6 @@
 import SwiftUI
 
 struct AboutPane: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var copied = false
-    @State private var resetCopied: Task<Void, Never>?
-
     private static let repo = "https://github.com/prabeshbhetwal/tessera"
 
     private var info: [String: Any] { Bundle.main.infoDictionary ?? [:] }
@@ -31,14 +27,7 @@ struct AboutPane: View {
                                 .monospacedDigit()
                                 .textSelection(.enabled)
                             // The copy action sits on the thing it copies.
-                            Button(action: copyVersion) {
-                                Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                                    .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
-                            }
-                            .buttonStyle(.borderless)
-                            .foregroundStyle(.secondary)
-                            .help(copied ? "Copied" : "Copy version")
-                            .accessibilityLabel(copied ? "Copied" : "Copy version")
+                            CopyButton(text: "Tessera \(version)", label: "Copy version")
                         }
                     }
                 }
@@ -51,6 +40,7 @@ struct AboutPane: View {
                 Link("Third-party notices", destination: Self.link("/blob/main/THIRD-PARTY-NOTICES.md"))
                 Link("Security", destination: Self.link("/blob/main/SECURITY.md"))
                 Link("Privacy", destination: Self.link("#privacy"))
+                Link("Report an Issue", destination: Self.link("/issues"))
             } header: {
                 Text("Links")
             } footer: {
@@ -64,19 +54,6 @@ struct AboutPane: View {
     }
 
     private static func link(_ path: String) -> URL { URL(string: repo + path)! }
-
-    /// Shows a tick for about two seconds, then goes back to the copy icon.
-    private func copyVersion() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString("Tessera \(version)", forType: .string)
-        copied = true
-        resetCopied?.cancel()
-        resetCopied = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled else { return }
-            copied = false
-        }
-    }
 }
 
 #Preview {

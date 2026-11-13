@@ -69,6 +69,10 @@ struct SplitsPane: View {
                 .settingAnchor("Empty space when order changes")
             } header: {
                 InfoHeader("Learning", info: "Tessera remembers how you arrange the same apps on each display and reuses it when windows open, close or get tiled. A minimised window counts as closed; restoring it fits it back in unless its space is left empty. Most options here need Learn from my adjustments.")
+            } footer: {
+                if model.settings.learnSplits && !model.settings.splitFillsClosedGap {
+                    Footer("The minimise and close choices need \u{201C}Fill the space when a window closes\u{201D}.")
+                }
             }
 
             // One short row per display, so the pane stays short with any number of displays; each display's
@@ -137,14 +141,14 @@ struct SplitsPane: View {
         let connected = displays.map(\.id.storageKey).filter { seen.insert($0).inserted }
         let order = connected.filter { byDisplay[$0] != nil }
             + byDisplay.keys.filter { !connected.contains($0) }.sorted()
-        var disconnected = 0
-        return order.compactMap { id in
-            guard let splits = byDisplay[id]?.sorted(by: { $0.updated > $1.updated }), let first = splits.first else { return nil }
-            let isConnected = connected.contains(id)
-            var title = SplitLabel.display(first.key, displays: displays)
-            // Several disconnected displays would all be "Disconnected display"; number them apart.
-            if !isConnected { disconnected += 1; if disconnected > 1 { title += " \(disconnected)" } }
-            return DisplayGroup(id: id, title: title, connected: isConnected, splits: splits)
+        let rows: [(id: String, splits: [LearnedSplit])] = order.compactMap { id in
+            guard let splits = byDisplay[id]?.sorted(by: { $0.updated > $1.updated }), !splits.isEmpty else { return nil }
+            return (id, splits)
+        }
+        // Several disconnected displays would all be "Not connected", and two monitors can share a name; number them apart.
+        let titles = SplitLabel.numbered(rows.map { SplitLabel.display($0.splits[0].key, displays: displays) })
+        return zip(rows, titles).map { row, title in
+            DisplayGroup(id: row.id, title: title, connected: connected.contains(row.id), splits: row.splits)
         }
     }
 }
@@ -165,12 +169,7 @@ private struct DisplaySplitsRow: View {
             }
         } label: {
             Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(group.title)
-                    if !group.connected {
-                        Text("Not connected").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
+                Text(group.title)
             } icon: {
                 Image(systemName: "display")
                     .foregroundStyle(group.connected ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))

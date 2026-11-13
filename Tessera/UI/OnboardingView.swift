@@ -137,7 +137,7 @@ struct OnboardingView: View {
             }
             if showFix && !axTrusted {
                 VStack(spacing: 8) {
-                    Caption("Still not granted? An older Tessera build may hold a stale entry. Reset it, then grant again.")
+                    Caption("Still not granted? An older build may hold a stale entry. Reset it, then grant again.")
                         .multilineTextAlignment(.center)
                     Button("Fix permission", action: resetPermission)
                         .controlSize(.regular)
@@ -162,7 +162,7 @@ struct OnboardingView: View {
                 Permissions.requestScreenCapture()
                 screenAllowed = Permissions.isScreenCaptureAllowed
             }
-            Caption("Allowing it doesn't change the preview by itself: pick Window snapshot in Settings › Appearance › Preview. After you allow it, macOS asks to quit and reopen Tessera; setup continues here.")
+            Caption("Lets the preview show real windows. macOS then asks you to reopen Tessera.")
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
         }
@@ -242,8 +242,8 @@ private struct PermissionRow: View {
             Button(actionTitle, action: action)
                 .disabled(granted)
         }
-        .padding(14)
-        .frame(width: 440)
+        .padding(16)
+        .frame(maxWidth: 440)
         .background(.quinary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
@@ -254,7 +254,7 @@ private struct StepIndicator: View {
     let current: Int
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             ForEach(0..<count, id: \.self) { i in
                 Capsule()
                     .fill(i == current ? Color.accentColor : i < current ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.25))
