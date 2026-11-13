@@ -7,6 +7,12 @@ struct DemoWindow: Identifiable, Equatable {
     var frame: CGRect
     /// The window the demo acts on.
     var live = false
+    /// Its close button is being pressed: drawn red with a cross, as when the pointer is on it.
+    var closing = false
+
+    /// Where the close button sits, in display points, for a pointer to click it. The title bar is drawn at a
+    /// fixed size on the stage, so this is the stage's 9 × 7 pt offset at its display scale (about 0.28).
+    var closeButton: CGPoint { CGPoint(x: frame.minX + 32, y: frame.maxY - 24) }
 }
 
 /// The stage's screen: a menu bar over the wallpaper, glass windows, and the overlay drawn the way the active theme
@@ -33,7 +39,10 @@ struct MockDesktop: View {
                     if frame.grid { grid(map) }
                     if let ghost { placed(ghostOutline, in: map(ghost)) }
                     ForEach(frame.windows) { window in
-                        placed(StageWindow(theme: theme, dimmed: dims(window), outlined: outlines(window)), in: map(window.frame))
+                        placed(StageWindow(theme: theme, dimmed: dims(window), outlined: outlines(window),
+                                           closing: window.closing), in: map(window.frame))
+                            // A closed window shrinks into itself and fades, as macOS closes one.
+                            .transition(.scale(scale: 0.88).combined(with: .opacity))
                     }
                     if let preview = frame.preview { previewView(map(preview), size: preview) }
                     if let centre = frame.ring { ring.position(map(CGRect(origin: centre, size: .zero)).origin) }
@@ -119,6 +128,8 @@ struct MockDesktop: View {
             .shadow(color: .white, radius: 0.6)
             .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
             .offset(x: 4, y: 7)
+            // A click: the pointer presses in while a close button is held.
+            .scaleEffect(frame.windows.contains(where: \.closing) ? 0.85 : 1)
     }
 
     private func placed(_ view: some View, in r: CGRect) -> some View {
@@ -132,12 +143,22 @@ private struct StageWindow: View {
     let theme: Theme
     var dimmed = false
     var outlined = false
+    var closing = false
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
         VStack(spacing: 0) {
             HStack(spacing: 3) {
-                ForEach(0..<3, id: \.self) { _ in Circle().fill(.primary.opacity(0.35)).frame(width: 5, height: 5) }
+                ForEach(0..<3, id: \.self) { i in
+                    if i == 0, closing {
+                        Circle().fill(Color.red)
+                            .overlay(Image(systemName: "xmark").font(.system(size: 3.5, weight: .black)).foregroundStyle(.black.opacity(0.6)))
+                            .frame(width: 5, height: 5)
+                            .scaleEffect(1.25)
+                    } else {
+                        Circle().fill(.primary.opacity(0.35)).frame(width: 5, height: 5)
+                    }
+                }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 6)

@@ -16,34 +16,59 @@ struct StageColumn<Content: View>: View {
     }
 }
 
-/// The current desktop picture, read once, scaled down and kept in memory; never sent anywhere. A soft gradient
-/// in the accent colour when it can't be read (a folder of pictures, a dynamic wallpaper without a still, the
-/// screenshot harness).
+/// The current desktop picture, decoded once off the main thread, scaled down and kept in memory for the app's
+/// life; never sent anywhere. A soft accent gradient until it arrives, and for good when it can't be read (a folder
+/// of pictures, the screenshot harness).
 struct StageWallpaper: View {
-    @MainActor private static let image: NSImage? = load()
+    @State private var store = WallpaperStore.shared
 
     var body: some View {
-        if let image = Self.image {
-            Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-        } else {
+        ZStack {
             LinearGradient(colors: [.accentColor.opacity(0.85), .purple.opacity(0.55), .cyan.opacity(0.5)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
                 .background(.background)
+            if let image = store.image {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill).transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: store.image != nil)
+        .onAppear { store.load() }
+    }
+}
+
+@MainActor @Observable
+final class WallpaperStore {
+    static let shared = WallpaperStore()
+    private(set) var image: NSImage?
+    @ObservationIgnored private var started = false
+
+    func load() {
+        guard !started else { return }
+        started = true
+        guard ProcessInfo.processInfo.environment["TESSERA_SETTINGS_SNAPSHOTS"] == nil,
+              let screen = NSScreen.main, let url = NSWorkspace.shared.desktopImageURL(for: screen),
+              !url.hasDirectoryPath else { return }
+        Task {
+            let decoded = await Task.detached(priority: .utility) { Self.decode(url) }.value
+            if let cg = decoded?.image { image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height)) }
         }
     }
 
-    @MainActor private static func load() -> NSImage? {
-        guard ProcessInfo.processInfo.environment["TESSERA_SETTINGS_SNAPSHOTS"] == nil,
-              let screen = NSScreen.main, let url = NSWorkspace.shared.desktopImageURL(for: screen),
-              !url.hasDirectoryPath,
-              let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+    /// A 1400 px thumbnail: a 6K wallpaper decoded at full size would take a few hundred milliseconds and ~100 MB.
+    nonisolated private static func decode(_ url: URL) -> Decoded? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let thumb = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                   kCGImageSourceCreateThumbnailFromImageAlways: true,
                   kCGImageSourceThumbnailMaxPixelSize: 1400,
                   kCGImageSourceCreateThumbnailWithTransform: true,
               ] as CFDictionary)
         else { return nil }
-        return NSImage(cgImage: thumb, size: NSSize(width: thumb.width, height: thumb.height))
+        return Decoded(image: thumb)
+    }
+
+    /// A decoded CGImage is immutable, so it is safe to hand from the decoding thread to the main actor.
+    private struct Decoded: @unchecked Sendable {
+        let image: CGImage
     }
 }
 

@@ -36,18 +36,25 @@ struct SplitsDemo: View {
                                caption: reflows ? "Drag an edge: the neighbour follows." : "Drag an edge: the neighbour stays put."),
                     "arrow.left.and.right")
 
-        // Closes the middle window. The first window was used last, so it grows into the gap when it can.
-        func close(_ frames: [CGRect]) -> (StageFrame, String) {
+        // The pointer clicks the middle window's close button; the window closes. The first window was used last,
+        // so it grows into the gap when it can.
+        func close(_ frames: [CGRect]) -> [(frame: StageFrame, symbol: String)] {
+            var press = windows(frames)
+            press[1].closing = true
             let left = [frames[0], frames[2]]
             let after = fills ? SplitFill.frames(filling: frames[1], frames: left, gap: gap) ?? left : left
-            return (StageFrame(windows: [DemoWindow(id: 0, frame: after[0]), DemoWindow(id: 2, frame: after[1])],
-                               caption: fills ? "Close a window: the one beside it fills the gap." : "Close a window: the gap stays open."),
-                    "xmark.circle")
+            return [
+                (StageFrame(windows: press, pointer: press[1].closeButton, caption: "Close the middle window."), "xmark.circle"),
+                (StageFrame(windows: [DemoWindow(id: 0, frame: after[0]), DemoWindow(id: 2, frame: after[1])],
+                            pointer: press[1].closeButton,
+                            caption: fills ? "It closes, and the window beside it fills the gap." : "It closes, and the gap stays open."),
+                 "xmark.circle.fill"),
+            ]
         }
         switch cues?.cue {
         case .reflow: return [start, drag]
-        case .fillGap: return [start, close(tiles)]
-        default: return [start, drag, close(adjusted)]
+        case .fillGap: return [start] + close(tiles)
+        default: return [start, drag] + close(adjusted)
         }
     }
 
