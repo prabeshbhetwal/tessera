@@ -70,8 +70,8 @@ struct RingPane: View {
                 let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
                 // The ring's outer edge (radius + thickness / 2) stays inside the point threshold, which `save` requires
                 // while pointing is on. The sliders need a range at least 1 wide to draw, so the binding enforces the cap.
-                let radiusCap = max(20, min(150, r.flickDistance - r.thickness / 2))
-                let thicknessCap = max(4, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2))
+                let radiusCap = r.radiusCap
+                let thicknessCap = r.thicknessCap
                 SliderRow(title: "Radius", value: Self.capped(ring.radius, at: radiusCap), range: 20...max(21, radiusCap))
                     .disabled(!r.showRing)
                     .demoCue(.ringSize("Radius"))

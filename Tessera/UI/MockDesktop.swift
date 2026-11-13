@@ -50,6 +50,12 @@ struct MockDesktop: View {
                         if let threshold = frame.threshold { thresholdCircle(threshold).position(at) }
                         ring.position(at)
                         if let badge = frame.badge { badgeView(badge).position(x: at.x, y: at.y + ringSide / 2 + 6) }
+                        if let handle = frame.handle, let edit = cues?.ringEdit {
+                            let outer = (settings.ring.radius + settings.ring.thickness / 2) * Self.ringScale
+                            StageRingHandleView(handle: handle, ring: settings.ring, scale: Self.ringScale, edit: edit)
+                                // Just outside the icons, so it doesn't sit on the Right one.
+                                .position(x: at.x + outer + 12, y: at.y)
+                        }
                     }
                     if let pointer = frame.pointer { pointerView.position(map(CGRect(origin: pointer, size: .zero)).origin) }
                 }
@@ -57,6 +63,8 @@ struct MockDesktop: View {
             .aspectRatio(screen.width / max(screen.height, 1), contentMode: .fit)
         }
     }
+
+    @Environment(DemoCueState.self) private var cues: DemoCueState?
 
     private var theme: Theme { settings.activeTheme }
     private var look: PreviewSettings { theme.preview }

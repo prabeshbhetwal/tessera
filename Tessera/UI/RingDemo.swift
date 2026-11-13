@@ -13,12 +13,17 @@ struct RingDemo: View {
     var body: some View {
         let display = DemoDisplay.context(DemoDisplay.stage, settings: settings)
         let story = Self.story(settings: settings, display: display, cue: cues?.cue)
-        StagePlayer(display: display, settings: settings, frames: story.frames, detail: Self.detail(settings),
+        StagePlayer(display: display, settings: settings, frames: story.frames, detail: Self.detail(settings, cue: cues?.cue),
                     anchor: "Directions")
     }
 
     /// The settings behind a flick, read back.
-    static func detail(_ settings: TesseraSettings) -> String {
+    static func detail(_ settings: TesseraSettings, cue: DemoCue?) -> String {
+        if case .ringSize(let anchor) = cue {
+            let r = settings.ring
+            let limit = anchor == "Thickness" ? "Thickness 4–\(Int(r.thicknessCap)) pt" : "Radius 20–\(Int(r.radiusCap)) pt"
+            return "\(limit), kept inside the point threshold. Esc while dragging puts it back."
+        }
         let keys = ModifierKey.names(settings.trigger.keyCodes)
         let trigger = keys.isEmpty ? "No trigger set" : "Trigger " + keys.joined(separator: " ")
         return "\(trigger) · flick past \(Int(settings.ring.flickDistance)) pt to point at a column"
@@ -47,7 +52,9 @@ struct RingDemo: View {
         if case .ringSize = cue {
             var sized = open
             sized.badge = "Radius \(Int(ring.radius)) pt · thickness \(Int(ring.thickness)) pt"
-            sized.caption = "The ring at this size."
+            sized.handle = cue == .ringSize("Thickness") ? .thickness : .radius
+            sized.pointer = nil
+            sized.caption = "Drag the handle on the ring’s edge to resize it."
             return Story(frames: [hold, sized])
         }
         if cue == .flickDistance {

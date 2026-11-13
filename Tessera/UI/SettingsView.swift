@@ -164,6 +164,7 @@ struct SettingsView: View {
             }
             .environment(cues)
             .onChange(of: navigation.pane) { cues.cue = nil }
+            .onAppear { cues.ringEdit = { [model] in model.settings.ring = $0 } }
             .environment(\.settingsPaneKey, navigation.pane.key)
             .environment(\.settingsHighlight, navigation.highlight)
             .task(id: navigation.reveals) { await scrollToHighlight(proxy) }

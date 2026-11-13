@@ -60,6 +60,7 @@ enum SettingsSnapshots {
         for (name, cue, pane) in cued {
             let cues = DemoCueState()
             cues.cue = cue
+            cues.ringEdit = { _ in }
             render(SettingsDemo(pane: pane, settings: model.settings).environment(cues),
                    size: CGSize(width: StageColumn<EmptyView>.width, height: SettingsView.height),
                    to: folder.appendingPathComponent("stage-\(name).png"))

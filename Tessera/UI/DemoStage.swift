@@ -23,6 +23,8 @@ struct StageFrame: Equatable {
     var badge: String?
     /// The point threshold: a dashed circle round the ring, its radius in the ring's own points.
     var threshold: Double?
+    /// A grab handle on the ring's edge that resizes it (where the stage can edit settings).
+    var handle: RingHandle?
 }
 
 /// What the person is pointing at in the form, so the stage can act out that control.
@@ -56,6 +58,10 @@ final class DemoCueState {
     var cue: DemoCue?
     /// The form row the stage is about, lit (more softly than a search result) while the pointer is on the stage.
     var spotlight: String?
+    /// A handle on the stage is being dragged: the stage holds its frame instead of replaying at every change.
+    var editing = false
+    /// Writes a ring size from the stage's handle; set once by the Settings window. Nil (no handle) elsewhere.
+    @ObservationIgnored var ringEdit: ((RingSettings) -> Void)?
 }
 
 extension View {
@@ -134,7 +140,7 @@ struct StagePlayer<Accessory: View>: View {
     }
 
     private func play() async {
-        guard frames.count > 1, !reduceMotion else {
+        guard frames.count > 1, !reduceMotion, cues?.editing != true else {
             index = max(frames.count - 1, 0)
             return
         }
