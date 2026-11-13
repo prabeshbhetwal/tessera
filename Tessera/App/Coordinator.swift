@@ -372,6 +372,7 @@ final class Coordinator {
 
     private func refreshSelection() {
         guard var s = session else { return }
+        let settings = model.settings  // one copy per mouse move, not one per field
         let selection: Selection
         if let nav = s.nav {
             selection = KeyNavigator.selection(nav, displays: s.displays)
@@ -389,7 +390,7 @@ final class Coordinator {
             s.leftDeadZone = true
         }
         // Announcing is an accessibility round trip; only do it when someone can hear it.
-        if model.settings.announceSelection, NSWorkspace.shared.isVoiceOverEnabled,
+        if settings.announceSelection, NSWorkspace.shared.isVoiceOverEnabled,
            let label = frame.flatMap({ PreviewModel.label(for: selection, frame: $0) }), label != s.announced {
             s.announced = label
             NSAccessibility.post(element: NSApplication.shared, notification: .announcementRequested, userInfo: [
@@ -402,17 +403,17 @@ final class Coordinator {
             PreviewModel.layers(
                 PreviewInput(target: $0, current: s.current, neighbours: s.neighbours, selection: selection,
                              reduceMotion: s.reduceMotion),
-                settings: model.settings.preview, hint: s.hint && s.nav == nil // clicks span columns; keys don't
+                settings: settings.preview, hint: s.hint && s.nav == nil // clicks span columns; keys don't
             )
         }
         var pointMode = false
         if case .span = selection { pointMode = true }
         let cancelling = s.nav == nil
-            && hypot(s.cursor.x - s.origin.x, s.cursor.y - s.origin.y) < model.settings.ring.cancelRadius
+            && hypot(s.cursor.x - s.origin.x, s.cursor.y - s.origin.y) < settings.ring.cancelRadius
         overlay.update(selection: selection, layers: layers, image: s.image,
                        displays: s.displays, pointMode: pointMode, cancelling: cancelling,
-                       keyboard: s.nav != nil, keyboardEnabled: model.settings.ringKeyNavigation,
-                       tapToTile: !s.leftDeadZone && model.settings.ring.tapTilesWindows, hasMoved: s.leftDeadZone)
+                       keyboard: s.nav != nil, keyboardEnabled: settings.ringKeyNavigation,
+                       tapToTile: !s.leftDeadZone && settings.ring.tapTilesWindows, hasMoved: s.leftDeadZone)
     }
 
     private func targetFrame(for selection: Selection, in s: Session) -> CGRect? {

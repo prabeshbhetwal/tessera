@@ -41,6 +41,10 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        # Drop unreferenced code from the shipped binary: smaller download, less to map at launch.
+        Release:
+          DEAD_CODE_STRIPPING: YES
     postBuildScripts:
       # The tessera CLI (TesseraCLI package target), embedded at Contents/Helpers/tessera.
       # Not Contents/MacOS/tessera: on case-insensitive APFS that is the app's own MacOS/Tessera.
@@ -60,6 +64,8 @@ targets:
           DEST="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers"
           mkdir -p "$DEST"
           cp -f "$(run_swift --show-bin-path)/tessera" "$DEST/tessera"
+          # Local symbols only matter to a debugger; the release CLI ships without them (signing comes after).
+          if [ "$CONF" = "release" ]; then strip -x "$DEST/tessera"; fi
           codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$DEST/tessera"
     info:
       path: Tessera/Info.plist

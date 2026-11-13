@@ -98,6 +98,9 @@ final class CoachController {
             }
             guard let self, self.generation == current else { return }
             for panel in panels { panel.orderOut(nil) }
+            // Cards are rare: free the card's SwiftUI tree until the next one; showCard builds a fresh one.
+            self.hosting?.removeFromSuperview()
+            self.hosting = nil
         }
     }
 
