@@ -17,6 +17,14 @@ public enum WindowVisibility {
         return exposed
     }
 
+    /// The windows a Tile or split may use, front to back: resizable, and exposed or `forced` (a split's own member, a
+    /// joining app's new window). Every frame still covers the ones behind it, so a fixed-size window (an alert, an
+    /// About box) hides what it covers without ever being picked itself.
+    public static func selectedIndices(_ frames: [CGRect], resizable: [Bool], forced: [Bool]) -> [Int] {
+        let exposed = Set(exposedIndices(frames))
+        return frames.indices.filter { resizable[$0] && (exposed.contains($0) || forced[$0]) }
+    }
+
     private static func subtract(_ cover: CGRect, from rect: CGRect) -> [CGRect] {
         let intersection = rect.intersection(cover)
         guard !intersection.isNull, !intersection.isEmpty else { return [rect] }

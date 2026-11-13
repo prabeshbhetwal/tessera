@@ -194,7 +194,7 @@ Three commands arrange **every visible window on a display** at once. They are i
 
 How a tile works:
 - **Which display:** the front window's display. If no window is in front, the display under the cursor.
-- **Which windows:** every visible window on that display, except apps on your [Excluded Apps](#excluded-apps) list.
+- **Which windows:** every visible window on that display, except apps on your [Excluded Apps](#excluded-apps) list and windows that can't be resized (alerts, About boxes), which stay where they are.
 - **Order:** windows keep their current left-to-right order (top-to-bottom on a portrait display).
 - **Undo:** one ⌃⌥Z puts every tiled window back.
 

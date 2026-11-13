@@ -39,6 +39,13 @@ enum AX {
         return AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, value)
     }
 
+    /// Whether the window's size can be set. AppKit answers from the window's resizability, so a fixed-size alert says
+    /// no. Fail-safe: an unreadable answer counts as no, since a size Tessera can't set is one it can't tile.
+    static func sizeSettable(_ element: AXUIElement) -> Bool {
+        var settable: DarwinBoolean = false
+        return AXUIElementIsAttributeSettable(element, kAXSizeAttribute as CFString, &settable) == .success && settable.boolValue
+    }
+
     static func bool(_ element: AXUIElement, _ attribute: String) -> Bool? {
         guard let v = value(element, attribute), CFGetTypeID(v) == CFBooleanGetTypeID() else { return nil }
         return CFBooleanGetValue(unsafeDowncast(v, to: CFBoolean.self))

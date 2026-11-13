@@ -6,7 +6,8 @@ import TesseraCore
 extension WindowService {
     /// Standard windows of regular apps whose centre is on `display` (AppKit frame), with their AppKit frames, for
     /// tiling and splits. Skips Tessera, apps in `excluding`, minimised, hidden and full-screen windows, panels and
-    /// dialogs, anything smaller than a tiny utility window, and windows wholly covered by others: a buried duplicate
+    /// dialogs, fixed-size windows (their size isn't settable), anything smaller than a tiny utility window, and windows
+    /// wholly covered by others (fixed-size windows still count as covers): a buried duplicate
     /// is not one the user sees. Kept anyway: windows in `retaining` (a split's own members), and new windows of
     /// `joiningPID` (not in `existingWindowIDs`) that its expanded survivor may cover. Front-most first.
     func visibleWindows(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>, retaining: [WindowRef] = [],
@@ -38,7 +39,7 @@ extension WindowService {
             depth[id] = z
         }
 
-        var result: [(window: WindowRef, frame: CGRect)] = []
+        var result: [(window: WindowRef, frame: CGRect, resizable: Bool)] = []
         var skipped = 0
         for (pid, ids) in windowsByPID {
             guard let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular, !app.isHidden,
@@ -59,16 +60,20 @@ extension WindowService {
                       let bounds = AX.frame(element), bounds.width >= 120, bounds.height >= 80 else { continue }
                 let frame = CoordinateSpace.fromAX(bounds, primaryHeight: primaryHeight)
                 guard display.contains(CGPoint(x: frame.midX, y: frame.midY)) else { continue }
-                result.append((WindowRef(element: element, pid: pid, windowID: id, bundleID: app.bundleIdentifier), frame))
+                // A window Tessera can't resize (Finder's error alert, an About box) is never tiled, joined or watched,
+                // or a stream of alerts would shrink its neighbours on open and grow them back on close.
+                let resizable = AX.sizeSettable(element)
+                if !resizable { Self.log.debug("skipped \(app.bundleIdentifier ?? "?", privacy: .public) window: size not settable") }
+                result.append((WindowRef(element: element, pid: pid, windowID: id, bundleID: app.bundleIdentifier), frame, resizable))
             }
         }
         let ordered = result.sorted { depth[$0.window.windowID ?? 0, default: .max] < depth[$1.window.windowID ?? 0, default: .max] }
-        let exposed = Set(WindowVisibility.exposedIndices(ordered.map(\.frame)))
-        let found = ordered.enumerated().filter { entry in
-            exposed.contains(entry.offset) || retaining.contains(entry.element.window)
-                || (entry.element.window.pid == joiningPID
-                    && entry.element.window.windowID.map { !existingWindowIDs.contains($0) } == true)
-        }.map(\.element)
+        let forced = ordered.map { entry in
+            retaining.contains(entry.window)
+                || (entry.window.pid == joiningPID && entry.window.windowID.map { !existingWindowIDs.contains($0) } == true)
+        }
+        let found = WindowVisibility.selectedIndices(ordered.map(\.frame), resizable: ordered.map(\.resizable), forced: forced)
+            .map { (window: ordered[$0].window, frame: ordered[$0].frame) }
         return (found, skipped)
     }
 }
