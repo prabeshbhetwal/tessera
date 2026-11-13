@@ -107,12 +107,15 @@ struct OverlayPane: View {
             }
 
             Section("Preview") {
-                Picker("Fill the preview with", selection: preview(\.style)) {
-                    ForEach(PreviewStyle.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Fill the preview with")
+                    PreviewStylePicker(selection: preview(\.style), theme: model.settings.activeTheme)
                 }
-                .pickerStyle(.radioGroup)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Fill the preview with")
                 .settingAnchor("Fill the preview with")
-                Caption(Self.caption(for: s.style))
+                // The pictures show each fill; only the snapshot's timing needs saying.
+                if s.style == .snapshot { Caption("The box appears first, then a picture of the window fades in, scaled to fit.") }
                 if s.style == .snapshot, !screenCaptureAllowed {
                     Callout(.warning, "Needs Screen Recording permission. Until then the preview stays a tinted box.") {
                         Button("Allow…") {
@@ -165,14 +168,6 @@ struct OverlayPane: View {
         // The permission is granted in System Settings, so re-read it when the person comes back to Tessera.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             screenCaptureAllowed = Permissions.isScreenCaptureAllowed
-        }
-    }
-
-    private static func caption(for style: PreviewStyle) -> String {
-        switch style {
-        case .tint: "A box in the preview colour. Appears instantly and looks the same every time."
-        case .snapshot: "The box appears first, then a picture of the window fades in, scaled to fit."
-        case .appIcon: "The box with the moving app’s icon in the middle."
         }
     }
 

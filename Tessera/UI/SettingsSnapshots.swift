@@ -58,6 +58,14 @@ enum SettingsSnapshots {
         narrow.pane = .ring
         render(SettingsView(model: model, navigation: narrow, displays: displays), size: CGSize(width: 960, height: SettingsView.height),
                to: folder.appendingPathComponent("narrow-ring.png"))
+        // Appearance scrolled to the preview fill pictures, as a search result would reveal them.
+        if let entry = SettingsCatalog.entries.first(where: { $0.anchor == "Fill the preview with" }) {
+            let revealed = SettingsNavigation()
+            revealed.reveal(entry)
+            render(SettingsView(model: model, navigation: revealed, displays: displays),
+                   size: CGSize(width: SettingsView.width, height: SettingsView.height),
+                   to: folder.appendingPathComponent("overlay-fill.png"))
+        }
         // The stage alone in states only pointing at a control reaches.
         let cued: [(String, DemoCue, SettingsPane)] = [("ring-size", .ringSize("Radius"), .ring),
                                                      ("ring-threshold", .flickDistance, .ring),
