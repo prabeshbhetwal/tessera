@@ -1,28 +1,23 @@
 import SwiftUI
 import TesseraCore
 
-/// Displays pane demo: the columns a new laptop screen and a new ultrawide would get from the sizing, gap and
-/// padding settings, sized by `SizingRule` exactly as a real display is.
+/// Displays pane stage: the columns a new laptop screen (on the stage) and a new ultrawide (on the sheet) get from
+/// the sizing, gap and padding settings, sized by `SizingRule` exactly as a real display is.
 struct DisplaysDemo: View {
     let settings: TesseraSettings
 
     var body: some View {
-        let screens = [("14-inch laptop", DemoDisplay.laptop), ("34-inch ultrawide", DemoDisplay.ultrawide)]
-            .map { ($0.0, DemoDisplay.context($0.1, settings: settings)) }
-        DemoColumn(title: "New displays") {
-            DemoPlayer(title: "Displays", count: 1, describe: { _ in
-                screens.map { "\($0.0): \(Self.columns($0.1))" }.joined(separator: ". ") + "."
-            }, caption: false) { _ in
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(screens, id: \.0) { name, display in
-                        VStack(alignment: .leading, spacing: 4) {
-                            MiniGrid(display: display)
-                                .aspectRatio(display.visibleFrame.width / display.visibleFrame.height, contentMode: .fit)
-                            Text("\(name) · \(Self.columns(display))")
-                                .font(.caption.monospacedDigit())
-                        }
-                    }
-                }
+        let laptop = DemoDisplay.context(DemoDisplay.laptop, settings: settings, menuBar: true)
+        let ultrawide = DemoDisplay.context(DemoDisplay.ultrawide, settings: settings, menuBar: true)
+        let caption = "A new 14-inch laptop gets \(Self.columns(laptop)); a new 34-inch ultrawide gets \(Self.columns(ultrawide))."
+        StagePlayer(display: laptop, settings: settings,
+                    frames: [StageFrame(windows: [], grid: true, caption: caption)]) { _ in
+            VStack(spacing: 8) {
+                MiniGrid(display: ultrawide)
+                    .aspectRatio(ultrawide.visibleFrame.width / ultrawide.visibleFrame.height, contentMode: .fit)
+                    .padding(6)
+                    .stageGlass(cornerRadius: 10, clear: true)
+                Text("34-inch ultrawide").font(.caption).foregroundStyle(.secondary)
             }
         }
     }

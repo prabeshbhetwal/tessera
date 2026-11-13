@@ -30,7 +30,7 @@ enum SettingsSnapshots {
                 window.contentView = host
                 window.setFrameOrigin(NSPoint(x: -20_000, y: 0))
                 window.orderFrontRegardless()
-                RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+                RunLoop.main.run(until: Date().addingTimeInterval(3.2))
                 if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
                     host.cacheDisplay(in: host.bounds, to: rep)
                     let file = folder.appendingPathComponent("\(pane.key)-\(name).png")

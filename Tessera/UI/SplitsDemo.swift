@@ -1,54 +1,57 @@
 import SwiftUI
 import TesseraCore
 
-/// Splits pane demo: three tiled mock windows. One edge is dragged and its neighbour follows (`SplitReflow`);
-/// then the middle window closes and the one beside it fills the gap (`SplitFill`). Each half follows its switch.
+/// Splits pane stage: three tiled windows. The first window's edge is dragged and its neighbour follows
+/// (`SplitReflow`); then the middle window closes and the window beside it fills the gap (`SplitFill`).
+/// Each half follows its switch. Pointing at one of those switches plays just that half.
 struct SplitsDemo: View {
     let settings: TesseraSettings
-
-    private static let captions = [
-        "Three windows side by side.",
-        "Drag the first window’s edge.",
-        "Close the middle window.",
-    ]
+    @Environment(DemoCueState.self) private var cues: DemoCueState?
 
     var body: some View {
-        let display = DemoDisplay.context(CGSize(width: 2560, height: 1440), settings: settings)
-        DemoColumn(title: "Adjust and close") {
-            DemoPlayer(title: "Splits", count: 3, describe: { step in
-                Self.captions[step] + outcome(step)
-            }) { step in
-                MockDesktop(display: display, windows: windows(step, display: display))
-            }
+        let display = DemoDisplay.context(DemoDisplay.stage, settings: settings)
+        let story = story(display: display)
+        StagePlayer(display: display, settings: settings, frames: story.map(\.frame)) { index in
+            Image(systemName: story[index].symbol)
+                .font(.system(size: 34, weight: .medium))
+                .foregroundStyle(index == 0 ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
+                .contentTransition(.symbolEffect(.replace))
         }
     }
 
     private var reflows: Bool { settings.learnSplits && settings.splitReflowsNeighbours }
     private var fills: Bool { settings.learnSplits && settings.splitFillsClosedGap }
 
-    private func outcome(_ step: Int) -> String {
-        switch step {
-        case 1: reflows ? " Its neighbour follows." : " Its neighbour stays put."
-        case 2: fills ? " The window beside it fills the gap." : " The gap stays open."
-        default: ""
-        }
-    }
-
-    /// The windows at `step`, by the same code that moves real windows.
-    private func windows(_ step: Int, display: DisplayContext) -> [DemoWindow] {
+    private func story(display: DisplayContext) -> [(frame: StageFrame, symbol: String)] {
         let tiles = GridGeometry.tiles(3, display: display)
-        guard step > 0, tiles.count == 3 else { return tiles.enumerated().map { DemoWindow(id: $0, frame: $1) } }
+        guard tiles.count == 3 else { return [(StageFrame(windows: [], caption: ""), "rectangle.split.3x1")] }
         let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
         let gap = display.profile.gap
+        let start = (StageFrame(windows: windows(tiles), caption: "Three windows side by side."), "rectangle.split.3x1")
+
         var dragged = tiles
         dragged[0].size.width += usable.width * 0.12
         let adjusted = reflows ? SplitReflow.frames(before: tiles, after: dragged, usable: usable, gap: gap) ?? dragged : dragged
-        guard step > 1 else {
-            return adjusted.enumerated().map { DemoWindow(id: $0, frame: $1, live: $0 == 0) }
+        let drag = (StageFrame(windows: windows(adjusted, live: 0), pointer: CGPoint(x: dragged[0].maxX, y: dragged[0].midY),
+                               caption: reflows ? "Drag an edge: the neighbour follows." : "Drag an edge: the neighbour stays put."),
+                    "arrow.left.and.right")
+
+        // Closes the middle window. The first window was used last, so it grows into the gap when it can.
+        func close(_ frames: [CGRect]) -> (StageFrame, String) {
+            let left = [frames[0], frames[2]]
+            let after = fills ? SplitFill.frames(filling: frames[1], frames: left, gap: gap) ?? left : left
+            return (StageFrame(windows: [DemoWindow(id: 0, frame: after[0]), DemoWindow(id: 2, frame: after[1])],
+                               caption: fills ? "Close a window: the one beside it fills the gap." : "Close a window: the gap stays open."),
+                    "xmark.circle")
         }
-        // The first window was used last, so it is the one that grows into the gap when it can.
-        let left = [adjusted[0], adjusted[2]]
-        let after = fills ? SplitFill.frames(filling: adjusted[1], frames: left, gap: gap) ?? left : left
-        return [DemoWindow(id: 0, frame: after[0]), DemoWindow(id: 2, frame: after[1])]
+        switch cues?.cue {
+        case .reflow: return [start, drag]
+        case .fillGap: return [start, close(tiles)]
+        default: return [start, drag, close(adjusted)]
+        }
+    }
+
+    private func windows(_ frames: [CGRect], live: Int? = nil) -> [DemoWindow] {
+        frames.enumerated().map { DemoWindow(id: $0, frame: $1, live: $0 == live) }
     }
 }

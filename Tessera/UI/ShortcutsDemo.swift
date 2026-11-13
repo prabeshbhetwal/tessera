@@ -1,47 +1,43 @@
 import SwiftUI
 import TesseraCore
 
-/// Shortcuts pane demo: pick a shortcut and watch a mock window go where it sends it (`TargetResolver`).
+/// Shortcuts pane stage: point at a shortcut in the list and the window goes where it sends it
+/// (`TargetResolver`). Before anything is pointed at, the first shortcut that moves a window plays.
 struct ShortcutsDemo: View {
     let settings: TesseraSettings
-    @State private var selected: String?
+    @Environment(DemoCueState.self) private var cues: DemoCueState?
 
     var body: some View {
+        let display = DemoDisplay.context(DemoDisplay.stage, settings: settings)
         let items = settings.hotkeys.filter { !$0.hotkey.isNone }
-        let binding = items.first { $0.id == selected } ?? items.first { $0.target(cycles: settings.cycles) != nil }
-        let display = DemoDisplay.context(DemoDisplay.laptop, settings: settings)
-        let start = DemoDisplay.loose(on: display)
-        let end = binding?.target(cycles: settings.cycles).map { TargetResolver.frame(for: $0, display: display, current: start) }
-        DemoColumn(title: "Press") {
-            Picker("Shortcut", selection: Binding(get: { binding?.id }, set: { selected = $0 })) {
-                ForEach(items) { item in
-                    Text("\(item.hotkey.displayString)  \(item.command.summary)").tag(Optional(item.id))
-                }
-            }
-            .labelsHidden()
-            .accessibilityLabel("Shortcut to demonstrate")
+        let cued: HotkeyBinding? = if case .hotkey(let id) = cues?.cue { items.first { $0.id == id } } else { nil }
+        let binding = cued ?? items.first { $0.target(cycles: settings.cycles) != nil }
+        StagePlayer(display: display, settings: settings, frames: frames(binding, display: display)) { index in
             if let binding {
-                DemoPlayer(title: "Shortcut", count: end == nil ? 1 : 2, describe: { step in
-                    let keys = "\(binding.hotkey.displayString), \(binding.command.summary)"
-                    if !settings.hotkeysEnabled { return "All hotkeys are off, so \(keys) does nothing." }
-                    if !binding.enabled { return "\(keys) is turned off." }
-                    if end == nil { return "\(keys). It doesn't move the window, so there's nothing to show." }
-                    return step == 0 ? "Before pressing \(binding.hotkey.displayString)." : "After: \(binding.command.summary)."
-                }) { step in
-                    let moved = settings.hotkeysEnabled && binding.enabled && step == 1
-                    MockDesktop(display: display, windows: [DemoWindow(id: 0, frame: moved ? end ?? start : start, live: true)])
-                        .overlay(alignment: .bottom) {
-                            Text(binding.hotkey.displayString)
-                                .font(.callout.weight(.medium))
-                                .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(.regularMaterial, in: Capsule())
-                                .opacity(step == 1 ? 1 : 0.35)
-                                .padding(6)
-                        }
+                HStack(spacing: 6) {
+                    ForEach(Array(binding.hotkey.keycaps.enumerated()), id: \.offset) { _, key in
+                        Keycap(key, prominent: true)
+                    }
                 }
-                .id(binding.id)
+                .scaleEffect(index == 1 ? 0.97 : 1)
             }
         }
+    }
+
+    private func frames(_ binding: HotkeyBinding?, display: DisplayContext) -> [StageFrame] {
+        let start = DemoDisplay.loose(on: display)
+        let resting = [DemoWindow(id: 0, frame: start, live: true)]
+        guard let binding else { return [StageFrame(windows: resting, caption: "No shortcuts are set.")] }
+        let keys = binding.hotkey.displayString
+        let name = binding.command.summary
+        let before = StageFrame(windows: resting, caption: "Press \(keys).")
+        if !settings.hotkeysEnabled { return [StageFrame(windows: resting, caption: "All hotkeys are off, so \(keys) does nothing.")] }
+        if !binding.enabled { return [StageFrame(windows: resting, caption: "\(name) is turned off.")] }
+        guard let target = binding.target(cycles: settings.cycles) else {
+            return [StageFrame(windows: resting, caption: "\(keys): \(name). It doesn’t move the window on this screen.")]
+        }
+        let end = TargetResolver.frame(for: target, display: display, current: start)
+        return [before, StageFrame(windows: [DemoWindow(id: 0, frame: end, live: true)], caption: "\(keys): \(name).")]
     }
 }
 
@@ -54,5 +50,14 @@ extension HotkeyBinding {
         case .cycle(let name): cycles.first { $0.name == name }?.steps.first
         default: nil
         }
+    }
+}
+
+extension Hotkey {
+    /// One keycap per modifier, then the key.
+    var keycaps: [String] {
+        isNone ? [] : modifiers.symbols.split(separator: " ").flatMap { part in
+            part == "fn" ? [String(part)] : part.map(String.init)
+        } + [KeyNames.name(for: keyCode)]
     }
 }

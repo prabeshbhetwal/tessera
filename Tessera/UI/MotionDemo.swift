@@ -1,25 +1,40 @@
 import SwiftUI
 import TesseraCore
 
-/// Motion pane demo: a mock window snapping between halves at the snap speed. Instant jumps; under Reduce
-/// Motion every speed jumps, as on screen.
+/// Motion pane stage: a window snapping from the left half to the right at the snap speed, with the time it
+/// takes drawn as a bar. Instant jumps; under Reduce Motion every speed jumps, as on screen.
 struct MotionDemo: View {
     let settings: TesseraSettings
 
     var body: some View {
-        let display = DemoDisplay.context(DemoDisplay.laptop, settings: settings)
+        let display = DemoDisplay.context(DemoDisplay.stage, settings: settings)
         let seconds = settings.snapSeconds
         let speed = SnapSpeed(seconds: seconds)?.displayName ?? "Custom"
-        DemoColumn(title: "Snap") {
-            DemoPlayer(title: "Snap speed", count: 2, describe: { step in
-                let side = step == 0 ? "left" : "right"
-                return seconds <= 0 ? "\(speed): the window jumps to the \(side) half."
-                    : "\(speed): the window takes \(seconds.formatted(.number.precision(.fractionLength(0...2)))) s to reach the \(side) half."
-            }, animation: seconds > 0 ? .easeInOut(duration: seconds) : nil) { step in
-                let action: WindowAction = step == 0 ? .leftHalf : .rightHalf
-                let frame = GridGeometry.frame(for: action, display: display, current: display.visibleFrame)
-                MockDesktop(display: display, windows: [DemoWindow(id: 0, frame: frame, live: true)])
+        let time = seconds <= 0 ? "no time at all" : "\(seconds.formatted(.number.precision(.fractionLength(0...2)))) s"
+        let frames = [WindowAction.leftHalf, .rightHalf].enumerated().map { i, action in
+            StageFrame(windows: [DemoWindow(id: 0, frame: GridGeometry.frame(for: action, display: display, current: display.visibleFrame), live: true)],
+                       caption: i == 0 ? "Snap it to the other half." : "\(speed): the move takes \(time).",
+                       seconds: seconds)
+        }
+        StagePlayer(display: display, settings: settings, frames: frames) { index in
+            VStack(alignment: .leading, spacing: 6) {
+                GeometryReader { geometry in
+                    Capsule().fill(.quaternary)
+                        .overlay(alignment: .leading) {
+                            Capsule().fill(Color.accentColor)
+                                .frame(width: index == 1 ? geometry.size.width * max(seconds / SnapSpeed.maxSeconds, 0.02) : 0)
+                        }
+                }
+                .frame(height: 8)
+                HStack {
+                    Text("Instant")
+                    Spacer()
+                    Text("1 s")
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 24)
         }
     }
 }

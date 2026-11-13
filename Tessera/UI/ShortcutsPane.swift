@@ -34,6 +34,7 @@ struct ShortcutsPane: View {
                                 cycleNames: cycleNames,
                                 remove: { model.settings.hotkeys.removeAll { $0.id == item.id } }
                             )
+                            .demoCue(.hotkey(item.id))
                         }
                     }
                     .disabled(!model.settings.hotkeysEnabled)
