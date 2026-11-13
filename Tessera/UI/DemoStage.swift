@@ -60,8 +60,9 @@ final class DemoCueState {
     var spotlight: String?
     /// A handle on the stage is being dragged: the stage holds its frame instead of replaying at every change.
     var editing = false
-    /// Writes a ring size from the stage's handle; set once by the Settings window. Nil (no handle) elsewhere.
-    @ObservationIgnored var ringEdit: ((RingSettings) -> Void)?
+    /// Changes the live settings from the stage's grips; set once by the Settings window. Nil (no grips) elsewhere.
+    /// Observed, so the grips appear once it is set; it is set only once, so that costs a single redraw.
+    var apply: SettingsApply?
 }
 
 extension View {
@@ -102,6 +103,8 @@ struct StagePlayer<Accessory: View>: View {
     let detail: String
     /// The form row the demo is about when no control has been pointed at.
     var anchor: String?
+    /// Grips the scene puts on the screen, placed with the screen's geometry.
+    var overlay: ((StageGeometry) -> AnyView)?
     /// A small picture in the footer, only where it adds something the screen can't show (cycle steps, a time bar).
     @ViewBuilder let accessory: (Int) -> Accessory
 
@@ -115,7 +118,7 @@ struct StagePlayer<Accessory: View>: View {
     var body: some View {
         let frame = frames.isEmpty ? StageFrame(windows: [], caption: "") : frames[shown]
         ZStack(alignment: .bottom) {
-            MockDesktop(display: display, settings: settings, frame: frame, ghost: ghost)
+            MockDesktop(display: display, settings: settings, frame: frame, ghost: ghost, overlay: overlay)
                 .frame(maxHeight: .infinity, alignment: .top)
                 .contentShape(Rectangle())
                 .onTapGesture { replays += 1 }
@@ -166,8 +169,10 @@ struct StagePlayer<Accessory: View>: View {
 }
 
 extension StagePlayer where Accessory == EmptyView {
-    init(display: DisplayContext, settings: TesseraSettings, frames: [StageFrame], detail: String, anchor: String? = nil) {
-        self.init(display: display, settings: settings, frames: frames, detail: detail, anchor: anchor) { _ in EmptyView() }
+    init(display: DisplayContext, settings: TesseraSettings, frames: [StageFrame], detail: String, anchor: String? = nil,
+         overlay: ((StageGeometry) -> AnyView)? = nil) {
+        self.init(display: display, settings: settings, frames: frames, detail: detail, anchor: anchor,
+                  overlay: overlay) { _ in EmptyView() }
     }
 }
 

@@ -7,11 +7,19 @@ import TesseraCore
 struct SplitsDemo: View {
     let settings: TesseraSettings
     @Environment(DemoCueState.self) private var cues: DemoCueState?
+    /// How far the seam has been dragged by hand, in display points. Nil shows the story.
+    @State private var seam: Double?
+    /// Where the seam was when the current drag began.
+    @State private var seamStart: Double?
 
     var body: some View {
         let display = DemoDisplay.context(DemoDisplay.stage, settings: settings)
         let story = story(display: display)
-        StagePlayer(display: display, settings: settings, frames: story, detail: detail)
+        let grip = cues?.cue == .reflow && cues?.apply != nil
+        StagePlayer(display: display, settings: settings, frames: seam.map { [dragged($0, display: display)] } ?? story,
+                    detail: detail, overlay: grip ? { AnyView(seamGrip(on: display, $0)) } : nil)
+            .onChange(of: cues?.cue) { seam = nil }
+            .onChange(of: reflows) { seam = nil }
     }
 
     private var detail: String {
@@ -51,10 +59,44 @@ struct SplitsDemo: View {
             ]
         }
         switch cues?.cue {
+        // Pointing at "Resize neighbours" hands the seam to the person: the stage waits with a grip on it.
+        case .reflow where cues?.apply != nil:
+            var invite = start
+            invite.caption = "Drag the edge between the first two windows."
+            return [invite]
         case .reflow: return [start, drag]
         case .fillGap: return [start] + close(tiles)
         default: return [start, drag] + close(adjusted)
         }
+    }
+
+    /// The three tiled windows with the first one's right edge moved by `offset`, and its neighbour following when
+    /// "Resize neighbours" is on: `SplitReflow`, live, as the real windows do.
+    private func dragged(_ offset: Double, display: DisplayContext) -> StageFrame {
+        let tiles = GridGeometry.tiles(3, display: display)
+        guard tiles.count == 3 else { return StageFrame(windows: [], caption: "") }
+        let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
+        var moved = tiles
+        moved[0].size.width += offset
+        let after = reflows ? SplitReflow.frames(before: tiles, after: moved, usable: usable, gap: display.profile.gap) ?? moved : moved
+        return StageFrame(windows: windows(after, live: 0),
+                          caption: reflows ? "The neighbour follows as you drag." : "The neighbour stays put; they overlap.")
+    }
+
+    /// A grip on the seam between the first two windows, shown while "Resize neighbours" is pointed at. Dragging it
+    /// moves the first window's edge live; Esc puts it back.
+    private func seamGrip(on display: DisplayContext, _ geometry: StageGeometry) -> some View {
+        let tiles = GridGeometry.tiles(3, display: display)
+        let first = tiles.first ?? .zero
+        let second = tiles.count > 1 ? tiles[1] : .zero
+        // Keep both windows at least as wide as SplitReflow lets a neighbour shrink.
+        let limit = (low: -(first.width - SplitReflow.minimumSide), high: second.width - SplitReflow.minimumSide)
+        let offset = seam ?? 0
+        let at = geometry.point(CGPoint(x: first.maxX + display.profile.gap / 2 + offset, y: first.midY))
+        return StageGrip(begin: { seamStart = seam ?? 0 }, change: { dx in
+            seam = min(max((seamStart ?? 0) + Double(dx / geometry.scale), limit.low), limit.high)
+        }, cancel: { seam = seamStart == 0 ? nil : seamStart }, end: { seamStart = nil })
+        .position(at)
     }
 
     private func windows(_ frames: [CGRect], live: Int? = nil) -> [DemoWindow] {

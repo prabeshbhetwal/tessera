@@ -1,6 +1,15 @@
 import SwiftUI
 import TesseraCore
 
+/// The stage screen's mapping from display points (AppKit, y up) to view points, for grips a scene places.
+struct StageGeometry {
+    /// View points per display point.
+    let scale: CGFloat
+    let map: (CGRect) -> CGRect
+
+    func point(_ p: CGPoint) -> CGPoint { map(CGRect(origin: p, size: .zero)).origin }
+}
+
 /// A pretend window in a Settings demo. Never one of the user's windows.
 struct DemoWindow: Identifiable, Equatable {
     let id: Int
@@ -24,6 +33,8 @@ struct MockDesktop: View {
     let frame: StageFrame
     /// Where the live window started; outlined faintly once it has moved.
     var ghost: CGRect?
+    /// The scene's grips, drawn over everything else.
+    var overlay: ((StageGeometry) -> AnyView)?
 
     var body: some View {
         let screen = display.frame
@@ -50,14 +61,15 @@ struct MockDesktop: View {
                         if let threshold = frame.threshold { thresholdCircle(threshold).position(at) }
                         ring.position(at)
                         if let badge = frame.badge { badgeView(badge).position(x: at.x, y: at.y + ringSide / 2 + 6) }
-                        if let handle = frame.handle, let edit = cues?.ringEdit {
+                        if let handle = frame.handle, let apply = cues?.apply {
                             let outer = (settings.ring.radius + settings.ring.thickness / 2) * Self.ringScale
-                            StageRingHandleView(handle: handle, ring: settings.ring, scale: Self.ringScale, edit: edit)
+                            StageRingHandle(handle: handle, ring: settings.ring, apply: apply)
                                 // Just outside the icons, so it doesn't sit on the Right one.
                                 .position(x: at.x + outer + 12, y: at.y)
                         }
                     }
                     if let pointer = frame.pointer { pointerView.position(map(CGRect(origin: pointer, size: .zero)).origin) }
+                    if let overlay { overlay(StageGeometry(scale: scale, map: map)) }
                 }
             }
             .aspectRatio(screen.width / max(screen.height, 1), contentMode: .fit)
