@@ -21,8 +21,11 @@ extension CommandExecutor {
         let front = await windows.frontmostWindow()
         let frontFrame: CGRect? = if let front { await windows.frame(of: front) } else { nil }
         let display = try resolve(selector == .current && frontFrame == nil ? .cursor : selector, windowFrame: frontFrame)
-        let (found, skipped) = await windows.visibleWindowsCounted(
+        let (all, skipped) = await windows.visibleWindowsCounted(
             on: display.frame, primaryHeight: DisplayService.primaryHeight, excluding: Set(model.settings.excludedBundleIDs))
+        // A window wholly covered by others (a buried duplicate, a window behind a full-size one) isn't one the user
+        // sees, so Tile and splits leave it alone. Covered jointly counts too: two halves hide what is behind both.
+        let found = WindowVisibility.exposedIndices(all.map(\.frame)).map { all[$0] }
         return (display, found, skipped)
     }
 
@@ -100,10 +103,12 @@ extension CommandExecutor {
                                           landed: outcomes.map(\.landed), gap: display.profile.gap,
                                           primaryHeight: DisplayService.primaryHeight, duration: model.glideSeconds,
                                           batch: batch)
+        // ⌃⌥Z pressed mid-Tile already put the windows back; report that, not a Tile result.
+        let (undoMarker, undone) = await windows.finishBatch(batch)  // one ⌃⌥Z puts every tiled window back
+        if undone { throw Failure(message: "Tile undone") }
         // Where each window is now: where its move landed, or where it was when it didn't move.
         let placed = ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) }
         let constrained = outcomes.filter(\.constrained).count
-        let undoMarker = await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
         // After the moves, so their settling is already ignored.
         splitWatcher.watch(placed, display: display, learns: !evenly)
         let n = ordered.count

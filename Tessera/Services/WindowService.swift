@@ -21,20 +21,25 @@ enum ApplyResult: Sendable, Equatable {
 
 /// Serial actor that owns every Accessibility call (spec §5.4). All AX messaging uses a 0.3 s timeout.
 actor WindowService {
-    private typealias UndoKey = WindowUndoHistory.Key
+    typealias UndoKey = WindowUndoHistory.Key
 
     static let timeout: Float = 0.3
-    private static let enhancedUI = "AXEnhancedUserInterface"
-    private static let frameInterval: Duration = .milliseconds(16)
+    static let enhancedUI = "AXEnhancedUserInterface"
+    static let frameInterval: Duration = .milliseconds(16)
 
-    private var undo = WindowUndoHistory()
+    var undo = WindowUndoHistory()
     /// The generation of each window's latest move, so a glide still running gives way to the newer
     /// move. Generations come from one monotonic counter, so a value never repeats after a reset.
-    private var generations: [UndoKey: Int] = [:]
+    var generations: [UndoKey: Int] = [:]
     private var nextGeneration = 0
-    /// Where each gliding window started, so a move that takes over mid-glide records undo from
+    /// Where each moving window started, so a move that takes over mid-glide (or mid re-check) records undo from
     /// the real starting frame, not from mid-air.
-    private var glideStart: [UndoKey: CGRect] = [:]
+    var glideStart: [UndoKey: CGRect] = [:]
+    /// Moves not yet recorded for undo (gliding, or waiting to re-check a write), so ⌃⌥Z can stop and reverse them.
+    var inFlight: [UndoKey: (window: WindowRef, before: CGRect, batch: Int?, generation: Int)] = [:]
+    /// Batches handed out and not yet merged, and those of them Undo cancelled midway.
+    var openBatches: Set<Int> = []
+    var cancelledBatches: Set<Int> = []
 
     func frontmostWindow() -> WindowRef? {
         // Never our own windows: AX calls on our own pid run in-process on this (non-main) thread and
@@ -66,6 +71,8 @@ actor WindowService {
     /// is tagged `batch` (see `newBatch`).
     func apply(_ target: CGRect, to window: WindowRef, primaryHeight: CGFloat, crossingDisplays: Bool,
                duration: Double = 0, batch: Int? = nil) async -> ApplyResult {
+        // Undo already took this batch back; its remaining moves must not land after it.
+        if let batch, cancelledBatches.contains(batch) { return .superseded }
         let element = window.element
         AXUIElementSetMessagingTimeout(element, Self.timeout)
         guard let now = AX.frame(element) else { return .failed(Self.unreadableMessage) }
@@ -76,73 +83,79 @@ actor WindowService {
         nextGeneration += 1
         let generation = nextGeneration
         generations[key] = generation
+        inFlight[key] = (window, before, batch, generation)
+        glideStart[key] = before
+        // A move this one took over had already moved the window: on failure, keep that earlier move undoable.
+        func failed(_ reason: String) -> ApplyResult {
+            if !Self.matches(before, now) {
+                undo.push(before, for: window, key: key, batch: batch, placement: Self.placement(before))
+            }
+            return .failed(reason)
+        }
+        defer {
+            if generations[key] == generation { generations[key] = nil; glideStart[key] = nil }
+            if inFlight[key]?.generation == generation { inFlight[key] = nil }
+        }
         if duration > 0, now != goal {
-            glideStart[key] = before
+            // False when a newer move or Undo took over mid-flight; that one does the final write and records undo.
             guard await glide(window, from: now, to: goal, duration: duration, key: key, generation: generation) else {
-                // A newer move of this window took over mid-flight; it does the final write and records undo.
                 return .superseded
             }
         }
-        glideStart[key] = nil
-        if generations[key] == generation { generations[key] = nil }
 
-        if let error = setFrame(goal, on: window, crossingDisplays: crossingDisplays) {
-            return .failed(Self.unmovableReason(of: element) ?? Self.reason(for: error))
-        }
-
-        // Single read-back. A size-constrained window is re-anchored to the targeted edges.
-        guard var actual = AX.frame(element) else { return .failed(Self.unreadableMessage) }
-        let sizeDiffers = abs(actual.width - goal.width) > 1 || abs(actual.height - goal.height) > 1
-        if sizeDiffers {
-            // A full-screen window accepts the write and stays put: nothing moved, nothing to undo.
-            if let reason = Self.unmovableReason(of: element) { return .failed(reason) }
-            let x = Self.anchorsRight(goal) ? goal.maxX - actual.width : goal.minX
-            let anchored = CGPoint(x: x, y: goal.minY)
-            if anchored != actual.origin, AX.setPosition(element, anchored) == .success {
-                actual.origin = anchored
+        // Some apps apply a frame a beat late: read it back, and write again (twice at most) until it holds.
+        var readBack: CGRect?
+        for attempt in 0..<3 {
+            if let error = setFrame(goal, on: window, crossingDisplays: crossingDisplays) {
+                return failed(Self.unmovableReason(of: element) ?? Self.reason(for: error))
             }
+            readBack = AX.frame(element)
+            guard let landed = readBack, !Self.matches(landed, goal), attempt < 2 else { break }
+            // A full-screen window accepts the write and stays put: nothing moved, nothing to undo.
+            if attempt == 0, let reason = Self.unmovableReason(of: element) { return failed(reason) }
+            try? await Task.sleep(for: .milliseconds(40))
+            guard generations[key] == generation else { return .superseded }
+        }
+        guard var actual = readBack else { return failed(Self.unreadableMessage) }
+
+        // A size-constrained window is re-anchored to the targeted edges, bottom and right included.
+        let anchored = WindowRecovery.anchoredOrigin(goal: goal, size: actual.size, display: Self.displayBounds(for: goal))
+        if abs(actual.width - goal.width) > 1 || abs(actual.height - goal.height) > 1,
+           anchored != actual.origin, AX.setPosition(element, anchored) == .success {
+            actual.origin = anchored
+        }
+        // The app acknowledged the writes but the window never moved: nothing to undo.
+        if Self.matches(actual, now), !Self.matches(now, goal),
+           max(abs(actual.minX - anchored.x), abs(actual.minY - anchored.y)) > 2 {
+            return failed(Self.refusedMessage)
         }
 
-        undo.push(before, for: window, key: key, batch: batch)
+        undo.push(before, for: window, key: key, batch: batch, placement: Self.placement(before))
         let landed = CoordinateSpace.fromAX(actual, primaryHeight: primaryHeight)
         return Self.isConstrained(landed: actual.size, goal: goal.size) ? .constrained(landed) : .applied(landed)
     }
 
-    /// Undoes the most recent step: one move, or every window of a tile. Windows of apps in `excluding` (excluded
-    /// after the move) are left alone. A step whose windows are all gone is dropped and the one before it tried; a
-    /// step every live window refused is put back, so the next ⌃⌥Z can try again; a step held only by excluded apps
-    /// is dropped and undo stops there, never reaching back to an older, unrelated step.
-    func undoLast(excluding: Set<String> = []) -> UndoOutcome {
-        while let step = undo.popStep() {
-            var restored = false
-            var refused: WindowRef?
-            var excluded = false
-            for (key, ref, frame) in step {
-                if let id = ref.bundleID, excluding.contains(id) { excluded = true; continue }
-                // A glide of this window still in flight would overwrite the restored frame on its next
-                // tick; dropping its generation makes it stop (see `glide`).
-                generations[key] = nil
-                glideStart[key] = nil
-                // Origin display unknown here, so use the cross-display order (safe on one display too).
-                guard let error = setFrame(frame, on: ref, crossingDisplays: true) else { restored = true; continue }
-                if refused == nil, !Self.isGone(ref, error: error) { refused = ref }
-            }
-            if restored { return .restored }
-            if let refused {
-                undo.reinstate(step)
-                return .refused(refused)
-            }
-            if excluded { return .nothing }
-        }
-        return .nothing
+    /// A tag for moves that undo in one press (a Tile): pass it to `apply`, then `mergeMoves` when they are done.
+    func newBatch() -> Int {
+        let batch = undo.newBatch()
+        openBatches.insert(batch)
+        return batch
     }
 
-    /// A tag for moves that undo in one press (a Tile): pass it to `apply`, then `mergeMoves` when they are done.
-    func newBatch() -> Int { undo.newBatch() }
+    /// `mergeMoves`, also saying whether ⌃⌥Z took `batch` back before it finished (its caller should then report that,
+    /// not a result). One call, so no Undo can slip in between the check and the merge.
+    func finishBatch(_ batch: Int) -> (undoMarker: Int?, cancelled: Bool) {
+        let cancelled = cancelledBatches.contains(batch)
+        return (mergeMoves(batch), cancelled)
+    }
 
     /// Joins the moves tagged `batch` into one undo step; moves made meanwhile by anything else stay their own steps.
     /// Returns `undoMarker()` when the next undo takes back exactly this batch, nil otherwise (`WindowUndoHistory.merge`).
-    @discardableResult func mergeMoves(_ batch: Int) -> Int? { undo.merge(batch: batch) }
+    @discardableResult func mergeMoves(_ batch: Int) -> Int? {
+        openBatches.remove(batch)
+        cancelledBatches.remove(batch)
+        return undo.merge(batch: batch)
+    }
 
     /// Changes with every recorded move, merge and undo, so a caller can tell whether the latest step is still its own.
     func undoMarker() -> Int { undo.marker }
@@ -168,7 +181,7 @@ actor WindowService {
 
     /// Standard windows of regular apps whose centre is on `display` (AppKit frame), with their AppKit
     /// frames, for tiling. Skips Tessera, apps in `excluding`, minimised and hidden windows (they are not on
-    /// screen), panels and dialogs, and anything smaller than a tiny utility window. Front-most first.
+    /// screen), full-screen windows, panels and dialogs, and anything smaller than a tiny utility window. Front-most first.
     func visibleWindows(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>) -> [(window: WindowRef, frame: CGRect)] {
         visibleWindowsCounted(on: display, primaryHeight: primaryHeight, excluding: excluding).found
     }
@@ -209,8 +222,10 @@ actor WindowService {
             }
             for element in windows {
                 AXUIElementSetMessagingTimeout(element, Self.timeout)
+                // A full-screen window has a Space of its own: tiling or a split must not pull it out.
                 guard let id = SPI.windowID(of: element), let frame = frames[id],
-                      (AX.value(element, kAXSubroleAttribute) as? String) == kAXStandardWindowSubrole else { continue }
+                      (AX.value(element, kAXSubroleAttribute) as? String) == kAXStandardWindowSubrole,
+                      AX.bool(element, "AXFullScreen") != true else { continue }
                 result.append((WindowRef(element: element, pid: pid, windowID: id, bundleID: app.bundleIdentifier), frame))
             }
         }
@@ -220,55 +235,7 @@ actor WindowService {
 
     // MARK: - Private
 
-    /// Writes an AX frame with Enhanced UI temporarily off. Nil if any write was accepted; otherwise the first
-    /// write's error, which is logged.
-    private func setFrame(_ goal: CGRect, on window: WindowRef, crossingDisplays: Bool) -> AXError? {
-        let element = window.element
-        let app = AXUIElementCreateApplication(window.pid)
-        AXUIElementSetMessagingTimeout(app, Self.timeout)
-        AXUIElementSetMessagingTimeout(element, Self.timeout)
-
-        let enhanced = AX.bool(app, Self.enhancedUI) == true
-        if enhanced { AX.setBool(app, Self.enhancedUI, false) }
-        defer { if enhanced { AX.setBool(app, Self.enhancedUI, true) } }
-
-        let results: [AXError] = crossingDisplays
-            ? [AX.setSize(element, goal.size), AX.setPosition(element, goal.origin), AX.setSize(element, goal.size)]
-            : [AX.setPosition(element, goal.origin), AX.setSize(element, goal.size)]
-        guard !results.contains(.success), let error = results.first else { return nil }
-        Self.log.notice("set frame failed for \(window.bundleID ?? "?", privacy: .public): AXError \(error.rawValue, privacy: .public)")
-        return error
-    }
-
-    /// Eases (cubic ease-out) from `start` toward `goal` in AX coordinates, without the final exact write.
-    /// False when a newer move of the same window took over. The actor is free between frames.
-    private func glide(
-        _ window: WindowRef, from start: CGRect, to goal: CGRect, duration: Double, key: UndoKey, generation: Int
-    ) async -> Bool {
-        let app = AXUIElementCreateApplication(window.pid)
-        AXUIElementSetMessagingTimeout(app, Self.timeout)
-        let enhanced = AX.bool(app, Self.enhancedUI) == true
-        if enhanced { AX.setBool(app, Self.enhancedUI, false) }
-        defer { if enhanced { AX.setBool(app, Self.enhancedUI, true) } }
-
-        let clock = ContinuousClock()
-        let begin = clock.now
-        let total = Duration.seconds(duration)
-        while true {
-            let t = min((clock.now - begin) / total, 1)
-            if t >= 1 { return true }
-            let e = 1 - pow(1 - t, 3)
-            let frame = CGRect(
-                x: start.minX + (goal.minX - start.minX) * e, y: start.minY + (goal.minY - start.minY) * e,
-                width: start.width + (goal.width - start.width) * e, height: start.height + (goal.height - start.height) * e)
-            _ = AX.setPosition(window.element, frame.origin)
-            _ = AX.setSize(window.element, frame.size)
-            let slept = (try? await Task.sleep(for: Self.frameInterval)) != nil  // cancelled: stop, don't spin
-            guard generations[key] == generation, slept else { return generations[key] == generation }
-        }
-    }
-
-    private static func key(for window: WindowRef) -> UndoKey {
+    static func key(for window: WindowRef) -> UndoKey {
         window.windowID.map { .window($0) } ?? .element(Int(bitPattern: CFHash(window.element)))
     }
 
