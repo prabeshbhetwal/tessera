@@ -208,17 +208,17 @@ final class Coordinator {
         if hotkey, result.ok, model.settings.showHUD, session == nil, ![.openSettings, .explain].contains(command) {
             let title = result.message ?? command.summary
             let action: WindowAction? = if case let .apply(.action(value), _) = command { value }
-                else { WindowAction.allCases.first { $0.displayName == title } }
+                else { WindowAction.allCases.first { $0.displayName == title.components(separatedBy: " · ")[0] } }
             shortcutReceipt.show(title: title, action: action, settings: model.settings)
             return
         }
         if let message = result.ok ? result.message : (result.message ?? "Command failed") {
-            showHUD(message)
+            showHUD(message, always: !result.ok)
         }
     }
 
     /// Every HUD message goes through here, so the "Show messages" switch covers them all, except `always` ones
-    /// the person must see (settings that couldn't be saved).
+    /// the person must see (failures, such as a move that didn't happen or settings that couldn't be saved).
     func showHUD(_ text: String, always: Bool = false) {
         let s = model.settings
         guard s.showHUD || always else { return }
@@ -295,7 +295,7 @@ final class Coordinator {
             guard let found else {
                 cancelSession()
                 input?.abortSession()
-                showHUD(CommandExecutor.noWindowMessage)
+                showHUD(await windows.whyNoWindow(nil) ?? CommandExecutor.noWindowMessage, always: true)
                 return
             }
             session?.target = found.window
@@ -452,13 +452,13 @@ final class Coordinator {
                 resolved.targetFrame = targetFrame(for: s.selection, in: resolved)  // centre needs the size
             }
             guard let target = resolved.target, let frame = resolved.targetFrame else {
-                showHUD(CommandExecutor.noWindowMessage)
+                showHUD(await windows.whyNoWindow(nil) ?? CommandExecutor.noWindowMessage, always: true)
                 return
             }
             let result = await executor.place(target, current: resolved.current, goal: frame)
             if case let .failed(reason) = result {
                 log.notice("apply failed for \(target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
-                showHUD("Can't move this window")
+                showHUD(WindowService.isSpecific(reason) ? reason : "Can't move this window", always: true)
             }
         }
     }

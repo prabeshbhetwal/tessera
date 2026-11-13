@@ -12,6 +12,10 @@ struct WindowRef: @unchecked Sendable, Equatable {
 
 enum ApplyResult: Sendable, Equatable {
     case applied(CGRect)
+    /// Landed, but the app kept a different size (a minimum size, or it refuses resizing). Still an undoable move.
+    case constrained(CGRect)
+    /// A newer move of the same window took over mid-glide; that move does the final write and records undo.
+    case superseded
     case failed(String)
 }
 
@@ -19,7 +23,7 @@ enum ApplyResult: Sendable, Equatable {
 actor WindowService {
     private typealias UndoKey = WindowUndoHistory.Key
 
-    private static let timeout: Float = 0.3
+    static let timeout: Float = 0.3
     private static let enhancedUI = "AXEnhancedUserInterface"
     private static let frameInterval: Duration = .milliseconds(16)
 
@@ -64,7 +68,7 @@ actor WindowService {
                duration: Double = 0, batch: Int? = nil) async -> ApplyResult {
         let element = window.element
         AXUIElementSetMessagingTimeout(element, Self.timeout)
-        guard let now = AX.frame(element) else { return .failed("Can't read the window's frame") }
+        guard let now = AX.frame(element) else { return .failed(Self.unreadableMessage) }
 
         let goal = CoordinateSpace.toAX(target, primaryHeight: primaryHeight)
         let key = Self.key(for: window)
@@ -76,45 +80,58 @@ actor WindowService {
             glideStart[key] = before
             guard await glide(window, from: now, to: goal, duration: duration, key: key, generation: generation) else {
                 // A newer move of this window took over mid-flight; it does the final write and records undo.
-                return .applied(target)
+                return .superseded
             }
         }
         glideStart[key] = nil
         if generations[key] == generation { generations[key] = nil }
 
-        guard setFrame(goal, on: window, crossingDisplays: crossingDisplays) else {
-            return .failed("The app didn't accept the new frame")
+        if let error = setFrame(goal, on: window, crossingDisplays: crossingDisplays) {
+            return .failed(Self.unmovableReason(of: element) ?? Self.reason(for: error))
         }
 
         // Single read-back. A size-constrained window is re-anchored to the targeted edges.
-        guard var actual = AX.frame(element) else { return .failed("Can't read the window's frame") }
-        if abs(actual.width - goal.width) > 1 || abs(actual.height - goal.height) > 1 {
+        guard var actual = AX.frame(element) else { return .failed(Self.unreadableMessage) }
+        let sizeDiffers = abs(actual.width - goal.width) > 1 || abs(actual.height - goal.height) > 1
+        if sizeDiffers {
+            // A full-screen window accepts the write and stays put: nothing moved, nothing to undo.
+            if let reason = Self.unmovableReason(of: element) { return .failed(reason) }
             let x = Self.anchorsRight(goal) ? goal.maxX - actual.width : goal.minX
             let anchored = CGPoint(x: x, y: goal.minY)
-            if anchored != actual.origin, AX.setPosition(element, anchored) {
+            if anchored != actual.origin, AX.setPosition(element, anchored) == .success {
                 actual.origin = anchored
             }
         }
 
         undo.push(before, for: window, key: key, batch: batch)
-        return .applied(CoordinateSpace.fromAX(actual, primaryHeight: primaryHeight))
+        let landed = CoordinateSpace.fromAX(actual, primaryHeight: primaryHeight)
+        return Self.isConstrained(landed: actual.size, goal: goal.size) ? .constrained(landed) : .applied(landed)
     }
 
-    /// Undoes the most recent step: one move, or every window of a tile. False when there is nothing to undo.
-    func undoLast() -> Bool {
+    /// Undoes the most recent step: one move, or every window of a tile. Windows of apps in `excluding` (excluded
+    /// after the move) are left alone. A step whose windows are all gone is dropped and the one before it tried; a
+    /// step every live window refused is put back, so the next ⌃⌥Z can try again.
+    func undoLast(excluding: Set<String> = []) -> UndoOutcome {
         while let step = undo.popStep() {
             var restored = false
+            var refused: WindowRef?
             for (key, ref, frame) in step {
+                if let id = ref.bundleID, excluding.contains(id) { continue }
                 // A glide of this window still in flight would overwrite the restored frame on its next
                 // tick; dropping its generation makes it stop (see `glide`).
                 generations[key] = nil
                 glideStart[key] = nil
                 // Origin display unknown here, so use the cross-display order (safe on one display too).
-                if setFrame(frame, on: ref, crossingDisplays: true) { restored = true }
+                guard let error = setFrame(frame, on: ref, crossingDisplays: true) else { restored = true; continue }
+                if refused == nil, !Self.isGone(ref, error: error) { refused = ref }
             }
-            if restored { return true }
+            if restored { return .restored }
+            if let refused {
+                undo.reinstate(step)
+                return .refused(refused)
+            }
         }
-        return false
+        return .nothing
     }
 
     /// A tag for moves that undo in one press (a Tile): pass it to `apply`, then `mergeMoves` when they are done.
@@ -150,8 +167,15 @@ actor WindowService {
     /// frames, for tiling. Skips Tessera, apps in `excluding`, minimised and hidden windows (they are not on
     /// screen), panels and dialogs, and anything smaller than a tiny utility window. Front-most first.
     func visibleWindows(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>) -> [(window: WindowRef, frame: CGRect)] {
+        visibleWindowsCounted(on: display, primaryHeight: primaryHeight, excluding: excluding).found
+    }
+
+    /// `visibleWindows`, plus how many apps with windows there were skipped because their Accessibility read failed
+    /// (timed out or refused), so Tile can say so instead of ignoring them.
+    func visibleWindowsCounted(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>)
+        -> (found: [(window: WindowRef, frame: CGRect)], skipped: Int) {
         let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [] }
+        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return ([], 0) }
         let ownPID = ProcessInfo.processInfo.processIdentifier
         var framesByPID: [pid_t: [CGWindowID: CGRect]] = [:]
         var depth: [CGWindowID: Int] = [:]  // the list runs front to back
@@ -169,12 +193,17 @@ actor WindowService {
         }
 
         var result: [(window: WindowRef, frame: CGRect)] = []
+        var skipped = 0
         for (pid, frames) in framesByPID {
             guard let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular,
                   !excluding.contains(app.bundleIdentifier ?? "") else { continue }
             let axApp = AXUIElementCreateApplication(pid)
             AXUIElementSetMessagingTimeout(axApp, Self.timeout)
-            guard let windows = AX.value(axApp, kAXWindowsAttribute) as? [AXUIElement] else { continue }
+            guard let windows = AX.value(axApp, kAXWindowsAttribute) as? [AXUIElement] else {
+                skipped += 1
+                Self.log.notice("skipped \(app.bundleIdentifier ?? "?", privacy: .public): its windows couldn't be read")
+                continue
+            }
             for element in windows {
                 AXUIElementSetMessagingTimeout(element, Self.timeout)
                 guard let id = SPI.windowID(of: element), let frame = frames[id],
@@ -182,13 +211,15 @@ actor WindowService {
                 result.append((WindowRef(element: element, pid: pid, windowID: id, bundleID: app.bundleIdentifier), frame))
             }
         }
-        return result.sorted { depth[$0.window.windowID ?? 0, default: .max] < depth[$1.window.windowID ?? 0, default: .max] }
+        let sorted = result.sorted { depth[$0.window.windowID ?? 0, default: .max] < depth[$1.window.windowID ?? 0, default: .max] }
+        return (sorted, skipped)
     }
 
     // MARK: - Private
 
-    /// Writes an AX frame with Enhanced UI temporarily off. True if any write was accepted.
-    private func setFrame(_ goal: CGRect, on window: WindowRef, crossingDisplays: Bool) -> Bool {
+    /// Writes an AX frame with Enhanced UI temporarily off. Nil if any write was accepted; otherwise the first
+    /// write's error, which is logged.
+    private func setFrame(_ goal: CGRect, on window: WindowRef, crossingDisplays: Bool) -> AXError? {
         let element = window.element
         let app = AXUIElementCreateApplication(window.pid)
         AXUIElementSetMessagingTimeout(app, Self.timeout)
@@ -198,10 +229,12 @@ actor WindowService {
         if enhanced { AX.setBool(app, Self.enhancedUI, false) }
         defer { if enhanced { AX.setBool(app, Self.enhancedUI, true) } }
 
-        let results: [Bool] = crossingDisplays
+        let results: [AXError] = crossingDisplays
             ? [AX.setSize(element, goal.size), AX.setPosition(element, goal.origin), AX.setSize(element, goal.size)]
             : [AX.setPosition(element, goal.origin), AX.setSize(element, goal.size)]
-        return results.contains(true)
+        guard !results.contains(.success), let error = results.first else { return nil }
+        Self.log.notice("set frame failed for \(window.bundleID ?? "?", privacy: .public): AXError \(error.rawValue, privacy: .public)")
+        return error
     }
 
     /// Eases (cubic ease-out) from `start` toward `goal` in AX coordinates, without the final exact write.
@@ -236,7 +269,7 @@ actor WindowService {
         window.windowID.map { .window($0) } ?? .element(Int(bitPattern: CFHash(window.element)))
     }
 
-    private static func frontmostPID() -> pid_t? {
+    static func frontmostPID() -> pid_t? {
         if let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier, pid > 0 { return pid }
         let system = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(system, timeout)
@@ -244,52 +277,5 @@ actor WindowService {
         var pid: pid_t = 0
         guard AXUIElementGetPid(app, &pid) == .success, pid > 0 else { return nil }
         return pid
-    }
-}
-
-/// Thin typed wrappers over the AX C API. No force casts: CF types are checked by type ID.
-private enum AX {
-    static func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }
-        return value
-    }
-
-    static func element(_ element: AXUIElement, _ attribute: String) -> AXUIElement? {
-        guard let v = value(element, attribute), CFGetTypeID(v) == AXUIElementGetTypeID() else { return nil }
-        return unsafeDowncast(v, to: AXUIElement.self)
-    }
-
-    static func frame(_ element: AXUIElement) -> CGRect? {
-        guard let origin = axValue(element, kAXPositionAttribute, .cgPoint, CGPoint.zero),
-              let size = axValue(element, kAXSizeAttribute, .cgSize, CGSize.zero) else { return nil }
-        return CGRect(origin: origin, size: size)
-    }
-
-    static func setPosition(_ element: AXUIElement, _ point: CGPoint) -> Bool {
-        var point = point
-        guard let value = AXValueCreate(.cgPoint, &point) else { return false }
-        return AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, value) == .success
-    }
-
-    static func setSize(_ element: AXUIElement, _ size: CGSize) -> Bool {
-        var size = size
-        guard let value = AXValueCreate(.cgSize, &size) else { return false }
-        return AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, value) == .success
-    }
-
-    static func bool(_ element: AXUIElement, _ attribute: String) -> Bool? {
-        guard let v = value(element, attribute), CFGetTypeID(v) == CFBooleanGetTypeID() else { return nil }
-        return CFBooleanGetValue(unsafeDowncast(v, to: CFBoolean.self))
-    }
-
-    static func setBool(_ element: AXUIElement, _ attribute: String, _ on: Bool) {
-        _ = AXUIElementSetAttributeValue(element, attribute as CFString, NSNumber(value: on))
-    }
-
-    private static func axValue<T: BitwiseCopyable>(_ element: AXUIElement, _ attribute: String, _ type: AXValueType, _ initial: T) -> T? {
-        guard let v = value(element, attribute), CFGetTypeID(v) == AXValueGetTypeID() else { return nil }
-        var out = initial
-        return AXValueGetValue(unsafeDowncast(v, to: AXValue.self), type, &out) ? out : nil
     }
 }

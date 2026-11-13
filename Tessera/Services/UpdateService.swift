@@ -59,7 +59,8 @@ final class UpdateService: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStan
         updater.automaticallyChecksForUpdates = settings.checkAutomatically
         updater.updateCheckInterval = settings.interval.seconds
         updater.automaticallyDownloadsUpdates = settings.installAutomatically
-        channels = settings.allowedChannels
+        channels = settings.allowedChannels(
+            runningVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
         if starting { controller.startUpdater() }
     }
 

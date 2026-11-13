@@ -30,6 +30,11 @@ extension Coordinator {
         do {
             try await store.save(settings)
             saveFailing = false
+        } catch let refusal as SettingsStore.SaveRefusal {
+            // The launch alert already said changes aren't saved this run (the file on disk is being kept);
+            // a HUD per edit would only repeat it. Logged once.
+            if !saveFailing { Self.saveLog.notice("settings not saved this run: \(String(describing: refusal), privacy: .public)") }
+            saveFailing = true
         } catch {
             Self.saveLog.error("settings save failed: \(error.localizedDescription, privacy: .public)")
             // Once per run of failures, even with messages turned off: the change would be lost silently otherwise.

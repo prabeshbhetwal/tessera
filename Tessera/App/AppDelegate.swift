@@ -18,6 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "app")
     /// Quit is held for the settings flush (see `applicationShouldTerminate`).
     private var awaitingSave = false
+    /// The event tap failed and the alert has shown; it shows again only after a start succeeds or the grant is lost.
+    private var tapFailing = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !anotherInstanceIsRunning() else {
@@ -69,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let queued = pendingURLs
             pendingURLs = []
             for url in queued { await handle(url, with: coordinator) }
-            if let recovered = loaded.recoveredFrom { showRecoveryAlert(recovered) }
+            if let notice = loaded.notice { showSettingsNotice(notice) }
             permissionObserver = Permissions.observeAccessibility { [weak self] granted in
                 self?.permissionChanged(granted)
             }
@@ -77,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // picks up at the step it was on.
             let resumeStep = OnboardingView.savedStep
             if Permissions.isAccessibilityTrusted, coordinator.start() {
+                tapRecovered()
                 statusItem?.accessibilityGranted = true
                 if let resumeStep { coordinator.presenter.showOnboarding(startStep: resumeStep) }
             } else if Permissions.isAccessibilityTrusted {
@@ -180,8 +183,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func permissionChanged(_ granted: Bool) {
         statusItem?.accessibilityGranted = granted
         if granted {
-            if coordinator?.start() == false { tapFailed() }
+            if coordinator?.start() == false { tapFailed() } else { tapRecovered() }
         } else {
+            tapRecovered()
             coordinator?.stop()
             coordinator?.presenter.closeSettings()
             coordinator?.presenter.showOnboarding(startStep: OnboardingView.accessibilityStep)
@@ -193,6 +197,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func tapFailed() {
         log.error("Accessibility is granted but the event tap could not be created; stale permission entry?")
         statusItem?.accessibilityGranted = false
+        statusItem?.tapFailed = true
+        OnboardingView.tapFailed = true
+        // Every Accessibility change notification lands here while the failure lasts: alert once per streak.
+        guard !tapFailing else { return }
+        tapFailing = true
         let alert = NSAlert()
         alert.messageText = "Tessera can’t see the trigger"
         alert.informativeText = "Accessibility is allowed, but macOS won’t let Tessera watch the keyboard and mouse. "
@@ -201,6 +210,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "Not Now")
         if alert.runModal() == .alertFirstButtonReturn { Permissions.openPrivacyPane("Privacy_Accessibility") }
+    }
+
+    /// The tap works again (or the grant is gone, which setup handles): clear the tap-failed state.
+    private func tapRecovered() {
+        tapFailing = false
+        statusItem?.tapFailed = false
+        OnboardingView.tapFailed = false
     }
 
     private func anotherInstanceIsRunning() -> Bool {
@@ -213,11 +229,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return !others.isEmpty
     }
 
-    private func showRecoveryAlert(_ url: URL) {
+    /// What load did to the settings file: reset, repaired, or left alone with saving off for this run.
+    private func showSettingsNotice(_ notice: (title: String, message: String)) {
         let alert = NSAlert()
-        alert.messageText = "Settings were reset"
-        alert.informativeText = "Tessera couldn't read its settings file, so it started with defaults. "
-            + "The old file was kept at \(url.path)."
+        alert.messageText = notice.title
+        alert.informativeText = notice.message
         alert.runModal()
     }
 

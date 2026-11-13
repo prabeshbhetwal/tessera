@@ -15,6 +15,9 @@ struct OnboardingView: View {
     @State private var showFix = false
     @State private var fixTimer: Task<Void, Never>?
     @State private var fixFailed = false
+    /// Set by the app delegate when Accessibility reads as granted but the event tap can't be created.
+    static var tapFailed = false
+    @State private var tapFailed = OnboardingView.tapFailed
     @State private var screenAllowed = Permissions.isScreenCaptureAllowed
 
     init(startStep: Int = 0, chord: TriggerChord = .default, onFinish: @escaping () -> Void) {
@@ -49,6 +52,7 @@ struct OnboardingView: View {
                 axTrusted = trusted
                 guard trusted else { return }
                 showFix = false
+                tapFailed = false
                 // Granted: move on by itself instead of making the user find the button.
                 if step == Self.accessibilityStep { step += 1 }
             }
@@ -135,9 +139,11 @@ struct OnboardingView: View {
                 Permissions.promptAccessibility()
                 startFixTimer()
             }
-            if showFix && !axTrusted {
+            if (showFix && !axTrusted) || tapFailed {
                 VStack(spacing: 8) {
-                    Caption("Still not granted? An older build may hold a stale entry. Reset it, then grant again.")
+                    Caption(tapFailed
+                        ? "Allowed, but macOS won’t let Tessera read input. An older build may hold a stale entry. Reset it, then grant again."
+                        : "Still not granted? An older build may hold a stale entry. Reset it, then grant again.")
                         .multilineTextAlignment(.center)
                     Button("Fix permission", action: resetPermission)
                         .controlSize(.regular)

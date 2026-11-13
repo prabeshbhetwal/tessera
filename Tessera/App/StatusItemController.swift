@@ -15,6 +15,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     var accessibilityGranted = Permissions.isAccessibilityTrusted {
         didSet { if accessibilityGranted != oldValue { updateIcon() } }
     }
+    /// Accessibility reads as granted but the event tap can't be created (a stale entry). Set by the app delegate.
+    var tapFailed = false
 
     /// Mirrors `UpdateService.updateWaiting`, so the badge appears without the menu being opened.
     private var updateWaiting = false {
@@ -96,7 +98,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let items = s.menuBarItems
         status.title = granted
             ? "Hold \(ModifierKey.describe(s.trigger.keyCodes)) to snap"
-            : "Accessibility not granted"
+            : tapFailed ? "Tessera can’t read input: reset Accessibility permission" : "Accessibility not granted"
         // The status line always shows when setup is unfinished: it says why the rest is greyed out.
         status.isHidden = granted && !items.statusLine
         hotkeysOffItem.isHidden = s.hotkeysEnabled
@@ -195,7 +197,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         run(box.command)
     }
 
-    @objc private func openSettings() { presenter()?.showSettings() }
+    @objc private func openSettings() {
+        // Settings would open (the grant reads as done), but the repair lives in setup's Accessibility step.
+        if tapFailed { presenter()?.showOnboarding(startStep: OnboardingView.accessibilityStep) } else { presenter()?.showSettings() }
+    }
     @objc private func openShortcuts() { presenter()?.showSettings(pane: .shortcuts) }
     @objc private func openAbout() { presenter()?.showSettings(pane: .about) }
     @objc private func explain() { run(.explain) }
