@@ -3,6 +3,20 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.29</title>
+            <pubDate>Fri, 13 Nov 2026 18:32:19 +0000</pubDate>
+            <sparkle:version>20261113.183106</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.29</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">Settings respond to the mouse again.
+
+- Sliders, switches, pop-up menus and buttons in Ring, Shortcuts, Cycles, Displays, Splits, Motion and Appearance ignored clicks and drags since 0.2.0-beta.26. The picture behind the preview on the right was catching them. It no longer does.
+- Picker changes in Settings now always apply on the main thread.
+- Tessera's windows come to the front the supported way on current macOS.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.29/Tessera-0.2.0-beta.29.zip" length="6263445" type="application/octet-stream" sparkle:edSignature="fWRdJ1qC8+YExvGSSb/waIaz9EeSIhswCCobXkbltj02bWFj/Jr+QmFz8K7Gmq8oTIlqFzL4CpMjBPDJoUCRDQ==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.28</title>
             <pubDate>Fri, 13 Nov 2026 17:14:57 +0000</pubDate>
             <sparkle:version>20261113.171228</sparkle:version>
