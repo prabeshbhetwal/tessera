@@ -66,10 +66,11 @@ private struct DisplayRow: View {
     private var range: ColumnRange { display.range }
 
     /// The override if one exists, otherwise what the automatic rule gives.
+    /// Clamped like snapping does, so the pane never shows a column count the display can't use.
     private var profile: DisplayProfile {
-        override ?? DisplayProfile(
+        (override ?? DisplayProfile(
             columns: range.defaultCols, gap: model.settings.defaultGap, padding: model.settings.defaultPadding
-        )
+        )).clamped(to: range)
     }
 
     static func screenName(of display: DisplayContext) -> String {

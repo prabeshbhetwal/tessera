@@ -39,7 +39,7 @@ final class DisplayService {
         displays.display(at: p)
     }
 
-    private static func context(for screen: NSScreen, settings: TesseraSettings) -> DisplayContext? {
+    static func context(for screen: NSScreen, settings: TesseraSettings) -> DisplayContext? {
         let key = NSDeviceDescriptionKey("NSScreenNumber")
         guard let number = screen.deviceDescription[key] as? NSNumber else { return nil }
         let cgID = CGDirectDisplayID(number.uint32Value)

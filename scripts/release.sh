@@ -83,6 +83,9 @@ IDENTITY="${TESSERA_SIGN_IDENTITY:-Tessera Local Signing}"
 codesign -dvv "$APP" 2>&1 | grep -x "Authority=$IDENTITY" >/dev/null \
   || die "the build is not signed by \"$IDENTITY\" (ad-hoc fallback?), so updating would cost every user the" \
     "Accessibility grant; run this in a logged-in session whose login keychain has that identity"
+# The name alone can be reissued with a new key; macOS ties the grant to the certificate, so pin its leaf hash.
+bash scripts/verify-release-signature.sh "$APP" \
+  || die "the signing certificate is not the pinned one, so updating would cost every user the Accessibility grant"
 
 step "Archiving $APP"
 mkdir -p dist

@@ -196,6 +196,13 @@ struct DisplaySelectorEditor: View {
     let title: String
     @Binding var selector: DisplaySelector
 
+    /// Connected displays by name, so nobody has to know a display's opaque storage key.
+    private var connected: [(id: String, name: String)] {
+        NSScreen.screens.compactMap { screen in
+            DisplayService.context(for: screen, settings: .defaults).map { ($0.id.storageKey, screen.localizedName) }
+        }
+    }
+
     private enum Kind: Hashable { case current, cursor, index, id }
 
     private var kind: Kind {
@@ -215,7 +222,7 @@ struct DisplaySelectorEditor: View {
                     case .current: selector = .current
                     case .cursor: selector = .cursor
                     case .index: selector = .index(1)
-                    case .id: selector = .id("")
+                    case .id: selector = connected.first.map { .id($0.id) } ?? .current
                     }
                 }) {
                     Text("Window’s display").tag(Kind.current)
@@ -233,8 +240,13 @@ struct DisplaySelectorEditor: View {
                         .labelsHidden()
                         .accessibilityValue("\(n)")
                 case .id(let key):
-                    TextField("Display ID", text: Binding(get: { key }, set: { selector = .id($0) }))
-                        .frame(minWidth: 120)
+                    Picker("Display", selection: Binding(get: { key }, set: { selector = .id($0) })) {
+                        // A saved display that isn't plugged in stays selected rather than being silently replaced.
+                        if !connected.contains(where: { $0.id == key }) { Text("Not connected").tag(key) }
+                        ForEach(connected, id: \.id) { Text($0.name).tag($0.id) }
+                    }
+                    .labelsHidden()
+                    .frame(minWidth: 120)
                 default:
                     EmptyView()
                 }
