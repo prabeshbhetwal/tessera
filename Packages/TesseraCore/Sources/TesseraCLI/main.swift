@@ -3,9 +3,13 @@ import Foundation
 import TesseraCore
 
 // `tessera` CLI (M2 spec §5): argv → Command JSON over the app's Unix socket → CommandResult.
-// Exit codes: 0 ok, 1 command error, 2 usage error, 3 app not running.
+// Exit codes: 0 ok, 1 command error, 2 usage error, 3 app not running, 4 no answer in time (the command may
+// have run, so a script must check before retrying it).
 
-enum Exit: Int32 { case ok = 0, commandError = 1, usage = 2, notRunning = 3 }
+enum Exit: Int32 { case ok = 0, commandError = 1, usage = 2, notRunning = 3, timedOut = 4 }
+
+/// How long to wait for the app's answer before giving up.
+let readTimeoutSeconds = 60
 
 func fail(_ message: String, _ code: Exit) -> Never {
     FileHandle.standardError.write(Data("tessera: \(message)\n".utf8))
@@ -50,12 +54,17 @@ guard let socketPath = FileManager.default.urls(for: .applicationSupportDirector
     fail("no Application Support directory", .notRunning)
 }
 
+/// `nil` when nothing is listening (the app isn't running). A path that can't fit in a socket address or a
+/// socket that can't be created fail here with their own message: launching Tessera would not fix either.
 func connectToApp(_ path: String) -> Int32? {
-    let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-    guard fd >= 0 else { return nil }
     var addr = sockaddr_un()
     let bytes = Array(path.utf8)
-    guard bytes.count < MemoryLayout.size(ofValue: addr.sun_path) else { close(fd); return nil }
+    let limit = MemoryLayout.size(ofValue: addr.sun_path) - 1
+    guard bytes.count <= limit else {
+        fail("the socket path is \(bytes.count) bytes, over the \(limit) a Unix socket allows: \(path)", .commandError)
+    }
+    let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+    guard fd >= 0 else { fail("couldn't create a socket: \(String(cString: strerror(errno)))", .commandError) }
     addr.sun_family = sa_family_t(AF_UNIX)
     addr.sun_len = UInt8(MemoryLayout<sockaddr_un>.size)
     withUnsafeMutableBytes(of: &addr.sun_path) { $0.copyBytes(from: bytes) }
@@ -67,7 +76,7 @@ func connectToApp(_ path: String) -> Int32? {
     guard connected == 0 else { close(fd); return nil }
     var on: Int32 = 1
     setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
-    var timeout = timeval(tv_sec: 60, tv_usec: 0)
+    var timeout = timeval(tv_sec: readTimeoutSeconds, tv_usec: 0)
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
     return fd
 }
@@ -85,15 +94,17 @@ func send(_ data: Data, to fd: Int32) -> Bool {
     }
 }
 
-func receiveLine(from fd: Int32) -> Data {
+/// One newline-terminated line. `timedOut` is set when the receive timeout fired (read fails with EAGAIN).
+func receiveLine(from fd: Int32) -> (data: Data, timedOut: Bool) {
     var data = Data()
     var buffer = [UInt8](repeating: 0, count: 4096)
     while true {
         let n = buffer.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
         if n < 0, errno == EINTR { continue }
-        guard n > 0 else { return data }
+        if n < 0, errno == EAGAIN || errno == EWOULDBLOCK { return (data, true) }
+        guard n > 0 else { return (data, false) }
         data.append(contentsOf: buffer[0..<n])
-        if let newline = data.firstIndex(of: UInt8(ascii: "\n")) { return data[data.startIndex..<newline] }
+        if let newline = data.firstIndex(of: UInt8(ascii: "\n")) { return (data[data.startIndex..<newline], false) }
     }
 }
 
@@ -101,8 +112,12 @@ guard let fd = connectToApp(socketPath) else { fail("Tessera isn't running. Open
 guard var request = try? JSONEncoder().encode(command) else { fail("couldn't encode the command", .commandError) }
 request.append(UInt8(ascii: "\n"))
 guard send(request, to: fd) else { close(fd); fail("lost the connection to Tessera", .notRunning) }
-let line = receiveLine(from: fd)
+let (line, timedOut) = receiveLine(from: fd)
 close(fd)
+if timedOut {
+    fail("Tessera didn't answer within \(readTimeoutSeconds) seconds. The command may still have run: check before running it again.",
+         .timedOut)
+}
 guard let result = try? JSONDecoder().decode(CommandResult.self, from: line) else {
     fail("no valid response from Tessera", .commandError)
 }

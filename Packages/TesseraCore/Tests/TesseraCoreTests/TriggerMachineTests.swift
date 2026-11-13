@@ -162,6 +162,26 @@ private func opened() -> TriggerMachine {
         #expect(!m.handle(.leftMouseUp(here)).suppress)  // only the paired one
     }
 
+    /// Title bar held before the chord: its mouse-down was never swallowed, so the app must still see the up
+    /// or the drag sticks.
+    @Test func testMouseUpWithoutSwallowedDownPassesThroughWhileOpen() {
+        var m = opened()
+        #expect(!m.handle(.leftMouseUp(here)).suppress)
+        #expect(m.isOpen)
+    }
+
+    /// Click-to-span still swallows its pair, with the ring open or closed by then, and only once.
+    @Test func testClickToSpanSwallowsItsOwnMouseUp() {
+        var m = opened()
+        #expect(m.handle(.leftMouseDown(here)).suppress)
+        let up = m.handle(.leftMouseUp(here))
+        #expect(up.suppress && up.outputs.isEmpty)
+        #expect(!m.handle(.leftMouseUp(here)).suppress)
+        // A second click in the same session pairs again.
+        #expect(m.handle(.leftMouseDown(here)).suppress)
+        #expect(m.handle(.leftMouseUp(here)).suppress)
+    }
+
     @Test func testResetCancelsOpenRing() {
         var m = opened()
         #expect(m.reset() == [.cancel])

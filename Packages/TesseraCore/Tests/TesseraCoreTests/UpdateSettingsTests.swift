@@ -22,10 +22,23 @@ import Testing
 
     @Test func channels() {
         var u = UpdateSettings()
-        #expect(u.allowedChannels == [])
+        #expect(u.allowedChannels(runningVersion: "0.2.0") == [])
+        #expect(u.allowedChannels(runningVersion: nil) == [])
         u.includeBetas = true
-        #expect(u.allowedChannels == ["beta"])
-        #expect(u.allowedChannels == [UpdateSettings.betaChannel])
+        #expect(u.allowedChannels(runningVersion: "0.2.0") == ["beta"])
+        #expect(u.allowedChannels(runningVersion: "0.2.0") == [UpdateSettings.betaChannel])
+    }
+
+    /// Every appcast item is on the beta channel, so a beta build that filtered it out would never see the
+    /// next beta and "Check Now" would say up to date. A pre-release build always follows the beta channel.
+    @Test func prereleaseBuildAlwaysAllowsBeta() {
+        var u = UpdateSettings()
+        #expect(!u.includeBetas)
+        #expect(u.allowedChannels(runningVersion: "0.2.0-beta.25") == ["beta"])
+        u.includeBetas = true
+        #expect(u.allowedChannels(runningVersion: "0.2.0-beta.25") == ["beta"])
+        #expect(!UpdateSettings.isPrerelease("1.0.0"))
+        #expect(UpdateSettings.isPrerelease("1.0.0-rc.1"))
     }
 
     /// A file written before updates existed must load with defaults, not be quarantined.

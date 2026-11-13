@@ -170,7 +170,7 @@ private func cursor(at degrees: Double, distance: Double = 50) -> CGPoint {
         let outside = [
             CGPoint(x: -5, y: 500), CGPoint(x: 5000, y: 500),
             CGPoint(x: 1600, y: 5000), CGPoint(x: 1600, y: -1),
-            CGPoint(x: 3840, y: 500),  // right edge is exclusive
+            CGPoint(x: 3841, y: 500),  // just past the right edge (the edge itself is a closed-interval fallback, see DisplayHitTestTests)
         ]
         for c in outside {
             #expect(engine.select(origin: .zero, cursor: c, displays: d, anchor: nil) == .none)

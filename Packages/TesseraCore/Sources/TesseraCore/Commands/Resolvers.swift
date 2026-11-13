@@ -17,13 +17,7 @@ public enum DisplayResolver {
                                cursor: CGPoint) -> DisplayContext? {
         switch s {
         case .current:
-            guard let w = windowFrame else { return nil }
-            if let hit = displays.display(at: CGPoint(x: w.midX, y: w.midY)) { return hit }
-            // Centre is off every screen (window dragged mostly out of view): take the largest overlap.
-            return displays
-                .map { ($0, area($0.frame.intersection(w))) }
-                .filter { $0.1 > 0 }
-                .max { $0.1 < $1.1 }?.0
+            return windowFrame.flatMap { display(containing: $0, in: ordered(displays)) }
         case .cursor:
             return displays.display(at: cursor)
         case .index(let n):
@@ -32,6 +26,17 @@ public enum DisplayResolver {
         case .id(let key):
             return displays.first { $0.id.storageKey == key }
         }
+    }
+
+    /// The display a window is on: the one holding its centre, else (window dragged mostly out of view, centre
+    /// off every screen) the one it overlaps most. `nil` when it overlaps none. The one rule behind
+    /// `resolve(.current)` and the ring keyboard's start, so the CLI and the ring agree.
+    public static func display(containing window: CGRect, in displays: [DisplayContext]) -> DisplayContext? {
+        if let hit = displays.display(at: CGPoint(x: window.midX, y: window.midY)) { return hit }
+        return displays
+            .map { ($0, area($0.frame.intersection(window))) }
+            .filter { $0.1 > 0 }
+            .max { $0.1 < $1.1 }?.0
     }
 
     /// Wraps around at both ends. `nil` when `from` is not in `displays` or `.index` is out of range.

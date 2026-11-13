@@ -307,7 +307,9 @@ private func makeDirectory() throws -> URL {
         #expect(try JSONDecoder().decode(TesseraSettings.self, from: Data(contentsOf: file)) == expected)
     }
 
-    @Test func invalidValuesInAV1FileAreStillSetAside() async throws {
+    /// An invalid value in a v1 file is repaired, not quarantined: the original is copied before repair and
+    /// backed up as v1, then the repaired v2 is saved.
+    @Test func invalidValuesInAV1FileAreRepairedAndBackedUp() async throws {
         let dir = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
@@ -316,9 +318,11 @@ private func makeDirectory() throws -> URL {
 
         let result = await makeStore(dir).load()
         #expect(result.settings == .defaults)
-        let moved = try #require(result.recoveredFrom)
-        #expect(try Data(contentsOf: moved) == bytes)
-        #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("settings.v1-backup.json").path))
+        #expect(result.recoveredFrom == nil)
+        let copy = try #require(result.repairBackup)
+        #expect(try Data(contentsOf: copy) == bytes)
+        #expect(try Data(contentsOf: dir.appendingPathComponent("settings.v1-backup.json")) == bytes)
+        #expect(try JSONDecoder().decode(TesseraSettings.self, from: Data(contentsOf: file)) == .defaults)
     }
 
     @Test func importAcceptsAnM1ExportAndMigratesIt() async throws {
