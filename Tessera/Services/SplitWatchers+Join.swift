@@ -4,7 +4,8 @@ import TesseraCore
 /// A window opening beside a side-by-side group gets a place in it (`splitTilesNewWindow`): the group is tiled again
 /// with the new window, in the learned split for the apps now there when there is one, otherwise in equal shares. A hand
 /// adjustment afterwards is learned as usual, so the next time those apps meet they get it. One ⌃⌥Z puts them back.
-/// Equal shares wait `splitNewWindowWait` seconds and apply only if the window is still open then.
+/// Equal shares wait `splitNewWindowWait` seconds and apply only if the window is still open then. A window that can't
+/// zoom (a progress window such as Finder's Copy) never joins.
 ///
 /// Only the launched or activated app's windows count as joining, so a Space switch or an unhidden app never re-tiles
 /// a display. `splitNewWindowScope` picks the displays: only ones whose windows already sat side by side (a watched
@@ -132,6 +133,9 @@ extension SplitWatchers {
             guard !Task.isCancelled, ownMoves == 0 else { return .notFound }
             guard windows.mutationContext.isCurrent(ticket, on: [display.id.storageKey], refreshSpaces: true),
                   displays.displays.contains(display) else { continue }
+            // A window that can't zoom (Finder's Copy progress) can't take a column's height and is usually gone in
+            // seconds: tiling it in would only squeeze the group, then leave a gap when it closes. System Settings zooms.
+            found.removeAll { AX.element($0.window.element, kAXZoomButtonAttribute).flatMap { AX.bool($0, kAXEnabledAttribute) } == false }
             var joined = found.filter { $0.window.pid == pid && !watched.contains($0.window)
                 && !($0.window.windowID.map { existing.contains($0) } ?? false) }
             guard !joined.isEmpty, found.count > 1 || (restored && found.count == 1) else { continue }
