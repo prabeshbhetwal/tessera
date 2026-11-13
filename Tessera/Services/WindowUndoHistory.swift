@@ -55,7 +55,9 @@ struct WindowUndoHistory {
             }
         }
         if !joined.isEmpty {
-            steps[first].moves += joined.flatMap { steps[$0].moves }
+            // A window moved twice in the batch (it followed a neighbour that landed short) undoes to where it began.
+            var seen = Set(steps[first].moves.map(\.key))
+            steps[first].moves += joined.flatMap { steps[$0].moves }.filter { seen.insert($0.key).inserted }
             for index in joined.reversed() { steps.remove(at: index) }
             marker += 1
         }

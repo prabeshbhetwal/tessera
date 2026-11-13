@@ -78,14 +78,15 @@ extension SplitWatchers {
         }
 
         beginOwnMove()
+        // The whole group, so a window beside one that lands short of its goal (a fixed-size app) can follow it.
         let (landed, undoMarker) = await windows.moveTogether(
-            moves.map { (window: left[$0].window, goal: goals[$0]) }, primaryHeight: DisplayService.primaryHeight,
-            duration: model.glideSeconds)
+            left.indices.map { (window: left[$0].window, goal: goals[$0]) }, primaryHeight: DisplayService.primaryHeight,
+            duration: model.glideSeconds, gap: display.profile.gap)
         endOwnMove()  // re-arms the watchers from where the windows ended up
 
         var finals = left
-        for (index, frame) in zip(moves, landed) { if let frame { finals[index].frame = frame } }
-        let grew = zip(moves, landed).filter { $0.1 != nil }.map { HelpEvent.appName(left[$0.0].window) }
+        for (index, frame) in landed.enumerated() { if let frame { finals[index].frame = frame } }
+        let grew = moves.filter { landed[$0] != nil }.map { HelpEvent.appName(left[$0].window) }
         guard !grew.isEmpty else { return .skipped }
         if !minimised {
             for case let bundleID? in closed.map(\.window.bundleID) {

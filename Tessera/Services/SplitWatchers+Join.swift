@@ -140,14 +140,16 @@ extension SplitWatchers {
         }
 
         beginOwnMove()
+        // The whole group, so the windows beside one that lands short of its goal (System Settings is a fixed width)
+        // follow its real edge instead of leaving a hole beside it.
         let (landed, undoMarker) = await windows.moveTogether(
-            moves.map { (window: ordered[$0].window, goal: goals[$0]) }, primaryHeight: DisplayService.primaryHeight,
-            duration: model.glideSeconds)
+            ordered.indices.map { (window: ordered[$0].window, goal: goals[$0]) },
+            primaryHeight: DisplayService.primaryHeight, duration: model.glideSeconds, gap: display.profile.gap)
         endOwnMove()  // re-arms the watchers, which then watch the new group
-        guard landed.contains(where: { $0 != nil }) else { return false }
+        guard moves.contains(where: { landed[$0] != nil }) else { return false }
 
         var finals = ordered
-        for (index, frame) in zip(moves, landed) { if let frame { finals[index].frame = frame } }
+        for (index, frame) in landed.enumerated() { if let frame { finals[index].frame = frame } }
         let kind = HelpEventKind.windowJoined(joined: joined.map { HelpEvent.appName($0.window) }, usedSplit: learned != nil,
                                               restored: restored)
         let split = learned == nil ? nil : SplitMemory.lookup(SplitKey(ordered, on: display), in: settings.learnedSplits)

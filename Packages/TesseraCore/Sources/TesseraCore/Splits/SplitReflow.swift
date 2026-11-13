@@ -64,6 +64,26 @@ public enum SplitReflow {
         return result
     }
 
+    /// The goals once every window that landed off its goal (an app with a fixed or minimum size, such as System
+    /// Settings) has pulled the windows beside it along, so no hole opens next to it. In input order; `landed` is nil
+    /// for a window whose app refused the move. A window that landed off its goal keeps its goal here.
+    public static func following(goals: [CGRect], landed: [CGRect?], gap: Double) -> [CGRect] {
+        guard goals.count == landed.count else { return goals }
+        let off = goals.indices.filter { i in
+            guard let frame = landed[i] else { return false }
+            return Side.allCases.contains { abs($0.value(frame) - $0.value(goals[i])) > stillness }
+        }
+        var current = goals
+        for i in off {
+            guard let frame = landed[i] else { continue }
+            var after = current
+            after[i] = frame
+            current = frames(before: current, after: after, usable: .infinite, gap: gap) ?? after
+        }
+        for i in off { current[i] = goals[i] }
+        return current
+    }
+
     /// Two frames overlap by more than `SplitLearner.overlapTolerance` on both axes.
     static func stacked(_ frames: [CGRect]) -> Bool {
         frames.indices.contains { i in

@@ -50,11 +50,13 @@ import Testing
         let b = rect(673, 1000)
         #expect(SplitFill.frames(filling: holes, frames: [b], gap: gap) == [rect(0, 1000)])
         #expect(SplitFill.frames(filling: holes.reversed(), frames: [b], gap: gap) == [rect(0, 1000)])
-        #expect(SplitFill.frames(filling: [rect(0, 100)], frames: [rect(600, 1000)], gap: gap) == nil)
+        // Across empty space too: the nearest window beside it covers the hole and the space.
+        #expect(SplitFill.frames(filling: [rect(0, 100)], frames: [rect(600, 1000)], gap: gap) == [rect(0, 1000)])
     }
 
+    /// Only windows that share the hole's band count: one above or below it, or none at all, leaves it alone.
     @Test func nothingBesideTheSpaceLeavesTheWindowsAlone() {
-        #expect(fill(rect(600, 1000), [rect(0, 300)]) == nil)
+        #expect(fill(rect(600, 1000, 0, 200), [rect(0, 300, 300, 500)]) == nil)
         #expect(fill(rect(0, 500), []) == nil)
     }
 }
