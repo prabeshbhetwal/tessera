@@ -9,11 +9,16 @@ final class DisplayService {
     var onChange: (@MainActor () -> Void)?
 
     private let settings: @MainActor () -> TesseraSettings
+    private let suppliedSnapshots: (@MainActor () -> [DisplayContext])?
     // ponytail: never removed; the service lives for the app's lifetime and the block holds self weakly.
     private var observer: NSObjectProtocol?
 
-    init(settings: @escaping @MainActor () -> TesseraSettings) {
+    init(settings: @escaping @MainActor () -> TesseraSettings, displays: [DisplayContext]? = nil,
+         snapshotProvider: (@MainActor () -> [DisplayContext])? = nil) {
         self.settings = settings
+        if let snapshotProvider { suppliedSnapshots = snapshotProvider }
+        else if let displays { suppliedSnapshots = { displays } }
+        else { suppliedSnapshots = nil }
         refresh()
         observer = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -28,9 +33,10 @@ final class DisplayService {
     }
 
     /// Height of the primary (menu-bar) screen, used for AX ↔ AppKit conversion. 0 when headless.
-    static var primaryHeight: CGFloat { NSScreen.screens.first?.frame.height ?? 0 }
+    static var primaryHeight: CGFloat { CGDisplayBounds(CGMainDisplayID()).height }
 
     func refresh() {
+        if let suppliedSnapshots { displays = suppliedSnapshots(); return }
         let current = settings()
         displays = NSScreen.screens.compactMap { Self.context(for: $0, settings: current) }
     }

@@ -36,6 +36,8 @@ final class Coordinator {
 
     private struct Session {
         let id: Int
+        /// The display layout and Spaces the ring opened on; its move is dropped if they change before it lands.
+        var mutationTicket: WindowMutationContext.Ticket
         let origin: CGPoint
         /// Nil until the lookup finishes (Accessibility round trip to the front app).
         var target: WindowRef?
@@ -96,6 +98,11 @@ final class Coordinator {
                 self?.executor.splitWatcher.armSoon()  // catches windows the person lined up by hand
             }
         }
+        spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.workspaceChanged() }
+        }
         previewObserver = NotificationCenter.default.addObserver(
             forName: .tesseraPreviewOverlay, object: nil, queue: .main
         ) { [weak self] note in
@@ -107,6 +114,7 @@ final class Coordinator {
 
     private var recorderObserver: NSObjectProtocol?
     private var activationObserver: NSObjectProtocol?
+    private var spaceObserver: NSObjectProtocol?
     private var previewObserver: NSObjectProtocol?
     private var isRecording = false
     private var sampleTask: Task<Void, Never>?
@@ -179,6 +187,7 @@ final class Coordinator {
         input = service
         updateFrontmostExcluded()
         executor.splitWatcher.armSoon()  // reflow works from launch, not only after a Tile
+        executor.splitWatcher.scheduleRestoration()  // groups remembered per display and Space before the last quit
         // One consumer keeps outputs strictly ordered even across awaits.
         Task { [weak self] in
             for await output in stream { await self?.handle(output) }
@@ -279,12 +288,17 @@ final class Coordinator {
            model.settings.excludedBundleIDs.contains(bundle) { input?.abortSession(); return }
         sessionCounter += 1
         let id = sessionCounter
+        let mutationTicket = windows.mutationContext.capture()
         let lookup = Task { [windows] () -> FrontWindow? in
             guard let window = await windows.frontmostWindow() else { return nil }
             return (window, await windows.frame(of: window))
         }
         let all = displays.displays
-        session = Session(id: id, origin: origin, lookup: lookup,
+        // AppKit's screens can lag CG's for a moment after a display change: wait until they agree.
+        guard !all.isEmpty, all.allSatisfy({ mutationTicket.topology.contains($0) }) else {
+            lookup.cancel(); input?.abortSession(); showHUD("Displays are changing; try again"); return
+        }
+        session = Session(id: id, mutationTicket: mutationTicket, origin: origin, lookup: lookup,
                           reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
                           displays: all, cursor: origin, hint: model.settings.ring.pointingHintDue)
         overlay.show(origin: origin, displays: all, ring: model.settings.ring, theme: model.settings.activeTheme)
@@ -425,6 +439,11 @@ final class Coordinator {
               executor.setColumns(.delta(delta), on: display) != nil else { return }
         // setColumns mutated settings → settingsChanged already refreshed `displays`.
         session?.displays = displays.displays
+        // The column change bumped this display's layout version; the ring's own move may still use it.
+        guard let ticket = windows.mutationContext.acceptingLayoutChange(s.mutationTicket, on: [display.id.storageKey]) else {
+            input?.abortSession(); cancelSession(); return
+        }
+        session?.mutationTicket = ticket
         session?.anchor = nil
         if let nav = s.nav {
             session?.nav = KeyNavigator.reduce(nav, delta > 0 ? .columnsPlus : .columnsMinus, displays: displays.displays)
@@ -438,28 +457,36 @@ final class Coordinator {
         // A tap: pressed and released without ever leaving the middle.
         if s.selection == .none, !s.leftDeadZone, model.settings.ring.tapTilesWindows {
             s.lookup.cancel()
-            Task { await run(.tileWindows(display: .cursor), source: .ring) }
+            Task {
+                await WindowMutationScope.$ticket.withValue(s.mutationTicket) {
+                    await run(.tileWindows(display: .cursor), source: .ring)
+                }
+            }
             return
         }
         guard s.targetFrame != nil else { s.lookup.cancel(); return }
         // Not awaited: a glide must never hold up the next ring or hotkey.
         Task {
-            // Released before the lookup finished: wait for it rather than guess the window.
-            var resolved = s
-            if resolved.target == nil, let found = await s.lookup.value {
-                resolved.target = found.window
-                resolved.current = found.frame
-                resolved.targetFrame = targetFrame(for: s.selection, in: resolved)  // centre needs the size
-            }
-            guard let target = resolved.target, let frame = resolved.targetFrame else {
-                showHUD(await windows.whyNoWindow(nil) ?? CommandExecutor.noWindowMessage, always: true)
-                return
-            }
-            let result = await executor.place(target, current: resolved.current, goal: frame)
-            if case let .failed(reason) = result {
-                log.notice("apply failed for \(target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
-                showHUD(WindowService.isSpecific(reason) ? reason : "Can’t move this window", always: true)
-            }
+            await WindowMutationScope.$ticket.withValue(s.mutationTicket) { await applyReleased(s) }
+        }
+    }
+
+    private func applyReleased(_ s: Session) async {
+        // Released before the lookup finished: wait for it rather than guess the window.
+        var resolved = s
+        if resolved.target == nil, let found = await s.lookup.value {
+            resolved.target = found.window
+            resolved.current = found.frame
+            resolved.targetFrame = targetFrame(for: s.selection, in: resolved)  // centre needs the size
+        }
+        guard let target = resolved.target, let frame = resolved.targetFrame else {
+            showHUD(await windows.whyNoWindow(nil) ?? CommandExecutor.noWindowMessage, always: true)
+            return
+        }
+        let result = await executor.place(target, current: resolved.current, goal: frame)
+        if case let .failed(reason) = result {
+            log.notice("apply failed for \(target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
+            showHUD(WindowService.isSpecific(reason) ? reason : "Can’t move this window", always: true)
         }
     }
 
@@ -481,16 +508,26 @@ final class Coordinator {
     // MARK: - Changes
 
     private func displaysChanged() {
-        executor.splitWatcher.stop()
-        executor.splitWatcher.armSoon(after: .seconds(1))  // windows settle onto the new layout first
+        executor.splitWatcher.contextsChanged(spaceNotification: false)
         input?.updatePrimaryHeight(DisplayService.primaryHeight)
         presenter.updateDisplays(displays.displays)
         cancelSession() // spec §7: display unplugged mid-session
     }
 
+    /// A Space switch on a display the ring is working on drops the ring: its move belongs to the Space it opened on.
+    private func workspaceChanged() {
+        guard let s = session else { return }
+        let points = [s.origin, s.cursor] + (s.current.map { [CGPoint(x: $0.midX, y: $0.midY)] } ?? [])
+        let keys = Set(s.displays.filter { display in points.contains(where: { display.frame.contains($0) }) }
+            .map(\.id.storageKey))
+        guard !windows.mutationContext.isCurrent(s.mutationTicket, on: keys, refreshSpaces: true) else { return }
+        input?.abortSession()
+        cancelSession()
+    }
+
     private func settingsChanged(_ settings: TesseraSettings) {
         engine = SelectionEngine(ring: settings.ring)
-        if settings.learnSplits { executor.splitWatcher.armSoon() } else { executor.splitWatcher.stop() }
+        executor.splitWatcher.configurationChanged(settings)
         applyInputConfig()
         displays.refresh()
         presenter.updateDisplays(displays.displays)

@@ -40,6 +40,7 @@ extension WindowService {
 
     static let refusedMessage = "The app didn’t accept the new frame"
     static let unreadableMessage = "Can’t read the window’s frame"
+    static let fullScreenMessage = "Full-screen windows can’t be moved"
 
     /// False for the generic messages, which the ring words as "Can't move this window".
     static func isSpecific(_ reason: String) -> Bool {
@@ -60,7 +61,7 @@ extension WindowService {
     /// so only failure paths call it.
     static func unmovableReason(of window: AXUIElement) -> String? {
         AXUIElementSetMessagingTimeout(window, timeout)
-        if AX.bool(window, "AXFullScreen") == true { return "Full-screen windows can’t be moved" }
+        if AX.bool(window, "AXFullScreen") == true { return fullScreenMessage }
         if AX.bool(window, kAXMinimizedAttribute) == true { return "Restore the window from the Dock first" }
         if (AX.value(window, kAXRoleAttribute) as? String) == kAXSheetRole { return "Close the sheet first" }
         return nil

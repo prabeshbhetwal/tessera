@@ -4,6 +4,12 @@ import ApplicationServices
 /// Moved out of `WindowService.swift` to keep that file under 300 lines. Setters return the `AXError` so a failure
 /// can say why (`WindowService.failureReason`).
 enum AX {
+    /// False once the element's window or app is gone.
+    static func isValid(_ element: AXUIElement) -> Bool {
+        var value: CFTypeRef?
+        return AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &value) != .invalidUIElement
+    }
+
     static func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }

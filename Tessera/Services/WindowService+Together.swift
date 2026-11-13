@@ -5,9 +5,18 @@ extension WindowService {
     /// Moves every window to its goal at once, so with a snap speed set they glide together, as one undo step: one
     /// ⌃⌥Z puts them all back. Returns where each landed, in `moves` order (nil when its app refused or a newer move
     /// took over), and the undo marker right after the moves. With `gap`, the windows beside one that landed off its
-    /// goal follow it (see `follow`), so a fixed-size app such as System Settings leaves no hole in the group.
+    /// goal follow it (see `follow`), so a fixed-size app such as System Settings leaves no hole in the group. Every
+    /// move runs under one mutation ticket, so a display or Space change stops the rest of the group.
     func moveTogether(_ moves: [(window: WindowRef, goal: CGRect)], primaryHeight: CGFloat, duration: Double,
                       gap: Double? = nil) async -> (landed: [CGRect?], undoMarker: Int?) {
+        let ticket = WindowMutationScope.ticket ?? mutationContext.capture()
+        return await WindowMutationScope.$ticket.withValue(ticket) {
+            await moveTogetherScoped(moves, primaryHeight: primaryHeight, duration: duration, gap: gap)
+        }
+    }
+
+    private func moveTogetherScoped(_ moves: [(window: WindowRef, goal: CGRect)], primaryHeight: CGFloat,
+                                    duration: Double, gap: Double?) async -> (landed: [CGRect?], undoMarker: Int?) {
         let batch = newBatch()
         var landed = await applyAll(moves, primaryHeight: primaryHeight, duration: duration, batch: batch)
         if let gap {
