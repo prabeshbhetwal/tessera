@@ -16,9 +16,11 @@ DERIVED="${TESSERA_DERIVED_DATA:-$HOME/Library/Caches/tessera-build/dd-main}"
 CONFIG="${CONFIGURATION:-Debug}"
 LOCAL_ID="Tessera Local Signing"
 
+# Captured, not piped into grep -q: under pipefail an early-exiting grep can SIGPIPE security and fake "no identity".
+IDENTITIES="$(security find-identity -p codesigning 2>/dev/null || true)"
 if [[ -n "${TESSERA_SIGN_IDENTITY:-}" ]]; then
   SIGN_ID="$TESSERA_SIGN_IDENTITY"
-elif security find-identity -p codesigning 2>/dev/null | grep -q "\"$LOCAL_ID\""; then
+elif [[ "$IDENTITIES" == *"\"$LOCAL_ID\""* ]]; then
   SIGN_ID="$LOCAL_ID"
 else
   SIGN_ID="-"

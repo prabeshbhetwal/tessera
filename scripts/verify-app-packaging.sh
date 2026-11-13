@@ -9,6 +9,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 [[ -x "$CONTENTS/MacOS/Tessera" && -x "$CLI" ]] || fail "App or embedded CLI missing"
 [[ -s "$CONTENTS/Resources/Tessera.sdef" && -s "$CONTENTS/Resources/Assets.car" ]] || fail "Bundle resources missing"
+[[ -s "$CONTENTS/Resources/LICENSE" && -s "$CONTENTS/Resources/THIRD-PARTY-NOTICES.md" ]] || fail "Licence files missing from bundle"
 /usr/bin/plutil -lint "$INFO"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$INFO")" == com.prabeshbhetwal.Tessera ]] || fail "Wrong bundle identity"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print LSUIElement' "$INFO")" == true ]] || fail "Menu bar app flag missing"

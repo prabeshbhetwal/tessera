@@ -92,6 +92,17 @@ rm -f "$ZIP"
 # the bundle, which a plain unzip would otherwise leave next to the signed code.
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 
+step "Verifying the archive"
+# Check what users will actually receive: the unzipped copy, before anything is signed for Sparkle or published.
+mkdir -p "$WORK/unzipped"
+ditto -x -k "$ZIP" "$WORK/unzipped"
+UNZIPPED="$WORK/unzipped/Tessera.app"
+[[ -d "$UNZIPPED" ]] || die "archive does not contain Tessera.app"
+codesign --verify --deep --strict "$UNZIPPED" || die "the archived app fails codesign verification"
+bash scripts/verify-app-packaging.sh "$UNZIPPED" || die "the archived app fails packaging verification"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$UNZIPPED/Contents/Info.plist")" == "$BUILD" ]] \
+  || die "archived app's CFBundleVersion differs from build number $BUILD"
+
 step "Signing $ZIP"
 SIGN_UPDATE="$DERIVED/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
 [[ -x "$SIGN_UPDATE" ]] || die "sign_update not found at $SIGN_UPDATE; the build should have resolved Sparkle there"
@@ -128,6 +139,7 @@ step "Committing and pushing appcast.xml"
 cp "$WORK/appcast.xml" appcast.xml
 RECOVER="release v$VERSION is live, but appcast.xml has not reached origin/main, so no one is offered it yet."
 RECOVER+=" To finish: commit appcast.xml (if git status shows it modified), then run: git push origin main"
+RECOVER+=" (if the push is rejected, run: git pull --rebase origin main first, then push again)"
 git commit -m "chore(release): Tessera $VERSION appcast" appcast.xml || die "$RECOVER"
 git push origin main || die "$RECOVER"
 
