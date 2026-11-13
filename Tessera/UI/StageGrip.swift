@@ -50,6 +50,9 @@ struct StageGrip: View {
                     if !cancelled { change(drag.translation.width) }
                 }
                 .onEnded { _ in finish() })
+            // A grip taken away mid-drag never sees the drag end: clean up here so the Esc monitor and the
+            // stage's hold don't outlive it.
+            .onDisappear { if dragging { finish() } }
             .accessibilityHidden(true)
     }
 

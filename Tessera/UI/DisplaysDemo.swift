@@ -29,16 +29,19 @@ struct DisplaysDemo: View {
     /// A grip on the first column's right edge. Dragging it sets the ideal column width, within the minimum and
     /// maximum, and the columns re-count live; Esc puts the width back.
     @ViewBuilder private func edgeGrip(on display: DisplayContext, _ geometry: StageGeometry) -> some View {
-        if let apply = cues?.apply, display.profile.columns > 1 {
+        // Kept while its own drag is under way, even once the width leaves a single column: removing a grip mid-drag
+        // would skip its clean-up.
+        if let apply = cues?.apply, display.profile.columns > 1 || startIdeal != nil {
             let first = GridGeometry.frame(for: ColumnSpan(columns: 0...0, band: .full), display: display)
             let at = geometry.point(CGPoint(x: first.maxX + display.profile.gap / 2, y: first.midY))
             let s = settings.sizing
             StageGrip(begin: { startIdeal = s.idealColumnWidth }, change: { dx in
                 guard let startIdeal else { return }
-                let ideal = min(max(startIdeal + dx / geometry.scale, s.minColumnWidth), s.maxColumnWidth)
-                // The slider's step.
-                let stepped = (ideal / 8).rounded() * 8
-                apply { $0.sizing.idealColumnWidth = stepped }
+                // The slider's own rounding: 8 pt steps counted from the minimum, then held within the minimum and
+                // maximum, so a minimum that isn't a multiple of 8 can't round the width below it (saving would fail).
+                let low = s.minColumnWidth, high = s.maxColumnWidth
+                let stepped = ((startIdeal + dx / geometry.scale - low) / 8).rounded() * 8 + low
+                apply { $0.sizing.idealColumnWidth = min(max(stepped, low), high) }
             }, cancel: {
                 if let startIdeal { apply { $0.sizing.idealColumnWidth = startIdeal } }
             }, end: { startIdeal = nil })
