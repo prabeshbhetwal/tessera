@@ -18,6 +18,7 @@ final class RingLayer {
     /// Kept separate from selection; the centre remains the cancellation area.
     private let cancelMark = CAShapeLayer()
     private var cancelling = false
+    private var pointMode = false
     private var center = CGPoint.zero
     private var inner: CGFloat = 0
     private var outer: CGFloat = 0
@@ -117,6 +118,7 @@ final class RingLayer {
         cancelMark.lineWidth = 0
         cancelMark.strokeColor = HexColor.cgColor(theme.ring.strokeHex, alpha: 1)
         cancelling = false
+        pointMode = false
         cancelMark.opacity = 0.35
         activeIndex = nil
         spanVisible = false
@@ -156,6 +158,9 @@ final class RingLayer {
 
     /// The ring stays visible but recedes while the grid is the focus.
     func setPointMode(_ on: Bool) {
+        // Hot path: called on every mouse move, so skip the nine opacity writes when nothing changed.
+        guard on != pointMode else { return }
+        pointMode = on
         for layer in [tint, edges, highlight, glyphOutlines, glyphFills, activeGlyphOutlines,
                       activeGlyphFills, boundary, boundaryHalo] { layer.opacity = on ? 0.25 : 1 }
     }

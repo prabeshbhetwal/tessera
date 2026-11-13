@@ -131,5 +131,13 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         if closing === onboardingWindow { OnboardingView.saveStep(nil) }
         let stillOpen = [settingsWindow, onboardingWindow].contains { $0 !== closing && $0?.isVisible == true }
         if !stillOpen { NSApp.setActivationPolicy(.accessory) }
+        // A menu-bar app spends most of its life with these closed: let the window and its SwiftUI tree go once
+        // the close finishes, so they don't stay resident. The show… methods rebuild them; navigation, settings
+        // and the autosaved frame live outside the window and carry over.
+        Task { @MainActor [weak self] in
+            guard let self, !closing.isVisible else { return }
+            if closing === settingsWindow { settingsWindow = nil }
+            if closing === onboardingWindow { onboardingWindow = nil }
+        }
     }
 }
