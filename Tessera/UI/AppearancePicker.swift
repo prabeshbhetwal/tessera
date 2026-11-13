@@ -6,30 +6,7 @@ struct AppearancePicker: View {
     @Binding var selection: AppearanceMode
 
     var body: some View {
-        HStack(spacing: 28) {
-            Spacer(minLength: 0)
-            ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                Button { selection = mode } label: {
-                    VStack(spacing: 8) {
-                        thumbnail(mode)
-                            .frame(width: 92, height: 60)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(selection == mode ? Color.accentColor : Color.primary.opacity(0.15),
-                                              lineWidth: selection == mode ? 3 : 1))
-                        Text(mode.displayName)
-                            .font(.callout.weight(selection == mode ? .semibold : .regular))
-                            .foregroundStyle(selection == mode ? .primary : .secondary)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(mode.displayName)
-                .accessibilityAddTraits(selection == mode ? [.isButton, .isSelected] : .isButton)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 6)
+        ThumbnailPicker(selection: $selection, options: AppearanceMode.allCases, title: \.displayName) { thumbnail($0) }
     }
 
     @ViewBuilder private func thumbnail(_ mode: AppearanceMode) -> some View {
@@ -45,8 +22,45 @@ struct AppearancePicker: View {
     }
 }
 
+/// Choices drawn as small pictures with their names under them, the selected one outlined in the accent colour.
+/// For choices a picture explains better than a word (light or dark, how the snap preview is filled).
+struct ThumbnailPicker<Value: Hashable, Thumbnail: View>: View {
+    @Binding var selection: Value
+    let options: [Value]
+    let title: (Value) -> String
+    @ViewBuilder let thumbnail: (Value) -> Thumbnail
+
+    var body: some View {
+        HStack(spacing: 28) {
+            Spacer(minLength: 0)
+            ForEach(options, id: \.self) { option in
+                let selected = selection == option
+                Button { selection = option } label: {
+                    VStack(spacing: 8) {
+                        thumbnail(option)
+                            .frame(width: 92, height: 60)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.15),
+                                              lineWidth: selected ? 3 : 1))
+                        Text(title(option))
+                            .font(.callout.weight(selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? .primary : .secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(title(option))
+                .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 6)
+    }
+}
+
 /// A tiny window sketch: desktop, title bar, sidebar and two content lines.
-private struct MiniWindow: View {
+struct MiniWindow: View {
     let dark: Bool
 
     var body: some View {
