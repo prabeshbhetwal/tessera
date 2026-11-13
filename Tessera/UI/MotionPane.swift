@@ -30,7 +30,7 @@ struct MotionPane: View {
                           step: 0.01, format: { $0 == 0 ? "Instant" : String(format: "%.2f s", $0) })
                 if SnapSpeed(seconds: seconds) == nil { Caption("Custom speed. Pick a preset to go back to a set speed.") }
             } header: {
-                InfoHeader("Snap speed", info: "How long a window takes to glide into place, for the ring and shortcuts alike. Instant jumps straight there.")
+                InfoHeader("Snap speed", info: "Used by the ring and shortcuts alike.")
             }
 
             Section {

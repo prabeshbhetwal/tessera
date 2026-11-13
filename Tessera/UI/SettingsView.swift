@@ -5,8 +5,9 @@ import TesseraCore
 
 /// Settings window root: sidebar of panes, grouped form on the right (spec §6.1, M2 §6).
 struct SettingsView: View {
-    /// Fixed window size in content points (smaller only on a screen that can't fit it).
-    static let width: CGFloat = 820
+    /// Fixed window size in content points (smaller only on a screen that can't fit it). 1180 wide: the sidebar,
+    /// the form, and the 420 pt stage (`SettingsDemo`).
+    static let width: CGFloat = 1180
     static let height: CGFloat = 720
 
     @Bindable var model: SettingsModel
@@ -19,6 +20,8 @@ struct SettingsView: View {
     @Environment(\.sidebarRowSize) private var rowSize
     /// Where a drag on the sidebar's edge started from.
     @State private var dragStart: CGFloat?
+    /// The control last pointed at in the form, which the stage acts out.
+    @State private var cues = DemoCueState()
 
     /// The narrowest the pane list goes: the longest pane name in full at the system's sidebar text size, after the
     /// list's 42 pt inset and icon, with an 18 pt gap before the trailing edge. Narrower than this, it becomes icons.
@@ -118,7 +121,8 @@ struct SettingsView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { SidebarBrand(navigation: navigation, compact: rail) }
         .frame(width: rail ? SettingsRail.width : width, alignment: .leading)
         .clipped()
-        // On the window's own background, like the pane, with a hairline between them.
+        // Frosted, over whatever is behind the window, like the System Settings sidebar; a hairline before the pane.
+        .background { WindowGlass() }
         .overlay(alignment: .trailing) { Divider() }
         .overlay(alignment: .trailing) { resizeHandle(from: rail ? SettingsRail.width : width) }
     }
@@ -148,10 +152,19 @@ struct SettingsView: View {
     /// The pane's header over its form, scrolled to a search result's row when one is revealed.
     private var pane: some View {
         ScrollViewReader { proxy in
-            VStack(spacing: 0) {
-                if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
-                paneView
+            // The stage runs the pane's full height, beside the header as well as the form.
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
+                    paneView
+                }
+                if SettingsDemo.exists(for: navigation.pane) {
+                    SettingsDemo(pane: navigation.pane, settings: model.settings)
+                }
             }
+            .environment(cues)
+            .onChange(of: navigation.pane) { cues.cue = nil }
+            .onAppear { cues.ringEdit = { [model] in model.settings.ring = $0 } }
             .environment(\.settingsPaneKey, navigation.pane.key)
             .environment(\.settingsHighlight, navigation.highlight)
             .task(id: navigation.reveals) { await scrollToHighlight(proxy) }

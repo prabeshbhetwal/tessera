@@ -33,14 +33,14 @@ struct RingPane: View {
             }
 
             Section {
-                Toggle("Flick towards a layout", isOn: ring.directions).settingAnchor("Directions: flick towards a layout")
-                Toggle("Point for a column of the grid", isOn: ring.pointing).settingAnchor("Pointing: a longer move picks a column of the grid")
+                Toggle("Flick towards a layout", isOn: ring.directions).settingAnchor("Directions: flick towards a layout").demoCue(.wedge(2))
+                Toggle("Point for a column of the grid", isOn: ring.pointing).settingAnchor("Pointing: a longer move picks a column of the grid").demoCue(.pointing)
                 Toggle("Click while pointing to span several columns", isOn: ring.clickToSpan).settingAnchor("Click while pointing to span several columns")
                     .disabled(!r.pointing)
                 Toggle("Scroll while holding to change the column count", isOn: ring.scrollChangesColumns).settingAnchor("Scroll while holding to change the column count")
-                Toggle("Press and release without moving to tile all windows", isOn: ring.tapTilesWindows).settingAnchor("Press and release without moving to tile all windows")
+                Toggle("Press and release without moving to tile all windows", isOn: ring.tapTilesWindows).settingAnchor("Press and release without moving to tile all windows").demoCue(.tapTiles)
             } header: {
-                InfoHeader("Gestures", info: "A short move towards an icon picks that layout. Keep going further out to point at a column. "
+                InfoHeader("Gestures", info: "Keep going past the icons to point at a column. "
                     + "To cancel, let go in the middle of the ring or right-click.")
             } footer: {
                 if r.tapTilesWindows && (r.directions || r.pointing) {
@@ -70,14 +70,17 @@ struct RingPane: View {
                 let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
                 // The ring's outer edge (radius + thickness / 2) stays inside the point threshold, which `save` requires
                 // while pointing is on. The sliders need a range at least 1 wide to draw, so the binding enforces the cap.
-                let radiusCap = max(20, min(150, r.flickDistance - r.thickness / 2))
-                let thicknessCap = max(4, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2))
+                let radiusCap = r.radiusCap
+                let thicknessCap = r.thicknessCap
                 SliderRow(title: "Radius", value: Self.capped(ring.radius, at: radiusCap), range: 20...max(21, radiusCap))
                     .disabled(!r.showRing)
+                    .demoCue(.ringSize("Radius"))
                 SliderRow(title: "Thickness", value: Self.capped(ring.thickness, at: thicknessCap), range: 4...max(5, thicknessCap))
                     .disabled(!r.showRing)
+                    .demoCue(.ringSize("Thickness"))
                 SliderRow(title: "Point threshold", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
                     .disabled(!(r.directions && r.pointing))
+                    .demoCue(.flickDistance)
                 SliderRow(title: "Top band", value: ring.topBand, range: 0.1...max(0.11, 0.9 - r.bottomBand), step: 0.05, format: SliderRow.percent)
                     .disabled(!r.pointing)
                 SliderRow(title: "Bottom band", value: ring.bottomBand, range: 0.1...max(0.11, 0.9 - r.topBand), step: 0.05, format: SliderRow.percent)
@@ -118,6 +121,7 @@ private struct WedgePicker: View {
     /// Unwrapped wedge position of the highlight; see `RingDiagram.glide`.
     @State private var glide: Double = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(DemoCueState.self) private var cues: DemoCueState?
 
     private var target: Int { hovered ?? focused }
     private var hover: Double { hovered != nil ? 1 : hasFocus ? 0.6 : 0 }
@@ -143,6 +147,8 @@ private struct WedgePicker: View {
         }
         .onAppear { glide = Double(focused) }
         .onChange(of: target) { _, wedge in
+            // The stage flicks the same way.
+            cues?.cue = .wedge(wedge)
             // Take the short way round: from Up-left (7) to Up (0) is one step forward, not seven back.
             var step = (Double(wedge) - glide).truncatingRemainder(dividingBy: 8)
             if step > 4 { step -= 8 } else if step < -4 { step += 8 }

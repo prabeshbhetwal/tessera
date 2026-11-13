@@ -41,6 +41,7 @@ struct CyclesEditor: View {
             } header: {
                 Text("Cycle “\(cycles[c].name)”")
             }
+            .demoCue(.cycle(cycles[c].name))
         }
         Section {
             HStack {

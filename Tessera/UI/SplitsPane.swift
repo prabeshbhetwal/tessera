@@ -16,9 +16,9 @@ struct SplitsPane: View {
         Form {
             Section {
                 Toggle("Learn from my adjustments", isOn: $model.settings.learnSplits).settingAnchor("Learn from my adjustments")
-                Toggle("Resize neighbours to fill the display", isOn: $model.settings.splitReflowsNeighbours).settingAnchor("Resize neighbours to fill the display")
+                Toggle("Resize neighbours to fill the display", isOn: $model.settings.splitReflowsNeighbours).settingAnchor("Resize neighbours to fill the display").demoCue(.reflow)
                     .disabled(!model.settings.learnSplits)
-                Toggle("Fill the space when a window closes", isOn: $model.settings.splitFillsClosedGap).settingAnchor("Fill the space when a window closes")
+                Toggle("Fill the space when a window closes", isOn: $model.settings.splitFillsClosedGap).settingAnchor("Fill the space when a window closes").demoCue(.fillGap)
                     .disabled(!model.settings.learnSplits)
                 Picker("When a window is minimised", selection: $model.settings.splitOnMinimise) {
                     Text("Re-tile remaining windows").tag(SplitMinimiseAction.retile)

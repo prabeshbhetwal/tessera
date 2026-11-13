@@ -22,6 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var tapFailing = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG
+        if SettingsSnapshots.runIfRequested() { return }
+        #endif
         guard !anotherInstanceIsRunning() else {
             NSApp.terminate(nil)
             return

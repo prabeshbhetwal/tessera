@@ -23,9 +23,8 @@ struct OverlayPane: View {
     var body: some View {
         let s = model.settings.preview
         Form {
+            // The sample itself is in the demo column beside the form (`SettingsDemo`).
             Section {
-                OverlaySample(ring: model.settings.ring, theme: model.settings.activeTheme)
-                    .frame(height: 190)
                 HStack {
                     Spacer()
                     Button("Preview Shortcut") {

@@ -82,7 +82,7 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         return window
     }
 
-    /// The window's one size for the screen it is on: 820 × 720 points, smaller only when the screen is.
+    /// The window’s one size for the screen it is on: 1100 × 720 points, smaller only when the screen is.
     /// Re-applied on every open, so a frame saved by an older build or on another display can't stick.
     private func fitSettingsWindow(_ window: NSWindow) {
         let screen = window.screen ?? NSScreen.main
