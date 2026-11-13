@@ -53,6 +53,11 @@ enum SettingsSnapshots {
                 window.orderOut(nil)
             }
         }
+        // A screen too narrow for the stage: the Ring pane at 960 pt wide, where the stage folds away.
+        let narrow = SettingsNavigation()
+        narrow.pane = .ring
+        render(SettingsView(model: model, navigation: narrow, displays: displays), size: CGSize(width: 960, height: SettingsView.height),
+               to: folder.appendingPathComponent("narrow-ring.png"))
         // The stage alone in states only pointing at a control reaches.
         let cued: [(String, DemoCue, SettingsPane)] = [("ring-size", .ringSize("Radius"), .ring),
                                                      ("ring-threshold", .flickDistance, .ring),

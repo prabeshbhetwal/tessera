@@ -22,6 +22,14 @@ struct SettingsView: View {
     @State private var dragStart: CGFloat?
     /// The control last pointed at in the form, which the stage acts out.
     @State private var cues = DemoCueState()
+    /// The pane's width beside the sidebar. On a screen too narrow for the form and the stage side by side, the
+    /// stage folds away behind a Preview button rather than squeezing the form.
+    @State private var paneWidth: CGFloat = .infinity
+    @State private var showsPreview = false
+
+    /// The narrowest the form gets before the stage folds away.
+    static let minFormWidth: CGFloat = 520
+    private var stageFits: Bool { paneWidth >= StageColumn<EmptyView>.width + Self.minFormWidth }
 
     /// The narrowest the pane list goes: the longest pane name in full at the system's sidebar text size, after the
     /// list's 42 pt inset and icon, with an 18 pt gap before the trailing edge. Narrower than this, it becomes icons.
@@ -64,6 +72,9 @@ struct SettingsView: View {
         .animation(dropAnimation, value: navigation.showsResults)
         .toolbar {
             ToolbarItem(placement: .navigation) { sidebarButton }
+            ToolbarItem(placement: .primaryAction) {
+                if SettingsDemo.exists(for: navigation.pane) && !stageFits { previewButton }
+            }
             // Centred where the title would be: search is the way round Settings, one click away in either mode.
             ToolbarItem(placement: .principal) {
                 SearchField(text: query, focusRequests: navigation.searchFocusRequests,
@@ -90,6 +101,17 @@ struct SettingsView: View {
             KeyCommand("f") { navigation.focusSearch() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Shown only while the stage is folded away: opens it in a popover beside the form.
+    private var previewButton: some View {
+        Button { showsPreview.toggle() } label: { Label("Preview", systemImage: "play.rectangle") }
+            .help("Show what this pane’s settings do")
+            .popover(isPresented: $showsPreview, arrowEdge: .bottom) {
+                SettingsDemo(pane: navigation.pane, settings: model.settings)
+                    .frame(height: 600)
+                    .environment(cues)
+            }
     }
 
     private var sidebarButton: some View {
@@ -158,10 +180,11 @@ struct SettingsView: View {
                     if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
                     paneView
                 }
-                if SettingsDemo.exists(for: navigation.pane) {
+                if SettingsDemo.exists(for: navigation.pane) && stageFits {
                     SettingsDemo(pane: navigation.pane, settings: model.settings)
                 }
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { paneWidth = $0 }
             .environment(cues)
             .onChange(of: navigation.pane) { cues.cue = nil }
             .onAppear { cues.apply = { [model] change in change(&model.settings) } }
