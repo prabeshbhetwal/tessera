@@ -13,7 +13,7 @@ struct MotionPane: View {
         Form {
             if reduceMotion {
                 Section {
-                    Callout(.info, "Reduce Motion is on in System Settings, so windows and the preview jump. These settings apply when it's off.")
+                    Callout(.info, "Reduce Motion is on in System Settings, so windows and the preview jump. These settings apply when it’s off.")
                 }
             }
 

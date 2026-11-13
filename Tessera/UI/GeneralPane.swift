@@ -32,7 +32,7 @@ struct GeneralPane: View {
                     .disabled(!SettingsAssistant.isAvailable)
                     .settingAnchor("Apple Intelligence search")
             } header: {
-                InfoHeader("App", info: "Light or dark changes Tessera's own windows; the ring's colours are in Appearance. "
+                InfoHeader("App", info: "Light or dark changes Tessera’s own windows; the ring’s colours are in Appearance. "
                     + "Apple Intelligence lets Settings search understand a whole sentence. It runs on your Mac, and nothing leaves it.")
             } footer: {
                 if !SettingsAssistant.isAvailable {
@@ -59,7 +59,7 @@ struct GeneralPane: View {
                 }
                 .disabled(!model.settings.showMenuBarIcon)
                 .settingAnchor("Icon")
-                Toggle("Show each item's shortcut", isOn: $model.settings.menuBarItems.shortcutKeys).settingAnchor("Show each item's shortcut")
+                Toggle("Show each item’s shortcut", isOn: $model.settings.menuBarItems.shortcutKeys).settingAnchor("Show each item’s shortcut")
                     .disabled(!model.settings.showMenuBarIcon)
             } header: {
                 Text("Menu bar")
@@ -140,7 +140,7 @@ struct GeneralPane: View {
             loginNeedsApproval = SMAppService.mainApp.status == .requiresApproval
         } catch {
             Self.log.error("Login item change failed: \(error.localizedDescription, privacy: .private)")
-            loginError = "Couldn't change the login item. Try again, or check Login Items in System Settings."
+            loginError = "Couldn’t change the login item. Try again, or check Login Items in System Settings."
         }
     }
 }

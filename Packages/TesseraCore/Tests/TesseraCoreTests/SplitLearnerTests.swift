@@ -179,6 +179,6 @@ import Testing
 
     @Test func rejectionMessages() {
         #expect(SplitRejection.noWindows.message == "No windows on this display")
-        #expect(SplitRejection.overlap.message == "Windows overlap, so there's no split to remember")
+        #expect(SplitRejection.overlap.message == "Windows overlap, so there’s no split to remember")
     }
 }

@@ -94,18 +94,18 @@ public enum CoachScript {
             if hasSplit {
                 return [CoachStep(
                     title: "Tiled evenly",
-                    body: "Each window got \(CoachCopy.equalShare(n)). Your split for these apps is kept for the next Tile All Windows. Adjustments now aren't saved.",
+                    body: "Each window got \(CoachCopy.equalShare(n)). Your split for these apps is kept for the next Tile All Windows. Adjustments now aren’t saved.",
                     actions: [.done])]
             }
             return [CoachStep(
                 title: "Tiled evenly",
-                body: "Each window got \(CoachCopy.equalShare(n)). Tile Evenly doesn't save what you change afterwards.",
+                body: "Each window got \(CoachCopy.equalShare(n)). Tile Evenly doesn’t save what you change afterwards.",
                 actions: [.done])]
         case .tilePartial(let moved, let total, let stuck):
             let who = stuck.isEmpty ? "Some windows" : CoachCopy.list(stuck)
             return [CoachStep(
                 title: "Tiled \(moved) of \(total) windows",
-                body: "\(who) wouldn't resize, so \(stuck.count == 1 ? "it" : "they") stayed where \(stuck.count == 1 ? "it was" : "they were"). The rest are in place, and Undo puts them back.",
+                body: "\(who) wouldn’t resize, so \(stuck.count == 1 ? "it" : "they") stayed where \(stuck.count == 1 ? "it was" : "they were"). The rest are in place, and Undo puts them back.",
                 actions: [.undoMove, .done])]
         case .neighboursFollowed(let changed, let others):
             return [CoachStep(

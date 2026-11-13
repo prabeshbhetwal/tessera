@@ -4,8 +4,8 @@ import TesseraCore
 /// Learned splits (window arrangements remembered per display): how they are learned, and a list to forget.
 struct SplitsPane: View {
     private static let waitInfo = "A window opened next to tiled windows waits this many seconds and is tiled in "
-        + "equal shares only if it's still open, so an app you open for a moment (Wispr Flow, Finder) is left alone. "
-        + "Apps you've arranged together before get their split straight away. 0 tiles right away."
+        + "equal shares only if it’s still open, so an app you open for a moment (Wispr Flow, Finder) is left alone. "
+        + "Apps you’ve arranged together before get their split straight away. 0 tiles right away."
     @Bindable var model: SettingsModel
     let displays: [DisplayContext]
     @State private var confirmingForgetAll = false

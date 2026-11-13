@@ -73,7 +73,7 @@ struct ExcludedAppsPane: View {
                 }
                 .settingAnchor("Apps")
             } header: {
-                InfoHeader("Apps", info: "While one of these apps is in front, the ring trigger and your hotkeys do nothing, so the app's own shortcuts keep working.")
+                InfoHeader("Apps", info: "While one of these apps is in front, the ring trigger and your hotkeys do nothing, so the app’s own shortcuts keep working.")
             }
 
             ResetSection { model.settings.excludedBundleIDs = [] }

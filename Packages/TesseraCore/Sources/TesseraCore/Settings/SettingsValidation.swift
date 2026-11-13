@@ -18,7 +18,7 @@ public enum SettingsValidation {
             if !condition { throw SettingsError.invalid(message()) }
         }
         func nonNegative(_ value: Double, _ what: String) throws {
-            try require(value >= 0 && value.isFinite, "\(what) can't be negative (found \(value)).")
+            try require(value >= 0 && value.isFinite, "\(what) can’t be negative (found \(value)).")
         }
         func spacing(_ value: Double, _ what: String) throws {
             try require(value >= 0 && value <= maxSpacing, "\(what) must be between 0 and \(Int(maxSpacing)) (found \(value)).")
@@ -92,13 +92,13 @@ public enum SettingsValidation {
             let profile = s.displayOverrides[key] ?? DisplayProfile(columns: 0)
             try require((1...maxColumns).contains(profile.columns),
                         "Display \(key) needs 1 to \(maxColumns) columns (found \(profile.columns)).")
-            try spacing(profile.gap, "Display \(key)'s gap")
-            try spacing(profile.padding, "Display \(key)'s padding")
+            try spacing(profile.gap, "Display \(key)’s gap")
+            try spacing(profile.padding, "Display \(key)’s padding")
         }
 
         for theme in s.customThemes {
             try require(!theme.name.isEmpty, "Every custom theme needs a name.")
-            try fraction(theme.ring.opacity, "Theme \(theme.name)'s ring opacity")
+            try fraction(theme.ring.opacity, "Theme \(theme.name)’s ring opacity")
         }
 
         let ids = s.hotkeys.map(\.id)

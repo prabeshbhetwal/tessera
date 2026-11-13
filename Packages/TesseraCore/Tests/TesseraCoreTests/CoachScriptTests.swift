@@ -77,10 +77,10 @@ import Testing
     @Test func otherMoments() {
         let evenlyKept = CoachScript.steps(for: Self.event(.tiledEvenly(hasSplit: true)))
         #expect(evenlyKept.count == 1 && evenlyKept[0].actions == [.done])
-        #expect(evenlyKept[0].body == "Each window got a third. Your split for these apps is kept for the next Tile All Windows. Adjustments now aren't saved.")
+        #expect(evenlyKept[0].body == "Each window got a third. Your split for these apps is kept for the next Tile All Windows. Adjustments now aren’t saved.")
         let evenly = CoachScript.steps(for: Self.event(.tiledEvenly(hasSplit: false)))[0]
         #expect(evenly.title == "Tiled evenly")
-        #expect(evenly.body == "Each window got a third. Tile Evenly doesn't save what you change afterwards.")
+        #expect(evenly.body == "Each window got a third. Tile Evenly doesn’t save what you change afterwards.")
         let learned = CoachScript.steps(for: Self.event(.splitLearned))[0]
         #expect(learned.actions == [.done, .forgetSplit])
         #expect(learned.body == "Next time Dia, Claude and Codex are on CHG90, Tile All Windows (⌃⌥T by default) puts them back like this.")

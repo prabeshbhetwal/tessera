@@ -7,7 +7,7 @@ struct CyclesEditor: View {
     @FocusState private var focusedStep: StepID?
     @State private var removingCycle: Int?
 
-    private static let info = "Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle doesn't update the hotkeys that run it."
+    private static let info = "Each press of a cycle’s hotkey moves the window to its next step. Reorder steps with the arrows, or select a step’s number and press ⌘↑ or ⌘↓. Renaming a cycle doesn’t update the hotkeys that run it."
 
     private struct StepID: Hashable {
         let cycle: Int
@@ -217,7 +217,7 @@ struct DisplaySelectorEditor: View {
                     case .id: selector = .id("")
                     }
                 }) {
-                    Text("Window's display").tag(Kind.current)
+                    Text("Window’s display").tag(Kind.current)
                     Text("Under the cursor").tag(Kind.cursor)
                     Text("Number (left to right)").tag(Kind.index)
                     Text("Specific display").tag(Kind.id)
@@ -259,7 +259,7 @@ extension Target {
 extension DisplaySelector {
     var summary: String {
         switch self {
-        case .current: "window's display"
+        case .current: "window’s display"
         case .cursor: "display under the cursor"
         case .index(let n): "display \(n)"
         case .id(let key): "display \(key)"

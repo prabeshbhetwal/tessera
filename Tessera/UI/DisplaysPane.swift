@@ -20,7 +20,7 @@ struct DisplaysPane: View {
                 SliderRow(title: "Gap", value: $model.settings.defaultGap, range: 0...40, anchor: "New displays gap")
                 SliderRow(title: "Padding", value: $model.settings.defaultPadding, range: 0...40, anchor: "New displays padding")
             } header: {
-                InfoHeader("New displays", info: "Used by any display you haven't changed. Gap is the space between windows; padding is the space at the screen edges.")
+                InfoHeader("New displays", info: "Used by any display you haven’t changed. Gap is the space between windows; padding is the space at the screen edges.")
             }
 
             Section {

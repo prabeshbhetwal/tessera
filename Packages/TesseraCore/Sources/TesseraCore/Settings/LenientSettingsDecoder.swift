@@ -66,20 +66,20 @@ enum LenientSettingsDecoder {
             let name = describe(item, value(at: element, in: root))
             if !inner.isEmpty, let fallback = value(at: inner, in: templates[first] ?? [:]) {
                 root = set(root, at: path[...], to: fallback) as? [String: Any] ?? root
-                return "Reset \(dotted(inner)) in \(name) to its default."
+                return "Reset \(plainName(inner, item: first)) in \(name) to its default."
             }
             root = set(root, at: element, to: nil) as? [String: Any] ?? root
             return "Removed \(name), which this version can’t read."
         }
         if let fallback = value(at: path[...], in: defaults) {
             root = set(root, at: path[...], to: fallback) as? [String: Any] ?? root
-            return "Reset \(dotted(path[...])) to its default."
+            return "Reset \(plainName(path[...])) to its default."
         }
         // A list element with no default at its index (a ninth wedge, a stray keycode) leaves its list; the
         // list's own repair (`SettingsValidation.repair`) then deals with the count.
         guard let index = path.indices.last(where: { value(at: path.prefix($0), in: root) is [Any] }) else { return nil }
         root = set(root, at: path.prefix(index + 1), to: nil) as? [String: Any] ?? root
-        return "Removed an unreadable entry from \(dotted(path.prefix(index)))."
+        return "Removed an unreadable entry from \(plainName(path.prefix(index)))."
     }
 
     /// Defaults for keys inside one user item that have an obvious value; any other bad key drops the item.
@@ -104,8 +104,9 @@ enum LenientSettingsDecoder {
         return ("aeiou".contains(item.first ?? "x") ? "an " : "a ") + item
     }
 
-    private static func dotted(_ path: ArraySlice<any CodingKey>) -> String {
-        path.map { $0.intValue.map { "[\($0)]" } ?? $0.stringValue }.joined(separator: ".")
+    /// What the Settings window calls the value at `path` (see `SettingNames`); list positions are left out.
+    private static func plainName(_ path: ArraySlice<any CodingKey>, item: String? = nil) -> String {
+        SettingNames.name(for: path.filter { $0.intValue == nil }.map(\.stringValue), inItem: item)
     }
 
     private static func jsonObject(_ value: some Encodable) throws -> [String: Any] {

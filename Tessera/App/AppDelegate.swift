@@ -149,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch command {
         case .exportSettings, .importSettings:
             log.notice("refused settings file command from URL")
-            coordinator.showHUD("Settings import/export isn't available from URLs")
+            coordinator.showHUD("Settings import/export isn’t available from URLs")
         default:
             await coordinator.run(command, source: .automation)
         }

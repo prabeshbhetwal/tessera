@@ -54,7 +54,7 @@ struct AdvancedSection: View {
                 switch cliMessage {
                 case .installed(let folder):
                     let exportLine = "export PATH=\"\(folder):$PATH\""
-                    Callout(.success, "Installed. If your shell can't find tessera, add \(folder) to your PATH:")
+                    Callout(.success, "Installed. If your shell can’t find tessera, add \(folder) to your PATH:")
                     // The copy action sits on the line it copies.
                     HStack(spacing: 6) {
                         Text(exportLine)
@@ -98,7 +98,7 @@ struct AdvancedSection: View {
         case .failure(let error):
             guard !Self.cancelled(error) else { return }
             Self.log.error("Settings export failed: \(error.localizedDescription, privacy: .private)")
-            ioMessage = .failure("Couldn't export the settings. Choose another folder and try again.", retry: .export)
+            ioMessage = .failure("Couldn’t export the settings. Choose another folder and try again.", retry: .export)
         }
     }
 
@@ -113,7 +113,7 @@ struct AdvancedSection: View {
         } catch {
             guard !Self.cancelled(error) else { return }
             Self.log.error("Settings import failed: \(error.localizedDescription, privacy: .private)")
-            ioMessage = .failure("Couldn't read that file as Tessera settings. Choose a file exported from Tessera.",
+            ioMessage = .failure("Couldn’t read that file as Tessera settings. Choose a file exported from Tessera.",
                                  retry: .importing)
         }
     }
@@ -133,7 +133,7 @@ struct AdvancedSection: View {
         switch error as? CLIInstaller.InstallError {
         case .missingBinary: "The command-line tool is missing from this copy of Tessera. Reinstall Tessera, then try again."
         case .occupied: "Another file named tessera is already in that folder. Remove or rename it, then try again."
-        case nil: "Couldn't install the command-line tool. Check that the folder is writable, then try again."
+        case nil: "Couldn’t install the command-line tool. Check that the folder is writable, then try again."
         }
     }
 

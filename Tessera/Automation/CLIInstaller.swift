@@ -10,7 +10,7 @@ enum CLIInstaller {
         var errorDescription: String? {
             switch self {
             case .missingBinary(let url): "The tessera tool is missing from the app bundle (\(url.path))."
-            case .occupied(let url): "\(url.path) already exists and isn't a link Tessera created. Remove it and try again."
+            case .occupied(let url): "\(url.path) already exists and isn’t a link Tessera created. Remove it and try again."
             }
         }
     }

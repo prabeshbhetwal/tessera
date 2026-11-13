@@ -6,7 +6,7 @@ enum IntentRunner {
     @MainActor
     static func run(_ command: Command) async throws -> CommandResult {
         let result = await CommandBridge.execute(command)
-        guard result.ok else { throw TesseraIntentError(message: result.message ?? "Tessera couldn't do that.") }
+        guard result.ok else { throw TesseraIntentError(message: result.message ?? "Tessera couldn’t do that.") }
         return result
     }
 }

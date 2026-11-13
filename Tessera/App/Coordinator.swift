@@ -458,7 +458,7 @@ final class Coordinator {
             let result = await executor.place(target, current: resolved.current, goal: frame)
             if case let .failed(reason) = result {
                 log.notice("apply failed for \(target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
-                showHUD(WindowService.isSpecific(reason) ? reason : "Can't move this window", always: true)
+                showHUD(WindowService.isSpecific(reason) ? reason : "Can’t move this window", always: true)
             }
         }
     }

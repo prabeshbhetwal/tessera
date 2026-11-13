@@ -147,7 +147,8 @@ import Testing
         #expect(result.recoveredFrom == nil)
         #expect(result.saveRefusal == nil)
         #expect(Set(result.repairs) == [
-            "Reset hudPosition to its default.", "Reset showHUD to its default.", "Reset ring.iconStyle to its default.",
+            "Reset the message position to its default.", "Reset the on-screen message setting to its default.",
+            "Reset the ring icon style to its default.",
         ])
         #expect(result.repairBackup == dir.appendingPathComponent(Self.repairCopyName))
         #expect(try Data(contentsOf: dir.appendingPathComponent(Self.repairCopyName)) == bytes, "a copy, not a move")
@@ -168,7 +169,7 @@ import Testing
         let result = await makeStore(in: dir).load()
         #expect(result.settings.hotkeys == Array(HotkeyBinding.defaults.dropFirst()))
         #expect(result.repairs.contains("Removed the hotkey “cycle-left”, which this version can’t read."))
-        #expect(result.repairs.contains("Reset enabled in the hotkey “cycle-right” to its default."))
+        #expect(result.repairs.contains("Reset the on/off switch in the hotkey “cycle-right” to its default."))
         #expect(result.settings.excludedBundleIDs == ["com.apple.Terminal"])
     }
 
@@ -202,6 +203,9 @@ import Testing
         expected.customThemes[0].preview.labelPosition = Theme.default.preview.labelPosition
         #expect(result.settings == expected)
         #expect(result.repairs.count == 5)
+        #expect(result.repairs.contains { $0.hasPrefix("Reset the label position in the custom theme ") })
+        #expect(result.repairs.contains { $0.hasPrefix("Reset the display choice in the cycle ") })
+        #expect(!result.repairs.contains { $0.contains("labelPosition") || $0.contains(".display") })
         #expect(result.recoveredFrom == nil)
     }
 
@@ -249,5 +253,14 @@ import Testing
         #expect(result.recoveredFrom == dir.appendingPathComponent(Self.quarantineName))
         #expect(try result.recoveredFrom.map { try Data(contentsOf: $0) } == bytes)
         #expect(result.saveRefusal == nil)
+    }
+
+    @Test func repairMessagesUsePlainNamesAndFallBackForUnknownPaths() {
+        #expect(SettingNames.name(for: ["ring", "iconStyle"]) == "the ring icon style")
+        #expect(SettingNames.name(for: ["preview", "labelPosition"], inItem: "customThemes") == "the label position")
+        #expect(SettingNames.name(for: ["ring", "fillHex"], inItem: "customThemes") == "the ring colour")
+        #expect(SettingNames.name(for: ["enabled"], inItem: "hotkeys") == "the on/off switch")
+        #expect(SettingNames.name(for: ["ring", "somethingNew"]) == "a setting this version doesn’t recognise")
+        #expect(SettingNames.name(for: ["colour"], inItem: "hotkeys") == SettingNames.unknown)
     }
 }

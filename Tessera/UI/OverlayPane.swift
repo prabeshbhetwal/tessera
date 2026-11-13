@@ -125,7 +125,7 @@ struct OverlayPane: View {
                 SliderRow(title: "Fill opacity", value: preview(\.opacity), range: 0...1, step: 0.05, format: SliderRow.percent)
                 SliderRow(title: "Border width", value: preview(\.borderWidth), range: 0...10, step: 0.5,
                           format: { String(format: "%g pt", $0) })
-                Toggle("Match the window's corner radius", isOn: preview(\.useWindowCornerRadius)).settingAnchor("Match the window's corner radius")
+                Toggle("Match the window’s corner radius", isOn: preview(\.useWindowCornerRadius)).settingAnchor("Match the window’s corner radius")
                 SliderRow(title: "Corner radius", value: preview(\.cornerRadius), range: 0...30)
                     .disabled(s.useWindowCornerRadius)
             }
@@ -173,7 +173,7 @@ struct OverlayPane: View {
         switch style {
         case .tint: "A box in the preview colour. Appears instantly and looks the same every time."
         case .snapshot: "The box appears first, then a picture of the window fades in, scaled to fit."
-        case .appIcon: "The box with the moving app's icon in the middle."
+        case .appIcon: "The box with the moving app’s icon in the middle."
         }
     }
 

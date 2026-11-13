@@ -64,7 +64,7 @@ func connectToApp(_ path: String) -> Int32? {
         fail("the socket path is \(bytes.count) bytes, over the \(limit) a Unix socket allows: \(path)", .commandError)
     }
     let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-    guard fd >= 0 else { fail("couldn't create a socket: \(String(cString: strerror(errno)))", .commandError) }
+    guard fd >= 0 else { fail("couldn’t create a socket: \(String(cString: strerror(errno)))", .commandError) }
     addr.sun_family = sa_family_t(AF_UNIX)
     addr.sun_len = UInt8(MemoryLayout<sockaddr_un>.size)
     withUnsafeMutableBytes(of: &addr.sun_path) { $0.copyBytes(from: bytes) }
@@ -108,14 +108,14 @@ func receiveLine(from fd: Int32) -> (data: Data, timedOut: Bool) {
     }
 }
 
-guard let fd = connectToApp(socketPath) else { fail("Tessera isn't running. Open Tessera.app and try again.", .notRunning) }
-guard var request = try? JSONEncoder().encode(command) else { fail("couldn't encode the command", .commandError) }
+guard let fd = connectToApp(socketPath) else { fail("Tessera isn’t running. Open Tessera.app and try again.", .notRunning) }
+guard var request = try? JSONEncoder().encode(command) else { fail("couldn’t encode the command", .commandError) }
 request.append(UInt8(ascii: "\n"))
 guard send(request, to: fd) else { close(fd); fail("lost the connection to Tessera", .notRunning) }
 let (line, timedOut) = receiveLine(from: fd)
 close(fd)
 if timedOut {
-    fail("Tessera didn't answer within \(readTimeoutSeconds) seconds. The command may still have run: check before running it again.",
+    fail("Tessera didn’t answer within \(readTimeoutSeconds) seconds. The command may still have run: check before running it again.",
          .timedOut)
 }
 guard let result = try? JSONDecoder().decode(CommandResult.self, from: line) else {

@@ -91,7 +91,7 @@ struct RingPane: View {
             }
 
             // The ring's look switches belong to Appearance, which resets them.
-            ResetSection(keeps: "Keeps the ring's look (Appearance).") {
+            ResetSection(keeps: "Keeps the ring’s look (Appearance).") {
                 let current = model.settings.ring
                 model.settings.ring = .default
                 model.settings.ring.takeLook(from: current)

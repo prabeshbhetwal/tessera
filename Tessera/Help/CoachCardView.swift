@@ -63,7 +63,7 @@ struct CoachCardView: View {
                     .help("Later tip")
                 Spacer(minLength: 8)
             }
-            Button("Don't show tips", action: onDontShow)
+            Button("Don’t show tips", action: onDontShow)
                 .controlSize(.small)
                 .foregroundStyle(.secondary)
         }
