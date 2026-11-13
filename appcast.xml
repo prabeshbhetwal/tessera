@@ -3,6 +3,20 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.28</title>
+            <pubDate>Fri, 13 Nov 2026 17:14:57 +0000</pubDate>
+            <sparkle:version>20261113.171228</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.28</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">Tessera no longer shuffles your windows when an app shows a small alert or progress window.
+
+- Windows that can't be resized, such as Finder's "can't be completed" alerts and About boxes, are never pulled into a split. A run of alerts beside a split no longer makes the windows next to them shrink and grow back each time.
+- Short-lived windows that can't zoom, such as Finder's Copy progress window, no longer join a split as they appear and close.
+- Tile All Windows leaves windows that can't be resized where they are.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.28/Tessera-0.2.0-beta.28.zip" length="6259327" type="application/octet-stream" sparkle:edSignature="fQww1Glfo2XTfnt1qyxiVXE8Ct+Sq3VQDQpmgKPUS7axOdlCC9PDLXWP2nUZPFHZtY/mzfYS08wjpYKpRNo2BQ==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.27</title>
             <pubDate>Fri, 13 Nov 2026 13:57:05 +0000</pubDate>
             <sparkle:version>20261113.135429</sparkle:version>
