@@ -96,10 +96,12 @@ extension CommandExecutor {
         }
         // A move a newer one took over still counts as moved, but its landing frame is that move's to report.
         let landed = outcomes.map(\.landed)
+        // Where each window is now: where its move landed, or where it was when it didn't move.
+        let placed = ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) }
         let constrained = outcomes.filter(\.constrained).count
         let undoMarker = await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
         // After the moves, so their settling is already ignored.
-        splitWatcher.watch(ordered, display: display, learns: !evenly)
+        splitWatcher.watch(placed, display: display, learns: !evenly)
         let n = ordered.count
         let moved = outcomes.filter { !$0.failed }.count
         let split = SplitMemory.lookup(SplitKey(ordered, on: display), in: model.settings.learnedSplits)
@@ -112,8 +114,7 @@ extension CommandExecutor {
             .tiled(usedSplit: learned)
         }
         // A split that restores its own order can land the windows in a different order from `ordered`.
-        let after = onScreenOrder(ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) },
-                                  portrait: display.range.isPortrait)
+        let after = onScreenOrder(placed, portrait: display.range.isPortrait)
         onEvent?(.make(kind: kind, source: source, display: display, group: after, split: split, previous: nil,
                        undoMarker: undoMarker))
         if alreadyThere, moved == n {

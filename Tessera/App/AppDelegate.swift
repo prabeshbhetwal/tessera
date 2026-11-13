@@ -203,7 +203,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !tapFailing else { return }
         tapFailing = true
         let alert = NSAlert()
-        alert.messageText = "Tessera can’t see the trigger"
+        alert.messageText = "Tessera can’t read the trigger"
         alert.informativeText = "Accessibility is allowed, but macOS won’t let Tessera watch the keyboard and mouse. "
             + "An older Tessera build may hold a stale entry. Open System Settings, remove Tessera from "
             + "Accessibility, then grant it again."

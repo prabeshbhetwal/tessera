@@ -142,7 +142,7 @@ struct OnboardingView: View {
             if (showFix && !axTrusted) || tapFailed {
                 VStack(spacing: 8) {
                     Caption(tapFailed
-                        ? "Allowed, but macOS won’t let Tessera read input. An older build may hold a stale entry. Reset it, then grant again."
+                        ? "Allowed, but Tessera can’t read the trigger. An older build may hold a stale entry. Reset it, then grant again."
                         : "Still not granted? An older build may hold a stale entry. Reset it, then grant again.")
                         .multilineTextAlignment(.center)
                     Button("Fix permission", action: resetPermission)

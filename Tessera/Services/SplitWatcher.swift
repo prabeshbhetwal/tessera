@@ -81,7 +81,7 @@ final class SplitWatcher {
             CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
             observers.append((observer, elements))
         }
-        baseline = group  // so a window closed before the refresh below lands still leaves a gap to fill
+        baseline = group  // the frames now, so a window closed before the refresh below lands leaves its tiled gap to fill
         refreshBaseline()  // the frames Tile just set
     }
 

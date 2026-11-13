@@ -121,8 +121,11 @@ final class CommandExecutor: CommandExecuting {
             return CommandResult(ok: true, message: "Exported to \(url.path)")
         case let .importSettings(path):
             let url = try fileURL(path)
-            do { model.settings = try await store.importSettings(from: url) } catch { throw Self.failure(error) }
-            return CommandResult(ok: true, message: "Imported \(url.lastPathComponent)")
+            let imported: (settings: TesseraSettings, repairs: [String])
+            do { imported = try await store.importSettings(from: url) } catch { throw Self.failure(error) }
+            model.settings = imported.settings
+            let repaired = imported.repairs.isEmpty ? "" : " (\(imported.repairs.count) repaired)"
+            return CommandResult(ok: true, message: "Imported \(url.lastPathComponent)\(repaired)")
         }
     }
 

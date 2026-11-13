@@ -9,8 +9,8 @@ struct AdvancedSection: View {
     @Bindable var model: SettingsModel
     @State private var exporting = false
     @State private var importing = false
-    /// A decoded file waiting for the person to confirm it replaces every setting.
-    @State private var pendingImport: TesseraSettings?
+    /// A decoded file waiting for the person to confirm it replaces every setting, and what decoding fixed in it.
+    @State private var pendingImport: (settings: TesseraSettings, repairs: [String])?
     @State private var confirmingImport = false
     @State private var ioMessage: Outcome?
     @State private var cliInstalled = CLIInstaller.isInstalled
@@ -35,15 +35,15 @@ struct AdvancedSection: View {
                         }
                 }
                 .confirmationDialog("Replace all settings with this file?", isPresented: $confirmingImport,
-                                    titleVisibility: .visible, presenting: pendingImport) { settings in
+                                    titleVisibility: .visible, presenting: pendingImport) { imported in
                     Button("Replace Settings", role: .destructive) {
-                        model.settings = settings
+                        model.settings = imported.settings
                         pendingImport = nil
                         ioMessage = .success("Settings imported.")
                     }
                     Button("Cancel", role: .cancel) { pendingImport = nil }
-                } message: { _ in
-                    Text("This replaces every setting, including shortcuts and cycles. Export first to keep a copy.")
+                } message: { imported in
+                    Text(Self.importMessage(repairs: imported.repairs))
                 }
                 if let ioMessage { ioCallout(ioMessage) }
 
@@ -89,6 +89,15 @@ struct AdvancedSection: View {
                 .controlSize(.small)
             }
         }
+    }
+
+    /// The warning, then what the file needed fixing (the same bullets as the launch notice), so nothing is dropped silently.
+    private static func importMessage(repairs: [String]) -> String {
+        let warning = "This replaces every setting, including shortcuts and cycles. Export first to keep a copy."
+        guard !repairs.isEmpty else { return warning }
+        let what = repairs.count == 1 ? "1 setting" : "\(repairs.count) settings"
+        return warning + "\n\nTessera fixed \(what) in this file that it couldn’t use and kept everything else."
+            + SettingsStore.LoadResult.repairList(repairs)
     }
 
     private func exported(_ result: Result<URL, any Error>) {
@@ -172,9 +181,10 @@ struct SettingsDocument: FileDocument {
     }
 
     /// Same migrate → decode → validate path as the store, so the UI and the CLI accept the same files.
-    static func importSettings(from url: URL) throws -> TesseraSettings {
+    static func importSettings(from url: URL) throws -> (settings: TesseraSettings, repairs: [String]) {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        return try SettingsStore.decode(Data(contentsOf: url)).settings
+        let decoded = try SettingsStore.decode(Data(contentsOf: url))
+        return (decoded.settings, decoded.repairs)
     }
 }

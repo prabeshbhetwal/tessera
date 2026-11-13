@@ -26,23 +26,29 @@ enum LenientSettingsDecoder {
         let defaults = try jsonObject(TesseraSettings.defaults)
         let templates = try elementTemplates()
         var repairs: [String] = []
-        var lastPath: [String]?
-        // Each pass repairs one value; a pass that fails at the same place again made no progress.
-        while true {
+        // Each pass repairs one value. Progress is the JSON changing, not the failing path moving: two adjacent bad
+        // items fail at the same index in turn, as removing the first slides the second into its place. The pass
+        // cap is only a backstop.
+        for _ in 0..<maxPasses {
             do {
                 let bytes = try JSONSerialization.data(withJSONObject: root)
                 return (try decoder.decode(TesseraSettings.self, from: bytes), repairs)
             } catch let error as DecodingError {
-                guard let path = failingPath(error), path.map(\.stringValue) != lastPath,
-                      let repair = repair(&root, at: path, defaults: defaults, templates: templates)
+                let before = NSDictionary(dictionary: root)
+                guard let path = failingPath(error),
+                      let repair = repair(&root, at: path, defaults: defaults, templates: templates),
+                      !NSDictionary(dictionary: root).isEqual(before)
                 else { throw unreadable }
-                lastPath = path.map(\.stringValue)
                 repairs.append(repair)
             } catch {
                 throw unreadable
             }
         }
+        throw unreadable
     }
+
+    /// More repairs than any real file needs (a hand-edited list of a few hundred bad items still finishes).
+    private static let maxPasses = 2_000
 
     /// The path of the value that failed, including a missing key's own name.
     private static func failingPath(_ error: DecodingError) -> [any CodingKey]? {

@@ -143,7 +143,7 @@ import Testing
 
         try await store.export(settings, to: exported)
         let imported = try await store.importSettings(from: exported)
-        #expect(imported == settings)
+        #expect(imported.settings == settings && imported.repairs.isEmpty)
     }
 
     @Test func testInvalidImportRejectedUntouched() async throws {

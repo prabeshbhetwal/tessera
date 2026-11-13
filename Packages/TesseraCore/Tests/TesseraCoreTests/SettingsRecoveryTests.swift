@@ -152,7 +152,8 @@ import Testing
         ])
         #expect(result.repairBackup == dir.appendingPathComponent(Self.repairCopyName))
         #expect(try Data(contentsOf: dir.appendingPathComponent(Self.repairCopyName)) == bytes, "a copy, not a move")
-        #expect(try Data(contentsOf: dir.appendingPathComponent("settings.json")) == bytes)
+        let rewritten = try JSONDecoder().decode(TesseraSettings.self, from: Data(contentsOf: dir.appendingPathComponent("settings.json")))
+        #expect(rewritten == customised(), "the file now holds the repaired settings")
         #expect(result.notice?.title == "Some settings were repaired")
     }
 
@@ -238,7 +239,8 @@ import Testing
         let imported = try await makeStore(in: dir).importSettings(from: importFile)
         var expected = customised()
         expected.ring.wedges = RingSettings.default.wedges
-        #expect(imported == expected)
+        #expect(imported.settings == expected)
+        #expect(imported.repairs.count == 1, "the import says what it fixed")
         #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path) == ["import.json"])
     }
 

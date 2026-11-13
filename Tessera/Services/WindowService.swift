@@ -110,13 +110,15 @@ actor WindowService {
 
     /// Undoes the most recent step: one move, or every window of a tile. Windows of apps in `excluding` (excluded
     /// after the move) are left alone. A step whose windows are all gone is dropped and the one before it tried; a
-    /// step every live window refused is put back, so the next ⌃⌥Z can try again.
+    /// step every live window refused is put back, so the next ⌃⌥Z can try again; a step held only by excluded apps
+    /// is dropped and undo stops there, never reaching back to an older, unrelated step.
     func undoLast(excluding: Set<String> = []) -> UndoOutcome {
         while let step = undo.popStep() {
             var restored = false
             var refused: WindowRef?
+            var excluded = false
             for (key, ref, frame) in step {
-                if let id = ref.bundleID, excluding.contains(id) { continue }
+                if let id = ref.bundleID, excluding.contains(id) { excluded = true; continue }
                 // A glide of this window still in flight would overwrite the restored frame on its next
                 // tick; dropping its generation makes it stop (see `glide`).
                 generations[key] = nil
@@ -130,6 +132,7 @@ actor WindowService {
                 undo.reinstate(step)
                 return .refused(refused)
             }
+            if excluded { return .nothing }
         }
         return .nothing
     }

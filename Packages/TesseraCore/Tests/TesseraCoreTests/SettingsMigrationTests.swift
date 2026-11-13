@@ -334,6 +334,6 @@ private func makeDirectory() throws -> URL {
         let imported = try await makeStore(dir).importSettings(from: file)
         var expected = userSettings()
         expected.schemaVersion = 2
-        #expect(imported == expected)
+        #expect(imported.settings == expected)
     }
 }

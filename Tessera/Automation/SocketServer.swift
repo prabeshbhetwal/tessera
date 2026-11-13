@@ -124,6 +124,8 @@ final class SocketServer {
                 return true
             }
             guard admitted else {
+                // No slot was taken, so none is freed. A short line fits the socket buffer, so this never blocks.
+                writeLine(.failure("Tessera is busy. Try again."), to: client)
                 close(client)
                 continue
             }
@@ -195,6 +197,11 @@ final class SocketServer {
 
     private nonisolated static func reply(_ result: CommandResult, to fd: Int32) {
         defer { finish(fd) }
+        writeLine(result, to: fd)
+    }
+
+    /// `result` as one JSON line; best effort, the caller closes `fd`.
+    private nonisolated static func writeLine(_ result: CommandResult, to fd: Int32) {
         guard var data = try? JSONEncoder().encode(result) else { return }
         data.append(UInt8(ascii: "\n"))
         data.withUnsafeBytes { raw in

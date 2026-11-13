@@ -21,7 +21,8 @@ public actor SettingsStore {
     /// then v2 is saved. Keys a file lacks take their default values (see `SettingsMigration`).
     ///
     /// A value this build can't read or that is out of range is repaired on its own (see `decode`); the original
-    /// bytes are first copied to `settings.pre-repair-<yyyyMMdd-HHmmss>.json` (UTC). A file that is not a settings
+    /// bytes are first copied to `settings.pre-repair-<yyyyMMdd-HHmmss>.json` (UTC), then the repaired settings are
+    /// written to the file so the next launch finds nothing to repair. A file that is not a settings
     /// object at all is moved to `settings.corrupt-<stamp>.json` and gives defaults. A newer schema, a read
     /// error, or a bad file that could not be moved or copied gives defaults and leaves the file as it is, and
     /// `save` refuses for the session (`LoadResult.saveRefusal`) so nothing is lost.
@@ -51,9 +52,12 @@ public actor SettingsStore {
             repairBackup = copyOriginal(original, as: "settings.pre-repair-\(Self.timestamp(now()))")
             if repairBackup == nil { saveRefusal = .noRepairBackup }
         }
-        // Only touch the file once the migrated result is known to be usable. If the backup cannot be
-        // written the v1 file stays as it is and migrates again next launch.
-        if decoded.migratedFrom != nil, saveRefusal == nil, copyOriginal(original, as: "settings.v1-backup") != nil {
+        // Only touch the file once the result is known to be usable and the original is kept: the v1 backup for a
+        // migration, the pre-repair copy for a repair. If a copy cannot be written the file stays as it is and is
+        // migrated or repaired again next launch. The write fixes the file, so the repair alert shows once, not
+        // on every launch; a failed write keeps today's behaviour (same repair, another copy, next launch).
+        if saveRefusal == nil, decoded.migratedFrom != nil || repairBackup != nil,
+           decoded.migratedFrom == nil || copyOriginal(original, as: "settings.v1-backup") != nil {
             try? Self.write(decoded.settings, to: fileURL, createFolder: false)
         }
         return LoadResult(settings: decoded.settings, recoveredFrom: nil, repairs: decoded.repairs,
@@ -99,8 +103,9 @@ public actor SettingsStore {
         try Self.write(s, to: url, createFolder: false)
     }
 
-    /// Validates before returning. Throws `.invalid(firstProblem)` and touches nothing on disk.
-    public func importSettings(from url: URL) throws -> TesseraSettings {
+    /// Validates before returning. Throws `.invalid(firstProblem)` and touches nothing on disk. `repairs` names what
+    /// the import fixed on the way (see `decode`), so the caller can tell the person.
+    public func importSettings(from url: URL) throws -> (settings: TesseraSettings, repairs: [String]) {
         let name = url.lastPathComponent
         let data: Data
         do {
@@ -109,7 +114,8 @@ public actor SettingsStore {
             throw SettingsError.invalid("Could not read \(name): \(error.localizedDescription)")
         }
         do {
-            return try Self.decode(data).settings
+            let decoded = try Self.decode(data)
+            return (decoded.settings, decoded.repairs)
         } catch SettingsError.invalid(let problem) {
             throw SettingsError.invalid("\(name): \(problem)")
         }

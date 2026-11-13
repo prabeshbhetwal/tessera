@@ -98,7 +98,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let items = s.menuBarItems
         status.title = granted
             ? "Hold \(ModifierKey.describe(s.trigger.keyCodes)) to snap"
-            : tapFailed ? "Tessera can’t read input: reset Accessibility permission" : "Accessibility not granted"
+            : tapFailed ? "Tessera can’t read the trigger" : "Accessibility not granted"
         // The status line always shows when setup is unfinished: it says why the rest is greyed out.
         status.isHidden = granted && !items.statusLine
         hotkeysOffItem.isHidden = s.hotkeysEnabled

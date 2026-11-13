@@ -302,12 +302,12 @@ The buttons only act on the windows the card is about. If they've changed since 
 | Item | What it does |
 |---|---|
 | About Tessera | Opens About: the version, links and **Report an Issue**. |
-| Hold ⌃⌥⌘ to snap | A reminder of your trigger. Reads "Accessibility not granted" until you allow it. |
+| Hold ⌃⌥⌘ to snap | A reminder of your trigger. Reads "Accessibility not granted" until you allow it, and "Tessera can't read the trigger" when Accessibility is allowed but macOS still won't let Tessera read it (usually a stale entry from an older build). **Finish Setup…** then opens setup at Accessibility, where **Fix permission** resets the entry. |
 | Hotkeys Off | Shown only while hotkeys are paused. Opens **Settings › Shortcuts**, where **Use global hotkeys** turns them back on. |
 | What Just Happened? | Same as its hotkey (⌃⌥/ by default): explains the latest thing Tessera did. |
 | Snap Front Window › | Tile All Windows, Remember Split, Tile Evenly, then every layout (Maximise, Centre, halves, quarters). |
 | Columns › | One More Column, One Fewer Column, then one item for each column count the front window's display allows (see [Columns and displays](#3-columns-and-displays)). The current count is ticked, and One More or One Fewer is greyed at the ends of the range. |
-| Settings… | Opens Settings (⌃⌥⌘, by default; ⌘, while the menu is open if you clear that hotkey). Reads **Finish Setup…** until Accessibility is allowed. |
+| Settings… | Opens Settings (⌃⌥⌘, by default; ⌘, while the menu is open if you clear that hotkey). Reads **Finish Setup…** until Accessibility is allowed, and also when Tessera can't read the trigger; it then opens setup at Accessibility. |
 | Shortcuts… | Opens Settings › Shortcuts. |
 | Undo Last Move | Same as ⌃⌥Z. |
 | Check for Updates… | Reads **Update Available…** when a new version is waiting. |
@@ -335,7 +335,7 @@ Open Settings with **⌃⌥⌘,**, from the menu bar, or by opening Tessera agai
 ### General
 - **App:** **Launch at login** (you may need to approve it in System Settings › General › Login Items); **Light or dark** (Light, Dark or Match System, for Tessera's own windows); and whether Settings search may use Apple Intelligence to understand what you type.
 - **Menu bar:** show or hide the icon, pick its picture (Tiles, Badge, Slot, Mosaic, Ring, Split, Columns, Quarters; Tiles matches the app icon), and choose which menu items appear and whether each shows its shortcut.
-- **Messages:** short on-screen confirmations such as "5 columns". Choose the position (Top, Centre, Bottom) and how long they stay (1.2 s by default).
+- **Messages:** short on-screen confirmations such as "5 columns", shown while **Show messages** is on. Failure messages, such as a move that didn't happen or settings that couldn't be saved, always show, even with it off. Choose the position (Top, Centre, Bottom) and how long they stay (1.2 s by default).
 - **Tips:** tips that appear on their own, the dim behind them, and **Show Tips Again**. See [What Just Happened?](#8a-what-just-happened).
 - **Advanced:** **Export Settings…** saves all settings to one JSON file. **Import Settings…** loads one after you confirm. It replaces every setting, including shortcuts and cycles, so export first to keep a copy; an invalid file is rejected and nothing changes. **Install Command-Line Tool** links `tessera` into `~/.local/bin`. See [Automation](#11-automation).
 

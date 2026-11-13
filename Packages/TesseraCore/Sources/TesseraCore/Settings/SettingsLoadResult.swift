@@ -55,7 +55,7 @@ extension SettingsStore.LoadResult {
         case .noRepairBackup:
             return ("Some settings were repaired",
                     "Tessera fixed settings it couldn’t use, but couldn’t keep a copy of the original file, so \(notSaved)"
-                        + Self.list(repairs))
+                        + Self.repairList(repairs))
         case nil:
             break
         }
@@ -66,11 +66,12 @@ extension SettingsStore.LoadResult {
         guard !repairs.isEmpty, let repairBackup else { return nil }
         let what = repairs.count == 1 ? "1 setting" : "\(repairs.count) settings"
         return ("Some settings were repaired", "Tessera fixed \(what) it couldn’t use and kept everything else. "
-            + "A copy of the original file was kept at \(repairBackup.path)." + Self.list(repairs))
+            + "A copy of the original file was kept at \(repairBackup.path)." + Self.repairList(repairs))
     }
 
-    /// The first few repairs, one per line, under the message.
-    private static func list(_ repairs: [String]) -> String {
+    /// The first five repairs, one per line, then "and N more.", ready to follow a message; empty when there are none.
+    /// Shared by the launch notice and the import confirmation.
+    public static func repairList(_ repairs: [String]) -> String {
         guard !repairs.isEmpty else { return "" }
         let shown = repairs.prefix(5).map { "• \($0)" }
         let more = repairs.count > 5 ? ["and \(repairs.count - 5) more."] : []

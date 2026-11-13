@@ -43,17 +43,12 @@ struct RingPane: View {
                 InfoHeader("Gestures", info: "A short move towards an icon picks that layout. Keep going further out to point at a column. "
                     + "To cancel, let go in the middle of the ring or right-click.")
             } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    if r.tapTilesWindows && (r.directions || r.pointing) {
-                        Footer("Pressing and letting go without moving tiles every window on that display.")
-                    } else if !r.directions && !r.pointing {
-                        Footer(model.settings.ringKeyNavigation
-                            ? "Mouse gestures are off. While holding the trigger, use the arrow keys and Return."
-                            : "Gestures and ring keys are both off, so holding the trigger does nothing.")
-                    }
-                    if !r.pointing {
-                        Footer("Turn on pointing to span columns with a click.")
-                    }
+                if r.tapTilesWindows && (r.directions || r.pointing) {
+                    Footer("Pressing and letting go without moving tiles every window on that display.")
+                } else if !r.directions && !r.pointing {
+                    Footer(model.settings.ringKeyNavigation
+                        ? "Mouse gestures are off. While holding the trigger, use the arrow keys and Return."
+                        : "Gestures and ring keys are both off, so holding the trigger does nothing.")
                 }
             }
 
@@ -73,10 +68,13 @@ struct RingPane: View {
 
             Section {
                 let pointMin = max(r.outerRadius, r.deadZone + 1).rounded(.up)
-                SliderRow(title: "Radius", value: ring.radius, range: 20...max(21, min(150, r.flickDistance - r.thickness / 2)))
+                // The ring's outer edge (radius + thickness / 2) stays inside the point threshold, which `save` requires
+                // while pointing is on. The sliders need a range at least 1 wide to draw, so the binding enforces the cap.
+                let radiusCap = max(20, min(150, r.flickDistance - r.thickness / 2))
+                let thicknessCap = max(4, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2))
+                SliderRow(title: "Radius", value: Self.capped(ring.radius, at: radiusCap), range: 20...max(21, radiusCap))
                     .disabled(!r.showRing)
-                SliderRow(title: "Thickness", value: ring.thickness,
-                          range: 4...max(5, min(80, r.radius * 2, (r.flickDistance - r.radius) * 2)))
+                SliderRow(title: "Thickness", value: Self.capped(ring.thickness, at: thicknessCap), range: 4...max(5, thicknessCap))
                     .disabled(!r.showRing)
                 SliderRow(title: "Point threshold", value: ring.flickDistance, range: pointMin...max(pointMin + 1, 400))
                     .disabled(!(r.directions && r.pointing))
@@ -99,6 +97,13 @@ struct RingPane: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+extension RingPane {
+    /// `binding` that never takes a value above `cap`, even where the slider's own range has to be wider than the cap.
+    fileprivate static func capped(_ binding: Binding<Double>, at cap: Double) -> Binding<Double> {
+        Binding(get: { binding.wrappedValue }, set: { binding.wrappedValue = min($0, cap) })
     }
 }
 
