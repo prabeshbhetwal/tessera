@@ -3,6 +3,21 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.27</title>
+            <pubDate>Fri, 13 Nov 2026 13:57:05 +0000</pubDate>
+            <sparkle:version>20261113.135429</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.27</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">Tessera now uses less memory and does less work while you use it.
+
+- Closing Settings or the welcome window now frees the memory it used. Settings opens on the same page with your search and window position kept. Text half-typed in a filter or a new theme name is cleared.
+- Tips free their memory once they fade out.
+- The Ring does less work as you move the mouse.
+- A smaller app download and a smaller command-line tool.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.27/Tessera-0.2.0-beta.27.zip" length="6250622" type="application/octet-stream" sparkle:edSignature="UbsJvMmHKscpNuMJ5h143z1C4RorkF9cap/aN3B4n6nG2ZAMSPOR1Siv84fYFe9qA/VoINPv9M7Wv+xOcxqFDg==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.26</title>
             <pubDate>Fri, 13 Nov 2026 13:12:37 +0000</pubDate>
             <sparkle:version>20261113.131053</sparkle:version>
