@@ -24,7 +24,7 @@ struct DemoWindow: Identifiable, Equatable {
     var closeButton: CGPoint { CGPoint(x: frame.minX + 32, y: frame.maxY - 24) }
 }
 
-/// The stage's screen: a menu bar over the wallpaper, glass windows, and the overlay drawn the way the active theme
+/// The stage's screen: a menu bar over the stage backdrop, glass windows, and the overlay drawn the way the active theme
 /// draws it on screen (preview fill, border, corners, label, dimming, the "from" outline, the ring and the grid).
 /// Everything is placed from display-space rects (AppKit, y up) computed by `TesseraCore`.
 struct MockDesktop: View {

@@ -90,3 +90,50 @@ struct MiniWindow: View {
         }
     }
 }
+
+/// Liquid Glass, Frosted or Solid for the Settings window, each a small window on a toned desk so the sidebar shows
+/// how much of the desk comes through.
+struct WindowLookPicker: View {
+    @Binding var selection: WindowMaterial
+
+    var body: some View {
+        ThumbnailPicker(selection: $selection, options: WindowMaterial.allCases, title: \.displayName) { LookThumbnail(look: $0) }
+    }
+}
+
+private struct LookThumbnail: View {
+    let look: WindowMaterial
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            LinearGradient(colors: [Color(white: 0.42), Color(white: 0.68)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            HStack(spacing: 0) {
+                sidebar.frame(width: 26)
+                VStack(alignment: .leading, spacing: 4) {
+                    RoundedRectangle(cornerRadius: 1.5).fill(Color.accentColor).frame(width: 30, height: 4)
+                    RoundedRectangle(cornerRadius: 1.5).fill(Color.primary.opacity(0.2)).frame(width: 40, height: 4)
+                    RoundedRectangle(cornerRadius: 1.5).fill(Color.primary.opacity(0.2)).frame(width: 24, height: 4)
+                }
+                .padding(6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(Color(nsColor: .windowBackgroundColor))
+            }
+            .frame(width: 80, height: 46)
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .padding(.leading, 6)
+            .padding(.top, 8)
+        }
+    }
+
+    @ViewBuilder private var sidebar: some View {
+        switch look {
+        case .liquidGlass:
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(.white.opacity(0.42))
+                .overlay(RoundedRectangle(cornerRadius: 3, style: .continuous).strokeBorder(.white.opacity(0.8), lineWidth: 0.5))
+                .padding(2.5)
+        case .frosted: Rectangle().fill(.white.opacity(0.3))
+        case .solid: Color(nsColor: .underPageBackgroundColor)
+        }
+    }
+}
