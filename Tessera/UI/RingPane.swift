@@ -40,7 +40,7 @@ struct RingPane: View {
                 Toggle("Scroll while holding to change the column count", isOn: ring.scrollChangesColumns).settingAnchor("Scroll while holding to change the column count")
                 Toggle("Press and release without moving to tile all windows", isOn: ring.tapTilesWindows).settingAnchor("Press and release without moving to tile all windows")
             } header: {
-                InfoHeader("Gestures", info: "A short move towards an icon picks that layout. Keep going further out to point at a column. "
+                InfoHeader("Gestures", info: "Keep going past the icons to point at a column. "
                     + "To cancel, let go in the middle of the ring or right-click.")
             } footer: {
                 if r.tapTilesWindows && (r.directions || r.pointing) {

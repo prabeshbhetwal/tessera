@@ -5,8 +5,9 @@ import TesseraCore
 
 /// Settings window root: sidebar of panes, grouped form on the right (spec §6.1, M2 §6).
 struct SettingsView: View {
-    /// Fixed window size in content points (smaller only on a screen that can't fit it).
-    static let width: CGFloat = 820
+    /// Fixed window size in content points (smaller only on a screen that can't fit it). 1100 wide: the sidebar,
+    /// a form as wide as before the demo column, and the 280 pt demo column (`SettingsDemo`).
+    static let width: CGFloat = 1100
     static let height: CGFloat = 720
 
     @Bindable var model: SettingsModel
@@ -150,7 +151,13 @@ struct SettingsView: View {
         ScrollViewReader { proxy in
             VStack(spacing: 0) {
                 if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
-                paneView
+                HStack(spacing: 0) {
+                    paneView
+                    if SettingsDemo.exists(for: navigation.pane) {
+                        Divider()
+                        SettingsDemo(pane: navigation.pane, settings: model.settings)
+                    }
+                }
             }
             .environment(\.settingsPaneKey, navigation.pane.key)
             .environment(\.settingsHighlight, navigation.highlight)

@@ -26,7 +26,7 @@ struct DisplaysPane: View {
             Section {
                 sizingControls
             } header: {
-                InfoHeader("Column sizing", info: "These widths decide how many columns each display can hold. Minimum ≤ ideal ≤ maximum.")
+                InfoHeader("Column sizing", info: "Minimum ≤ ideal ≤ maximum.")
             }
 
             ResetSection {

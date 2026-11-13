@@ -17,13 +17,14 @@ struct OverlaySample: View {
             for: .wedge(index: 2, action: .rightHalf), frame: CGRect(x: 0, y: 0, width: 756, height: 949),
             size: preview.labelShowsSize, slot: preview.labelShowsSlot)
         // Mock desktop: the ring, a window outlined as the "from" frame, and the preview over a dimmed window.
-        HStack(spacing: 22) {
+        // Stacked: it lives in the narrow demo column.
+        VStack(spacing: 16) {
             RingDiagram(ring: ring, fill: ringFill, tint: theme.ring.opacity, stroke: stroke, accent: accent,
                         active: 2, focused: nil, showBoundary: false)
                 .frame(width: 140, height: 140)
                 .opacity(ring.showRing ? 1 : 0.15)
                 .overlay { if !ring.showRing { Caption("Ring hidden") } }
-            Group {
+            HStack(spacing: 12) {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color(nsColor: .windowBackgroundColor))
                     .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.primary.opacity(0.1)))
@@ -61,39 +62,24 @@ struct OverlaySample: View {
                     if preview.showLabel, let label {
                         Text(label)
                             .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                             .foregroundStyle(Color(hex: theme.labelTextHex))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                             .background(Color(hex: theme.labelHex).opacity(0.82), in: Capsule())
                             .overlay(Capsule().strokeBorder(.white.opacity(0.14), lineWidth: 0.5))
-                            .offset(y: preview.labelPosition == .bottom ? 38 : 0)
+                            .offset(y: preview.labelPosition == .bottom ? 30 : 0)
                     }
                 }
             }
-            .frame(width: 160, height: 120)
+            .frame(height: 96)
+            .padding(.horizontal, 14)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
-        .background(.quinary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(.vertical, 14)
+        .quinaryPanel(cornerRadius: 10)
         .accessibilityElement()
         .accessibilityLabel("Overlay sample: the ring with the right half selected, and the preview frame.")
-    }
-}
-
-/// Stand-in for a window snapshot in the sample: title bar with traffic lights over a body.
-private struct MockWindow: View {
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                ForEach([Color.red, .yellow, .green], id: \.self) { Circle().fill($0).frame(width: 6, height: 6) }
-                Spacer()
-            }
-            .padding(.horizontal, 6)
-            .frame(height: 14)
-            .background(.quaternary)
-            Rectangle().fill(.background)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay { RoundedRectangle(cornerRadius: 6).stroke(Color(nsColor: .separatorColor)) }
     }
 }
