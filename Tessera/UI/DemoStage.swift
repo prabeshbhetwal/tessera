@@ -19,13 +19,34 @@ struct StageFrame: Equatable {
     var caption: String
     /// How long the move into this frame takes, when it isn't the stage's usual glide (Motion's snap speed).
     var seconds: Double?
+    /// A setting's value, shown beside the part of the screen it shapes ("Radius 50 pt").
+    var badge: String?
+    /// The point threshold: a dashed circle round the ring, its radius in the ring's own points.
+    var threshold: Double?
 }
 
 /// What the person is pointing at in the form, so the stage can act out that control.
 enum DemoCue: Hashable {
     case wedge(Int), pointing, tapTiles
+    /// A ring size slider, by its row's anchor ("Radius", "Thickness").
+    case ringSize(String)
+    case flickDistance
     case hotkey(String), cycle(String)
     case reflow, fillGap
+
+    /// The form row (its `settingAnchor`) this cue acts out, lit while the pointer is on the stage.
+    var anchor: String? {
+        switch self {
+        case .wedge: "Directions"
+        case .pointing: "Pointing: a longer move picks a column of the grid"
+        case .tapTiles: "Press and release without moving to tile all windows"
+        case .ringSize(let anchor): anchor
+        case .flickDistance: "Point threshold"
+        case .reflow: "Resize neighbours to fill the display"
+        case .fillGap: "Fill the space when a window closes"
+        case .hotkey, .cycle: nil
+        }
+    }
 }
 
 /// The cue last pointed at. Sticky: it changes only when another cued control is pointed at, so the stage
@@ -33,6 +54,8 @@ enum DemoCue: Hashable {
 @MainActor @Observable
 final class DemoCueState {
     var cue: DemoCue?
+    /// The form row the stage is about, lit (more softly than a search result) while the pointer is on the stage.
+    var spotlight: String?
 }
 
 extension View {
@@ -71,10 +94,13 @@ struct StagePlayer<Accessory: View>: View {
     let frames: [StageFrame]
     /// The settings behind the demo, read back in one line ("Snap speed Smooth, 0.2 s").
     let detail: String
+    /// The form row the demo is about when no control has been pointed at.
+    var anchor: String?
     /// A small picture in the footer, only where it adds something the screen can't show (cycle steps, a time bar).
     @ViewBuilder let accessory: (Int) -> Accessory
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(DemoCueState.self) private var cues: DemoCueState?
     @State private var index = 0
     @State private var replays = 0
 
@@ -96,6 +122,8 @@ struct StagePlayer<Accessory: View>: View {
             StageFooter(headline: frame.caption, detail: detail) { accessory(shown) }
         }
         .task(id: Replay(frames: frames, replays: replays)) { await play() }
+        // Pointing at the stage lights the form row it is acting out: the link runs both ways.
+        .onHover { inside in cues?.spotlight = inside ? cues?.cue?.anchor ?? anchor : nil }
     }
 
     /// Where the live window started, outlined once it has moved.
@@ -132,8 +160,8 @@ struct StagePlayer<Accessory: View>: View {
 }
 
 extension StagePlayer where Accessory == EmptyView {
-    init(display: DisplayContext, settings: TesseraSettings, frames: [StageFrame], detail: String) {
-        self.init(display: display, settings: settings, frames: frames, detail: detail) { _ in EmptyView() }
+    init(display: DisplayContext, settings: TesseraSettings, frames: [StageFrame], detail: String, anchor: String? = nil) {
+        self.init(display: display, settings: settings, frames: frames, detail: detail, anchor: anchor) { _ in EmptyView() }
     }
 }
 

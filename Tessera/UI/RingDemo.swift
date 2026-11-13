@@ -13,7 +13,8 @@ struct RingDemo: View {
     var body: some View {
         let display = DemoDisplay.context(DemoDisplay.stage, settings: settings)
         let story = Self.story(settings: settings, display: display, cue: cues?.cue)
-        StagePlayer(display: display, settings: settings, frames: story.frames, detail: Self.detail(settings))
+        StagePlayer(display: display, settings: settings, frames: story.frames, detail: Self.detail(settings),
+                    anchor: "Directions")
     }
 
     /// The settings behind a flick, read back.
@@ -22,6 +23,9 @@ struct RingDemo: View {
         let trigger = keys.isEmpty ? "No trigger set" : "Trigger " + keys.joined(separator: " ")
         return "\(trigger) · flick past \(Int(settings.ring.flickDistance)) pt to point at a column"
     }
+
+    /// Display points per ring point on the stage (`MockDesktop.ringScale` view points, at the stage's scale).
+    static let displayPerRingPoint = Double(MockDesktop.ringScale) * DemoDisplay.stage.width / StageColumn<EmptyView>.width
 
     struct Story {
         var frames: [StageFrame]
@@ -40,6 +44,23 @@ struct RingDemo: View {
         if cue == .tapTiles, ring.tapTilesWindows {
             return tapTiles(display: display)
         }
+        if case .ringSize = cue {
+            var sized = open
+            sized.badge = "Radius \(Int(ring.radius)) pt · thickness \(Int(ring.thickness)) pt"
+            sized.caption = "The ring at this size."
+            return Story(frames: [hold, sized])
+        }
+        if cue == .flickDistance {
+            var story = pointing(open, display: display)
+            for i in story.frames.indices where story.frames[i].ring != nil {
+                story.frames[i].threshold = ring.flickDistance
+                story.frames[i].badge = "Point threshold \(Int(ring.flickDistance)) pt"
+            }
+            guard ring.pointing, story.frames.count > 2 else { return story }
+            // Rest on the moment it crosses the circle, which is what the threshold decides.
+            story.frames[2].caption = "Past the dashed circle, you point at a column."
+            return Story(frames: Array(story.frames.prefix(3)))
+        }
         if cue == .pointing || !ring.directions, ring.pointing {
             return pointing(open, display: display)
         }
@@ -55,7 +76,9 @@ struct RingDemo: View {
         let target = GridGeometry.frame(for: action, display: display, current: window)
         let angle = Double(index) * .pi / 4
         var flick = open
-        flick.pointer = CGPoint(x: centre.x + 200 * sin(angle), y: centre.y + 200 * cos(angle))
+        // Halfway between the ring's edge and the point threshold: far enough to pick the icon, not to point.
+        let reach = (ring.outerRadius + ring.flickDistance) / 2 * displayPerRingPoint
+        flick.pointer = CGPoint(x: centre.x + reach * sin(angle), y: centre.y + reach * cos(angle))
         flick.wedge = index
         flick.preview = target
         flick.selection = .wedge(index: index, action: action)

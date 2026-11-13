@@ -8,6 +8,20 @@ import TesseraCore
 /// Settings are the defaults, in memory: nothing is read from or written to the settings file.
 @MainActor
 enum SettingsSnapshots {
+    private static func render(_ view: some View, size: CGSize, to file: URL) {
+        let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
+        let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = host
+        window.setFrameOrigin(NSPoint(x: -20_000, y: 0))
+        window.orderFrontRegardless()
+        RunLoop.main.run(until: Date().addingTimeInterval(3.2))
+        if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: file)
+        }
+        window.orderOut(nil)
+    }
+
     static func runIfRequested() -> Bool {
         guard let path = ProcessInfo.processInfo.environment["TESSERA_SETTINGS_SNAPSHOTS"] else { return false }
         let folder = URL(fileURLWithPath: path, isDirectory: true)
@@ -38,6 +52,17 @@ enum SettingsSnapshots {
                 }
                 window.orderOut(nil)
             }
+        }
+        // The stage alone in states only pointing at a control reaches.
+        let cued: [(String, DemoCue, SettingsPane)] = [("ring-size", .ringSize("Radius"), .ring),
+                                                     ("ring-threshold", .flickDistance, .ring),
+                                                     ("splits-close", .fillGap, .splits)]
+        for (name, cue, pane) in cued {
+            let cues = DemoCueState()
+            cues.cue = cue
+            render(SettingsDemo(pane: pane, settings: model.settings).environment(cues),
+                   size: CGSize(width: StageColumn<EmptyView>.width, height: SettingsView.height),
+                   to: folder.appendingPathComponent("stage-\(name).png"))
         }
         NSApp.terminate(nil)
         return true

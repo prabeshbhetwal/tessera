@@ -17,7 +17,7 @@ struct MotionDemo: View {
                        seconds: seconds)
         }
         StagePlayer(display: display, settings: settings, frames: frames,
-                    detail: "The same speed for the ring and shortcuts.") { index in
+                    detail: "The same speed for the ring and shortcuts.", anchor: "Speed") { index in
             // The time the move takes, on a scale from instant to the slowest allowed.
             VStack(alignment: .leading, spacing: 6) {
                 GeometryReader { geometry in

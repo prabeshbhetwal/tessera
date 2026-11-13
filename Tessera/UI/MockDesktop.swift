@@ -45,7 +45,12 @@ struct MockDesktop: View {
                             .transition(.scale(scale: 0.88).combined(with: .opacity))
                     }
                     if let preview = frame.preview { previewView(map(preview), size: preview) }
-                    if let centre = frame.ring { ring.position(map(CGRect(origin: centre, size: .zero)).origin) }
+                    if let centre = frame.ring {
+                        let at = map(CGRect(origin: centre, size: .zero)).origin
+                        if let threshold = frame.threshold { thresholdCircle(threshold).position(at) }
+                        ring.position(at)
+                        if let badge = frame.badge { badgeView(badge).position(x: at.x, y: at.y + ringSide / 2 + 6) }
+                    }
                     if let pointer = frame.pointer { pointerView.position(map(CGRect(origin: pointer, size: .zero)).origin) }
                 }
             }
@@ -116,9 +121,35 @@ struct MockDesktop: View {
         RingDiagram(ring: settings.ring, fill: Color(hex: theme.ring.fillHex), tint: theme.ring.opacity,
                     stroke: Color(hex: theme.ring.strokeHex), accent: Color(hex: theme.accentHex),
                     active: frame.wedge, focused: nil, showBoundary: false)
-            .frame(width: 96, height: 96)
+            .frame(width: ringSide, height: ringSide)
             .opacity(settings.ring.showRing ? 1 : 0.25)
             .transition(.opacity.combined(with: .scale(scale: 0.95)))
+    }
+
+    /// View points per ring point. The stage draws the ring larger than true scale so its icons read, but keeps
+    /// its size, the point threshold and the pointer's flick in proportion, so a bigger radius shows bigger.
+    static let ringScale: CGFloat = 0.8
+
+    /// `RingDiagram` fits the ring's extent into its frame less a 16 pt margin, so this frame draws it at `ringScale`.
+    private var ringSide: CGFloat { 2 * (RingGeometry.extent(settings.ring) * Self.ringScale + 16) }
+
+    private func thresholdCircle(_ radius: Double) -> some View {
+        let side = 2 * radius * Self.ringScale
+        return Circle()
+            .strokeBorder(Color.white.opacity(0.85), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
+            .shadow(color: .black.opacity(0.35), radius: 1)
+            .frame(width: side, height: side)
+            .transition(.opacity)
+    }
+
+    private func badgeView(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold).monospacedDigit())
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(Color.accentColor, in: Capsule())
+            .fixedSize()
+            .transition(.opacity)
     }
 
     private var pointerView: some View {

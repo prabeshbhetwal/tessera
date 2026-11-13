@@ -21,20 +21,24 @@ private struct SettingAnchor: ViewModifier {
     @Environment(\.settingsPaneKey) private var pane
     @Environment(\.settingsHighlight) private var highlight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(DemoCueState.self) private var cues: DemoCueState?
 
     func body(content: Content) -> some View {
         let id = "\(pane)/\(anchor)"
+        // A search result lights the row fully; the stage, while pointed at, lights the row it is acting out softly.
         let lit = highlight == id
+        let soft = !lit && cues?.spotlight == anchor
         let shape = RoundedRectangle(cornerRadius: 7, style: .continuous)
         content
             .id(id)
             .background {
-                shape.fill(Color.accentColor.opacity(lit ? 0.14 : 0))
-                    .overlay(shape.strokeBorder(Color.accentColor.opacity(lit ? 0.85 : 0), lineWidth: 2))
+                shape.fill(Color.accentColor.opacity(lit ? 0.14 : soft ? 0.08 : 0))
+                    .overlay(shape.strokeBorder(Color.accentColor.opacity(lit ? 0.85 : soft ? 0.45 : 0), lineWidth: lit ? 2 : 1.5))
                     .padding(.horizontal, -8)
                     .padding(.vertical, -5)
                     .allowsHitTesting(false)
             }
             .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: lit)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: soft)
     }
 }

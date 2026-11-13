@@ -103,7 +103,10 @@ enum DemoDisplay {
         let frame = CGRect(origin: .zero, size: size)
         let dock = size == stage ? footer : 0
         let visible = CGRect(x: 0, y: dock, width: size.width, height: size.height - dock - (menuBar ? 33 : 0))
-        let range = SizingRule.range(for: visible.size, constants: settings.sizing)
+        // The stage is drawn taller than a laptop screen but behaves like one: sized from a 14-inch MacBook's visible
+        // frame, so it gets a laptop's columns side by side rather than a portrait screen's rows.
+        let sizedFrom = size == stage ? CGSize(width: laptop.width, height: laptop.height - 33) : visible.size
+        let range = SizingRule.range(for: sizedFrom, constants: settings.sizing)
         return DisplayContext(
             id: DisplayID(vendor: 0, model: 0, serial: 0, uuid: "demo"), frame: frame, visibleFrame: visible,
             range: range, profile: .auto(range: range, gap: settings.defaultGap, padding: settings.defaultPadding))
