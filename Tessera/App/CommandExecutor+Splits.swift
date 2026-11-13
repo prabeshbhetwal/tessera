@@ -95,7 +95,11 @@ extension CommandExecutor {
             return results
         }
         // A move a newer one took over still counts as moved, but its landing frame is that move's to report.
-        let landed = outcomes.map(\.landed)
+        // A window that lands short of its slot (System Settings keeps its width) pulls its neighbours along: no hole.
+        let landed = await windows.follow(zip(ordered, slots).map { (window: $0.window, goal: $1) },
+                                          landed: outcomes.map(\.landed), gap: display.profile.gap,
+                                          primaryHeight: DisplayService.primaryHeight, duration: model.glideSeconds,
+                                          batch: batch)
         // Where each window is now: where its move landed, or where it was when it didn't move.
         let placed = ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) }
         let constrained = outcomes.filter(\.constrained).count

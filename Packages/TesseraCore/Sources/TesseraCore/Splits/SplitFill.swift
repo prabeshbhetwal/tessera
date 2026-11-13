@@ -9,19 +9,30 @@ public enum SplitFill {
     /// the windows facing it (within `gap` plus a little) all sit within the hole's extent across the axis and
     /// together span it, as one window beside a closed one, or a column of windows beside a closed column.
     ///
+    /// When nothing sits right beside the hole on any side, the nearest windows across empty space on a side cover it
+    /// and that space too (a window that landed short of its place, as a fixed-width app does, left a hole beside it).
+    ///
     /// Nil when no side can cover the hole without stacking windows: the windows are then left where they are.
     public static func frames(filling hole: CGRect, frames: [CGRect], gap: Double) -> [CGRect]? {
+        Self.frames(filling: hole, frames: frames, gap: gap, acrossSpace: false)
+            ?? Self.frames(filling: hole, frames: frames, gap: gap, acrossSpace: true)
+    }
+
+    private static func frames(filling hole: CGRect, frames: [CGRect], gap: Double, acrossSpace: Bool) -> [CGRect]? {
         let reach = gap + SplitReflow.slack
         var best: (rank: Int, frames: [CGRect])?
         for side in SplitReflow.Side.allCases {
             let facing = side.opposite  // the neighbours' edge that faces the hole
             let span = side.across(hole)
-            let beside = frames.indices.filter { j in
+            let spaces = frames.indices.compactMap { j -> (Int, Double)? in
                 let edge = facing.value(frames[j])
                 let space = side.isHigh ? edge - side.value(hole) : side.value(hole) - edge
-                return space >= -SplitLearner.overlapTolerance && space <= reach
-                    && span.overlap(side.across(frames[j])) > SplitLearner.overlapTolerance
+                guard space >= -SplitLearner.overlapTolerance,
+                      span.overlap(side.across(frames[j])) > SplitLearner.overlapTolerance else { return nil }
+                return (j, space)
             }
+            let nearest = acrossSpace ? max(spaces.map(\.1).min() ?? 0, 0) : 0
+            let beside = spaces.filter { $0.1 <= nearest + reach }.map(\.0)
             guard let rank = beside.min(), rank < best?.rank ?? .max else { continue }
             let extents: [Interval] = beside.map { side.across(frames[$0]) }
             let within = extents.allSatisfy { $0.lo >= span.lo - reach && $0.hi <= span.hi + reach }
