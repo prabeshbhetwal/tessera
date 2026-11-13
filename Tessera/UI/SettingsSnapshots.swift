@@ -56,11 +56,12 @@ enum SettingsSnapshots {
         // The stage alone in states only pointing at a control reaches.
         let cued: [(String, DemoCue, SettingsPane)] = [("ring-size", .ringSize("Radius"), .ring),
                                                      ("ring-threshold", .flickDistance, .ring),
-                                                     ("splits-close", .fillGap, .splits)]
+                                                     ("splits-close", .fillGap, .splits),
+                                                     ("splits-seam", .reflow, .splits)]
         for (name, cue, pane) in cued {
             let cues = DemoCueState()
             cues.cue = cue
-            cues.ringEdit = { _ in }
+            cues.apply = { _ in }
             render(SettingsDemo(pane: pane, settings: model.settings).environment(cues),
                    size: CGSize(width: StageColumn<EmptyView>.width, height: SettingsView.height),
                    to: folder.appendingPathComponent("stage-\(name).png"))
