@@ -21,6 +21,10 @@ final class WindowLifecycleMonitor {
     }
 
     private var observers: [pid_t: (AXObserver, AXUIElement)] = [:]
+    /// Apps whose registration failed (hung, or no AX support), with when: each attempt is a synchronous call into the
+    /// app on the main thread, so a refusing app is retried only after `retryAfter`, not on every refresh.
+    private var refusedAt: [pid_t: ContinuousClock.Instant] = [:]
+    private static let retryAfter: Duration = .seconds(30)
     private let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "window-lifecycle")
 
     func refresh() {
@@ -42,7 +46,8 @@ final class WindowLifecycleMonitor {
             }
             knownWindows[pid] = nil
         }
-        for app in apps where observers[app.processIdentifier] == nil {
+        refusedAt = refusedAt.filter { live.contains($0.key) && ContinuousClock.now - $0.value < Self.retryAfter }
+        for app in apps where observers[app.processIdentifier] == nil && refusedAt[app.processIdentifier] == nil {
             let pid = app.processIdentifier
             // AX can announce an existing window again after unhide or accessibility-tree recreation.
             knownWindows[pid, default: []].formUnion(current[pid] ?? [])
@@ -55,6 +60,7 @@ final class WindowLifecycleMonitor {
             let focus = AXObserverAddNotification(observer, element, kAXFocusedWindowChangedNotification as CFString,
                                                   Unmanaged.passUnretained(self).toOpaque())
             guard result == .success || focus == .success else {
+                refusedAt[pid] = .now
                 log.debug("Window-created observation unavailable for pid \(pid): \(result.rawValue)")
                 continue
             }
@@ -62,8 +68,6 @@ final class WindowLifecycleMonitor {
             observers[pid] = (observer, element)
         }
     }
-
-
 }
 
 private func windowLifecycleCallback(_: AXObserver, _ element: AXUIElement, _ notification: CFString,
@@ -73,6 +77,8 @@ private func windowLifecycleCallback(_: AXObserver, _ element: AXUIElement, _ no
     guard AXUIElementGetPid(element, &pid) == .success else { return }
     let observedPID = pid
     let created = notification as String == kAXWindowCreatedNotification
+    // The read below is a call into the app that just created the window; never wait on it longer than other AX reads.
+    AXUIElementSetMessagingTimeout(element, 0.3)
     let observedWindowID = created ? SPI.windowID(of: element) : nil
     let monitor = Unmanaged<WindowLifecycleMonitor>.fromOpaque(context).takeUnretainedValue()
     MainActor.assumeIsolated {

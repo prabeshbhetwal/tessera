@@ -114,7 +114,10 @@ actor WindowService {
         let goal = CoordinateSpace.toAX(target, primaryHeight: primaryHeight)
         guard let destination = ticket.topology.key(containing: goal) else { return .failed(Self.changedMessage) }
         let displayKeys = Set([destination] + [ticket.topology.key(containing: now)].compactMap { $0 })
-        let valid = { [mutationContext] in !Task.isCancelled && mutationContext.isCurrent(ticket, on: displayKeys) }
+        let valid = { [mutationContext] in
+            !Task.isCancelled && !(batch.map { self.cancelledBatches.contains($0) } ?? false)
+                && mutationContext.isCurrent(ticket, on: displayKeys)
+        }
         guard valid() else { return .failed(Self.changedMessage) }
 
         let key = Self.key(for: window)

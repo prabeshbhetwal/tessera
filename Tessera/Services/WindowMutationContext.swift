@@ -106,8 +106,10 @@ final class WindowMutationContext: @unchecked Sendable {
     }
 
     private func refresh(spaces: Bool) {
-        // Serial sampling prevents an older concurrent sample from replacing a newer one.
-        sampling.withLock { _ in
+        // Serial sampling prevents an older concurrent sample from replacing a newer one. A caller that finds a sample
+        // already under way uses its result instead of queueing behind it: the readers call into WindowServer
+        // (SkyLight), which is slow exactly during display and Space changes, and the main thread must not wait on them.
+        sampling.withLockIfAvailable { _ in
             let topology = topologyReader()
             let workspaceIDs = spaces ? workspaceReader() : nil
             state.withLock { state in
@@ -117,14 +119,18 @@ final class WindowMutationContext: @unchecked Sendable {
                     state.topologyVersion += 1
                     state.pendingTopology = true
                 }
-                if spaces {
-                    let next = workspaceIDs ?? [:]
+                // A failed Space read (common mid-transition) keeps the last map: treating it as "no Spaces" would
+                // invalidate every display now and again on the next good read. Notifications still invalidate
+                // conservatively while it is untrustworthy (`consumeChanges`).
+                if spaces, let next = workspaceIDs {
                     for key in Set(state.workspaces.keys).union(next.keys) where state.workspaces[key] != next[key] {
                         state.workspaceVersions[key, default: 0] += 1
                         state.pendingDisplays.insert(key)
                     }
                     state.workspaces = next
-                    state.trustworthySpaces = workspaceIDs.map { topology.keys.isSubset(of: Set($0.keys)) } ?? false
+                    state.trustworthySpaces = topology.keys.isSubset(of: Set(next.keys))
+                } else if spaces {
+                    state.trustworthySpaces = false
                 }
             }
         }

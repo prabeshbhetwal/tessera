@@ -179,7 +179,6 @@ final class SplitWatchers {
     private func checkMissingWindows() {
         guard model.settings.learnSplits, ownMoves == 0, arming == 0, reconciliation == nil else { return }
         retryPendingRecoveries()
-        let ticket = windows.mutationContext.capture()
         let groups = watchers.values.filter {
             !$0.watched.isEmpty
                 && !$0.watched.contains { model.settings.excludedBundleIDs.contains($0.bundleID ?? "") }
@@ -189,6 +188,8 @@ final class SplitWatchers {
         let rows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
         let visible = Set(rows.compactMap { $0[kCGWindowNumber as String] as? CGWindowID })
         guard groups.contains(where: { $0.1.contains { $0.windowID.map { !visible.contains($0) } ?? false } }) else { return }
+        // Sampled only once a watched window has gone missing: this runs every second on the main thread.
+        let ticket = windows.mutationContext.capture()
         reconciliation = Task { [weak self] in
             defer { if !Task.isCancelled { self?.reconciliation = nil } }
             await WindowMutationScope.$ticket.withValue(ticket) {

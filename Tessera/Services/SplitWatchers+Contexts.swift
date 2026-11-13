@@ -50,7 +50,8 @@ extension SplitWatchers {
         displays.refresh()
         let change = windows.mutationContext.consumeChanges(spaceNotification: spaceNotification)
         let ticket = windows.mutationContext.capture()
-        let current = Dictionary(uniqueKeysWithValues: displays.displays.map { ($0.id.storageKey, $0) })
+        // Two identical monitors without a UUID share a key: keep the first rather than trap.
+        let current = Dictionary(displays.displays.map { ($0.id.storageKey, $0) }, uniquingKeysWith: { first, _ in first })
         var affected = Set(watchedDisplays.keys.filter { watchedDisplays[$0] != current[$0] })
         affected.formUnion(current.filter { !ticket.topology.contains($0.value) }.keys)
         if !change.topology { windows.mutationContext.invalidateLayouts(on: affected) }
