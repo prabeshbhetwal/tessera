@@ -1,4 +1,5 @@
 import CoreGraphics
+import TesseraCore
 
 /// `WindowService`'s undo state: chronological steps, each holding the windows one ⌃⌥Z restores and the frame each
 /// had before its move. Frames are AX coordinates, so undo needs no display geometry.
@@ -8,12 +9,13 @@ struct WindowUndoHistory {
         case element(Int)
     }
 
-    typealias Move = (key: Key, ref: WindowRef, frame: CGRect)
+    typealias Move = (key: Key, ref: WindowRef, frame: CGRect, placement: WindowPlacementSnapshot?)
 
     /// One undo step: usually one window, several for a batch (a Tile, or neighbours following a resize).
     private struct Step {
         var moves: [Move]
         let batch: Int?
+        let order: Int
     }
 
     private static let maxSteps = 500
@@ -31,9 +33,10 @@ struct WindowUndoHistory {
     }
 
     /// Records `frame` as where `ref` was before a move, as its own step tagged `batch`.
-    mutating func push(_ frame: CGRect, for ref: WindowRef, key: Key, batch: Int?) {
+    mutating func push(_ frame: CGRect, for ref: WindowRef, key: Key, batch: Int?, order: Int = 0,
+                       placement: WindowPlacementSnapshot? = nil) {
         marker += 1
-        steps.append(Step(moves: [(key, ref, frame)], batch: batch))
+        steps.append(Step(moves: [(key, ref, frame, placement)], batch: batch, order: order))
         if steps.count > Self.maxSteps { steps.removeFirst(steps.count - Self.maxSteps) }
     }
 
@@ -59,12 +62,34 @@ struct WindowUndoHistory {
             for index in joined.reversed() { steps.remove(at: index) }
             marker += 1
         }
-        return first == steps.count - 1 ? marker : nil
+        return steps[first].order == lastOrder ? marker : nil
     }
+
+    mutating func takeBatch(_ batch: Int) -> [Move] {
+        let moves = steps.filter { $0.batch == batch }.flatMap(\.moves)
+        steps.removeAll { $0.batch == batch }
+        if !moves.isEmpty { marker += 1 }
+        return moves
+    }
+
+    mutating func restoreStep(_ moves: [Move], order: Int = 0) {
+        guard !moves.isEmpty else { return }
+        steps.append(Step(moves: moves, batch: nil, order: order))
+        marker += 1
+    }
+
+    private var latestIndex: Int? {
+        steps.indices.max { a, b in
+            steps[a].order == steps[b].order ? a < b : steps[a].order < steps[b].order
+        }
+    }
+    var lastOrder: Int { latestIndex.map { steps[$0].order } ?? -1 }
+    var lastBatch: Int? { latestIndex.flatMap { steps[$0].batch } }
 
     /// Takes the most recent step: each of its windows with the frame to restore. Nil when there are no steps left.
     mutating func popStep() -> [Move]? {
-        guard let step = steps.popLast() else { return nil }
+        guard let index = latestIndex else { return nil }
+        let step = steps.remove(at: index)
         marker += 1
         return step.moves
     }

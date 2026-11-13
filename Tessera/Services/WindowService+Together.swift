@@ -6,6 +6,14 @@ extension WindowService {
     /// marker right after the moves.
     func moveTogether(_ moves: [(window: WindowRef, goal: CGRect)], primaryHeight: CGFloat, duration: Double)
         async -> (landed: [CGRect?], undoMarker: Int?) {
+        let ticket = WindowMutationScope.ticket ?? mutationContext.capture()
+        return await WindowMutationScope.$ticket.withValue(ticket) {
+            await moveTogetherScoped(moves, primaryHeight: primaryHeight, duration: duration)
+        }
+    }
+
+    private func moveTogetherScoped(_ moves: [(window: WindowRef, goal: CGRect)], primaryHeight: CGFloat, duration: Double)
+        async -> (landed: [CGRect?], undoMarker: Int?) {
         let batch = newBatch()
         let landed = await withTaskGroup(of: (Int, CGRect?).self) { group in
             for (index, move) in moves.enumerated() {

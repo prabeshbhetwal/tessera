@@ -64,9 +64,9 @@ private struct DisplayRow: View {
 
     /// The override if one exists, otherwise what the automatic rule gives.
     private var profile: DisplayProfile {
-        override ?? DisplayProfile(
+        (override ?? DisplayProfile(
             columns: range.defaultCols, gap: model.settings.defaultGap, padding: model.settings.defaultPadding
-        )
+        )).clamped(to: range)
     }
 
     private var name: String {

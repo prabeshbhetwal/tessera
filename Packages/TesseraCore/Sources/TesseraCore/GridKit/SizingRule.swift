@@ -15,9 +15,9 @@ public enum SizingRule {
         let idealWidth = max(constants.idealColumnWidth, 1)
         let rowHeight = max(constants.minRowHeight, 1)
 
-        let minCols = max(1, count((long / maxWidth).rounded(.up)))
-        // `max(lo, min(x, hi))` keeps maxCols >= minCols even if maxColumns < minCols.
-        let maxCols = max(minCols, min(count((long / minWidth).rounded(.down)), max(constants.maxColumns, 1)))
+        let cap = max(1, min(constants.maxColumns, 16))
+        let minCols = min(cap, max(1, count((long / maxWidth).rounded(.up))))
+        let maxCols = max(minCols, min(count((long / minWidth).rounded(.down)), cap))
         let ideal = count((long / idealWidth).rounded(.toNearestOrEven))
         let defaultCols = max(minCols, min(ideal, maxCols))
         let maxRows = max(1, count((short / rowHeight).rounded(.down)))

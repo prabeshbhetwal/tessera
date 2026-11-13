@@ -1,3 +1,5 @@
+import Foundation
+
 public enum SettingsError: Error, Equatable, Sendable {
     /// The associated text names the first problem found and is safe to show to the user.
     case invalid(String)
@@ -100,6 +102,17 @@ public enum SettingsValidation {
         let ids = s.hotkeys.map(\.id)
         try require(Set(ids).count == ids.count, "Two hotkeys share the same id; each needs its own.")
 
-        try require(!s.trigger.keyCodes.isEmpty, "The trigger chord needs at least one key.")
+        let modifierCodes: Set<UInt16> = [54, 55, 56, 58, 59, 60, 61, 62, 63]
+        try require(!s.trigger.keyCodes.isEmpty && s.trigger.keyCodes.isSubset(of: modifierCodes),
+                    "The trigger chord must contain only modifier keys.")
+        let functionCodes = Set(Modifiers.implicitFunctionKeyCodes.subtracting([123,124,125,126,114,115,116,117,119,121]))
+        for binding in s.hotkeys where binding.hotkey.keyCode != .max {
+            try require(!binding.hotkey.modifiers.isDisjoint(with: [.control, .option, .command])
+                        || functionCodes.contains(binding.hotkey.keyCode),
+                        "Shortcut \(binding.id) needs Control, Option or Command, or an F-key.")
+        }
+        let names = s.cycles.map(\.name)
+        try require(names.allSatisfy { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                    && Set(names).count == names.count, "Cycle names must be non-empty and unique.")
     }
 }

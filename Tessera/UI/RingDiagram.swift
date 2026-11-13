@@ -98,7 +98,7 @@ struct RingDiagram: View, @MainActor Animatable {
 
                 if ring.iconStyle == .layouts {
                     context.fill(lifted(RingGeometry.tilePath(index: i, center: .zero, ring: scaled)),
-                                 with: .color(fill.opacity(max(tint, 0.85))))
+                                 with: .color(fill.opacity(tint)))
                 }
                 guard let glyph = RingLayer.glyphPaths(ring: scaled, center: .zero, aspect: 1.6, only: i) else { continue }
                 if active == i {

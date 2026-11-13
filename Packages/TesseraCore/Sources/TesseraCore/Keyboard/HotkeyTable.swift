@@ -26,7 +26,12 @@ public struct HotkeyTable: Sendable {
         for b in enabled {
             var messages: [String] = []
             let twins = enabled.filter { $0.id != b.id && $0.hotkey == b.hotkey }.map(\.id)
-            if !twins.isEmpty { messages.append("Same shortcut as \(twins.joined(separator: ", ")).") }
+            if !twins.isEmpty { messages.append("Duplicate shortcut: only the first enabled action runs.") }
+            let navigationCodes: Set<UInt16> = [123,124,125,126,24,27,48,36,76,18,19,20,21,23,22,26,28,25,53]
+            if !chordModifiers.isEmpty, b.hotkey.modifiers.isSuperset(of: chordModifiers),
+               navigationCodes.contains(b.hotkey.keyCode) {
+                messages.append("Intercepted while the ring is open; change this shortcut or the trigger chord.")
+            }
             if systemHotkeys.contains(b.hotkey) { messages.append("Matches a system shortcut.") }
             // "Chord with no key": a modifier keycode carrying exactly the chord's modifiers. Pressing a
             // real key with those modifiers is fine (it fires through the open ring, e.g. ⌃⌥⌘,).

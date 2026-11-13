@@ -28,7 +28,7 @@ struct ResultRow: View {
             Spacer(minLength: 8)
             if let isOn {
                 // The row's text already names the setting; the switch only adds its state.
-                Toggle("Quick switch", isOn: isOn)
+                Toggle(entry.title, isOn: isOn)
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.mini)

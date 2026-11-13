@@ -29,7 +29,7 @@ public struct SelectionEngine: Sendable {
 
     /// `pointing` is whether the previous selection was a grid span (see `pointHysteresis`).
     public func select(
-        origin: CGPoint, cursor: CGPoint, displays: [DisplayContext], anchor: SpanAnchor?, pointing: Bool = false
+        origin: CGPoint, cursor: CGPoint, displays: [DisplayContext], anchor: SpanAnchor?, pointing: Bool = false, edgeDirections: Bool = false
     ) -> Selection {
         let dx = Double(cursor.x - origin.x)
         let dy = Double(cursor.y - origin.y)
@@ -40,7 +40,7 @@ public struct SelectionEngine: Sendable {
         let inDirectionZone = distance < ring.flickDistance - (pointing ? Self.pointHysteresis : 0)
         if ring.directions, inDirectionZone || !ring.pointing { return wedge(dx: dx, dy: dy) }
         guard ring.pointing, let display = displays.display(at: cursor) else {
-            return .none
+            return edgeDirections && ring.directions ? wedge(dx: dx, dy: dy) : .none
         }
         let here = cell(at: cursor, in: display)
         var columns = here.column...here.column

@@ -90,8 +90,16 @@ struct AdvancedSection: View {
 
     private func importSettings(_ result: Result<URL, any Error>) {
         do {
-            model.settings = try SettingsDocument.importSettings(from: result.get())
-            ioMessage = .success("Settings imported.")
+            let imported = try SettingsDocument.importSettings(from: result.get())
+            Task {
+                do {
+                    guard let apply = model.importSettings else { throw CocoaError(.fileWriteUnknown) }
+                    try await apply(imported)
+                    ioMessage = .success("Settings imported. Previous settings were backed up in Tessera's settings folder.")
+                } catch {
+                    ioMessage = .failure("Import wasn't saved: \(error.localizedDescription)", retry: .importing)
+                }
+            }
         } catch SettingsError.invalid(let problem) {
             ioMessage = .failure("Import rejected: \(problem)", retry: .importing)
         } catch {

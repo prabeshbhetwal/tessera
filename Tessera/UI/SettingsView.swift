@@ -45,9 +45,17 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-            pane
+        VStack(spacing: 0) {
+            if let error = model.saveError {
+                HStack {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                    Button("Retry") { model.retrySave?() }
+                }.padding(8).accessibilityElement(children: .contain)
+            }
+            HStack(spacing: 0) {
+                sidebar
+                pane
+            }
         }
         .overlay { if navigation.showsResults { dismissResults } }
         // Centred under the field, which the title bar centres in the window.

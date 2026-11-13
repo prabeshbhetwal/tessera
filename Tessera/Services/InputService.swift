@@ -146,6 +146,7 @@ private final class TapSession: @unchecked Sendable {
     let service: InputService
     /// Set once in `InputService.start()` before the thread starts; read-only afterwards.
     var tap: CFMachPort?
+    private var pointer: GesturePointer?
     private var machine: TriggerMachine
     private var generation: Int
     private let control = OSAllocatedUnfairLock(uncheckedState: Control())
@@ -201,15 +202,29 @@ private final class TapSession: @unchecked Sendable {
         }
         let snapshot = service.snapshot()
         if snapshot.abort { _ = machine.reset() }
-        machine.frontmostExcluded = snapshot.excluded
         if snapshot.generation != generation, !machine.isOpen {
             let current = service.currentConfig()
             generation = current.generation
             machine = Self.machine(current.config)
         }
-        guard let input = Self.inputEvent(type, event, primaryHeight: snapshot.primaryHeight) else { return false }
+        machine.frontmostExcluded = snapshot.excluded
+        guard var input = Self.inputEvent(type, event, primaryHeight: snapshot.primaryHeight) else { return false }
+        if machine.isOpen, case let .mouseMoved(point) = input {
+            var display: CGDirectDisplayID = 0
+            var count: UInt32 = 0
+            _ = CGGetDisplaysWithPoint(event.location, 1, &display, &count)
+            let cgBounds = CGDisplayBounds(count > 0 ? display : CGMainDisplayID())
+            let bounds = CoordinateSpace.fromAX(cgBounds, primaryHeight: snapshot.primaryHeight)
+            let delta = CGSize(width: event.getDoubleValueField(.mouseEventDeltaX),
+                               height: -event.getDoubleValueField(.mouseEventDeltaY))
+            input = .mouseMoved(pointer?.move(to: point, delta: delta, bounds: bounds) ?? point)
+        }
         let result = machine.handle(input)
-        for output in result.outputs { service.onOutput(output) }
+        for output in result.outputs {
+            if case let .open(origin) = output { pointer = GesturePointer(origin: origin) }
+            service.onOutput(output)
+        }
+        if !machine.isOpen { pointer = nil }
         return result.suppress
     }
 

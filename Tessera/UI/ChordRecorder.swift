@@ -8,6 +8,7 @@ struct ChordRecorder: View {
     @Binding var recording: Bool
     @State private var peak: Set<UInt16> = []
     @State private var monitor: Any?
+    @State private var recorderID = UUID()
 
     var body: some View {
         Group {
@@ -22,12 +23,17 @@ struct ChordRecorder: View {
             }
         }
         .onDisappear { stop() }
+        .onReceive(NotificationCenter.default.publisher(for: .tesseraRecorderWillStart)) { note in
+            if note.object as? UUID != recorderID { stop() }
+        }
         // Recording pauses Tessera's trigger and hotkeys system-wide; never leave it on when focus goes elsewhere.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in stop() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in stop() }
     }
 
     private func start() {
+        guard !recording else { return }
+        NotificationCenter.default.post(name: .tesseraRecorderWillStart, object: recorderID)
         peak = []
         recording = true
         NotificationCenter.default.post(name: .tesseraRecorderActive, object: nil, userInfo: ["active": true])

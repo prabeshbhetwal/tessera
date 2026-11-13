@@ -18,6 +18,8 @@ struct OverlayPane: View {
     /// "Custom" is where colour edits to a built-in theme land, overwriting it each time.
     private var nameReserved: Bool { trimmedName == Self.editedName }
 
+    @State private var deletingTheme = false
+
     var body: some View {
         let s = model.settings.preview
         Form {
@@ -65,9 +67,15 @@ struct OverlayPane: View {
                     HStack {
                         Spacer()
                         Button("Delete \u{201C}\(model.settings.customThemes[customIndex].name)\u{201D}", role: .destructive) {
-                            model.settings.customThemes.remove(at: customIndex)
-                            model.settings.themeName = Theme.default.name
-                            applyPreview(of: .default)
+                            deletingTheme = true
+                        }
+                        .confirmationDialog("Delete this saved theme?", isPresented: $deletingTheme, titleVisibility: .visible) {
+                            Button("Delete Theme", role: .destructive) {
+                                guard model.settings.customThemes.indices.contains(customIndex) else { return }
+                                model.settings.customThemes.remove(at: customIndex)
+                                model.settings.themeName = Theme.default.name
+                                applyPreview(of: .default)
+                            }
                         }
                     }
                 }

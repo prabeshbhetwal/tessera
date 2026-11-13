@@ -16,7 +16,7 @@ final class CommandExecutor: CommandExecuting {
     }
 
     let model: SettingsModel
-    private let displays: DisplayService
+    let displays: DisplayService
     let windows: WindowService
     private let presenter: WindowPresenter
     private let store: SettingsStore
@@ -38,6 +38,11 @@ final class CommandExecutor: CommandExecuting {
     }
 
     func execute(_ command: Command, source: CommandSource) async -> CommandResult {
+        let ticket = WindowMutationScope.ticket ?? windows.mutationContext.capture()
+        return await WindowMutationScope.$ticket.withValue(ticket) { await executeScoped(command, source: source) }
+    }
+
+    private func executeScoped(_ command: Command, source: CommandSource) async -> CommandResult {
         do {
             return try await run(command, source: source)
         } catch {
@@ -49,7 +54,27 @@ final class CommandExecutor: CommandExecuting {
 
     /// Moves `window` to `goal`, using the cross-display write order when the window changes display. `batch` tags the
     /// undo step (`WindowService.newBatch`).
-    func place(_ window: WindowRef, current: CGRect?, goal: CGRect, batch: Int? = nil) async -> ApplyResult {
+    func place(_ window: WindowRef, current: CGRect?, goal: CGRect, batch: Int? = nil, manual: Bool = true) async -> ApplyResult {
+        let original = WindowMutationScope.ticket ?? windows.mutationContext.capture()
+        var ticket = original
+        let overrides = manual ? splitWatcher.manualOverrides(window, goal: goal, ticket: original) : []
+        if manual {
+            var relevant = overrides
+            if let current, let key = original.topology.key(containing: CoordinateSpace.toAX(current, primaryHeight: original.topology.primaryHeight)) { relevant.insert(key) }
+            if let key = original.topology.key(containing: CoordinateSpace.toAX(goal, primaryHeight: original.topology.primaryHeight)) { relevant.insert(key) }
+            guard let next = windows.mutationContext.overridingLayouts(original, on: relevant) else {
+                return .failed("Display or Space changed; try again")
+            }
+            ticket = next
+            splitWatcher.explicitLayout(on: relevant, ticket: next)
+            if !overrides.isEmpty { splitWatcher.relinquish(overrides, windows: [window]) }
+        }
+        return await WindowMutationScope.$ticket.withValue(ticket) {
+            await placeScoped(window, current: current, goal: goal, batch: batch)
+        }
+    }
+
+    private func placeScoped(_ window: WindowRef, current: CGRect?, goal: CGRect, batch: Int?) async -> ApplyResult {
         // Tessera's own moves must not teach a split: the watcher ignores them until they settle, and keeps watching.
         splitWatcher.beginOwnMove()
         defer { splitWatcher.endOwnMove() }
@@ -120,7 +145,11 @@ final class CommandExecutor: CommandExecuting {
             return CommandResult(ok: true, message: "Exported to \(url.path)")
         case let .importSettings(path):
             let url = try fileURL(path)
-            do { model.settings = try await store.importSettings(from: url) } catch { throw Self.failure(error) }
+            do {
+                let imported = try await store.importSettings(from: url)
+                try await store.replace(with: imported, previous: model.settings)
+                model.settings = imported
+            } catch { throw Self.failure(error) }
             return CommandResult(ok: true, message: "Imported \(url.lastPathComponent)")
         }
     }
@@ -209,6 +238,10 @@ final class CommandExecutor: CommandExecuting {
         guard let display = DisplayResolver.resolve(selector, displays: displays.displays,
                                                     windowFrame: windowFrame, cursor: NSEvent.mouseLocation) else {
             throw Failure(message: "No such display")
+        }
+        let ticket = WindowMutationScope.ticket ?? windows.mutationContext.capture()
+        guard ticket.topology.contains(display), windows.mutationContext.isCurrent(ticket, on: [display.id.storageKey], refreshSpaces: true) else {
+            throw Failure(message: "Displays are changing; try again")
         }
         return display
     }

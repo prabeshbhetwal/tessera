@@ -173,7 +173,8 @@ final class OverlayController {
             scene.ring.setPointMode(pointMode)
             scene.caption.render(RingFeedback.make(selection: selection, ring: ring, keyboard: keyboard,
                                                   keyboardEnabled: keyboardEnabled, tapToTile: tapToTile,
-                                                  cancelling: cancelling && hasMoved))
+                                                  cancelling: cancelling && hasMoved,
+                                                  portrait: displays.first { $0.id == id }?.range.isPortrait ?? false))
             scene.material.alphaValue = pointMode ? 0.35 : 1
             updateGrid(scene, key: gridKey?.display.id == id ? gridKey : nil)
             // Only the display the preview is on draws it; the others just keep theirs cleared.
@@ -204,13 +205,20 @@ final class OverlayController {
     func showHUD(_ text: String, position: HUDPosition = .bottom, seconds: Double = 1.2) {
         hudTask?.cancel()
         hudText.stringValue = text
-        hudText.sizeToFit()
         let padding = CGSize(width: 20, height: 10)
-        let textSize = hudText.frame.size
-        let panelSize = CGSize(width: ceil(textSize.width) + padding.width * 2, height: ceil(textSize.height) + padding.height * 2)
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
-        let visible = screen?.visibleFrame ?? CGRect(origin: .zero, size: panelSize)
+        let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600)
+        let maxWidth = max(80, visible.width - 64)
+        hudText.maximumNumberOfLines = 8
+        hudText.lineBreakMode = .byWordWrapping
+        hudText.toolTip = text
+        let measured = (text as NSString).boundingRect(
+            with: CGSize(width: maxWidth - padding.width * 2, height: visible.height / 2),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: hudText.font ?? NSFont.systemFont(ofSize: 13)])
+        let textSize = CGSize(width: ceil(measured.width), height: ceil(measured.height))
+        let panelSize = CGSize(width: textSize.width + padding.width * 2, height: textSize.height + padding.height * 2)
         let y: CGFloat = switch position {
         case .bottom: visible.minY + visible.height * 0.18
         case .center: visible.midY - panelSize.height / 2

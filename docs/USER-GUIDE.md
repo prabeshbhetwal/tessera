@@ -213,7 +213,7 @@ Tessera learns how you like windows arranged, separately for each set of apps on
 
 ### Neighbours follow your edits
 
-When two or more windows sit side by side on a display, Tessera watches them. Drag one window's edge and its neighbours move to fill the space, keeping the configured gap. Nothing is left uncovered and nothing overlaps. This works from launch; you don't need to tile first. It needs both **Learn from my adjustments** and **Resize neighbours to fill the display** on (both are on by default).
+When two or more windows sit side by side on a display, Tessera watches them. Drag one window's edge and its neighbours move to fill the space, keeping the configured gap. Apps can impose minimum sizes or refuse resizing; Tessera reports partial placements when they prevent the requested layout. This works from launch; you don't need to tile first. It needs both **Learn from my adjustments** and **Resize neighbours to fill the display** on (both are on by default).
 
 ### Closing a window leaves no gap
 
@@ -231,11 +231,17 @@ Open an app (or switch to one whose window sits over them) on a display whose wi
 - **Your split first.** If you've taught Tessera a split for the apps now on that display, they go to it.
 - **Otherwise equal shares.** Adjust them by hand and Tessera learns it, so the next time those apps meet they get your split.
 
-A card explains what moved. Press **⌃⌥Z** to put the windows back. Under **Make room on**, choose **Also wherever the apps have a split** (the default for new installs), which also arranges a display that wasn't tiled when you open an app and the apps now on it have a split, or **Displays already tiled**. So an app you open again goes back to its place in your split even when only one window was left on that display. A new window opened in the app you're already using (⌘N) isn't tiled in.
+A card explains what moved. Press **⌃⌥Z** to put the windows back. Under **Make room on**, choose **Also wherever the apps have a split**, which also arranges a display that wasn't tiled when you open an app and the apps now on it have a split, or **Displays already tiled**. So an app you open again goes back to its place in your split even when only one window was left on that display. New windows opened in an already-running app (including ⌘N) are observed and can join the tiled group.
+
+### Displays and Spaces
+
+Switching Spaces pauses automatic recovery on that display. Other displays keep their own groups. When you return, Tessera checks the original windows again and recovers gaps left by windows that closed while you were away. Full-screen windows are excluded from batch tiling; exit full screen before placing one individually.
+
+Changing or disconnecting a display stops placements that still use its old coordinates. Undo maps its saved frame onto the same display when possible, or keeps the window reachable on a remaining display. Reconnecting an identifiable display retains its saved app splits. An explicit placement or a new hand adjustment supersedes queued automatic recovery on the affected display.
 
 ### How a split is learned
 
-About **1 second** after you stop adjusting, Tessera saves the arrangement as a **split**. A split is keyed by:
+About **1 second** after you stop adjusting, Tessera saves the arrangement as a **split**. Only mouse drags and resizes are learned; app-driven or macOS-driven changes do not replace a remembered split. A split is keyed by:
 - **the display**, and
 - **the set of apps** on it. App order doesn't matter. Two Chrome windows count as two.
 

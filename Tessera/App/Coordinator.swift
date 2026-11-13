@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import os
 import TesseraCore
 
@@ -32,6 +33,7 @@ final class Coordinator {
 
     private struct Session {
         let id: Int
+        var mutationTicket: WindowMutationContext.Ticket
         let origin: CGPoint
         /// Nil until the lookup finishes (Accessibility round trip to the front app).
         var target: WindowRef?
@@ -77,6 +79,16 @@ final class Coordinator {
                                         presenter: presenter, store: store)
         displays.onChange = { [weak self] in self?.displaysChanged() }
         model.onChange = { [weak self] in self?.settingsChanged($0) }
+        model.retrySave = { [weak self] in
+            guard let self else { return }
+            self.settingsChanged(self.model.settings)
+        }
+        model.importSettings = { [weak self] settings in
+            guard let self else { return }
+            self.saveTask?.cancel()
+            try await store.replace(with: settings, previous: self.model.settings)
+            self.model.settings = settings
+        }
         // Shortcut recorders need raw keys: pause the trigger and hotkeys while one is recording.
         recorderObserver = NotificationCenter.default.addObserver(
             forName: .tesseraRecorderActive, object: nil, queue: .main
@@ -92,6 +104,11 @@ final class Coordinator {
                 self?.executor.splitWatcher.armSoon()  // catches windows the person lined up by hand
             }
         }
+        spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.workspaceChanged() }
+        }
         previewObserver = NotificationCenter.default.addObserver(
             forName: .tesseraPreviewOverlay, object: nil, queue: .main
         ) { [weak self] note in
@@ -103,6 +120,7 @@ final class Coordinator {
 
     private var recorderObserver: NSObjectProtocol?
     private var activationObserver: NSObjectProtocol?
+    private var spaceObserver: NSObjectProtocol?
     private var previewObserver: NSObjectProtocol?
     private var isRecording = false
     private var sampleTask: Task<Void, Never>?
@@ -175,11 +193,18 @@ final class Coordinator {
         input = service
         updateFrontmostExcluded()
         executor.splitWatcher.armSoon()  // reflow works from launch, not only after a Tile
+        executor.splitWatcher.scheduleRestoration()
         // One consumer keeps outputs strictly ordered even across awaits.
         Task { [weak self] in
             for await output in stream { await self?.handle(output) }
         }
         return true
+    }
+
+    func flushSettings() async throws {
+        saveTask?.cancel()
+        try await store.save(model.settings)
+        model.saveError = nil
     }
 
     func stop() {
@@ -204,6 +229,7 @@ final class Coordinator {
             let title = result.message ?? command.summary
             let action: WindowAction? = if case let .apply(.action(value), _) = command { value }
                 else { WindowAction.allCases.first { $0.displayName == title } }
+            AccessibilityNotification.Announcement(title).post()
             shortcutReceipt.show(title: title, action: action, settings: model.settings)
             return
         }
@@ -216,6 +242,7 @@ final class Coordinator {
     func showHUD(_ text: String) {
         let s = model.settings
         guard s.showHUD else { return }
+        AccessibilityNotification.Announcement(text).post()
         overlay.showHUD(text, position: s.hudPosition, seconds: s.hudSeconds)
     }
 
@@ -273,12 +300,16 @@ final class Coordinator {
            model.settings.excludedBundleIDs.contains(bundle) { input?.abortSession(); return }
         sessionCounter += 1
         let id = sessionCounter
+        let mutationTicket = windows.mutationContext.capture()
         let lookup = Task { [windows] () -> FrontWindow? in
             guard let window = await windows.frontmostWindow() else { return nil }
             return (window, await windows.frame(of: window))
         }
         let all = displays.displays
-        session = Session(id: id, origin: origin, lookup: lookup,
+        guard !all.isEmpty, all.allSatisfy({ mutationTicket.topology.contains($0) }) else {
+            lookup.cancel(); input?.abortSession(); showHUD("Displays are changing; try again"); return
+        }
+        session = Session(id: id, mutationTicket: mutationTicket, origin: origin, lookup: lookup,
                           reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
                           displays: all, cursor: origin, hint: model.settings.ring.pointingHintDue)
         overlay.show(origin: origin, displays: all, ring: model.settings.ring, theme: model.settings.activeTheme)
@@ -334,6 +365,12 @@ final class Coordinator {
     /// Ring keyboard navigation (M2 spec §3). The first nav key starts at the window's display and column.
     private func navigate(_ key: NavKey) async {
         guard var s = session else { return }
+        if s.current == nil {
+            let found = await s.lookup.value
+            guard session?.id == s.id, let found else { return }
+            s.target = found.window
+            s.current = found.frame
+        }
         if key == .apply {
             await apply()
             return
@@ -357,7 +394,7 @@ final class Coordinator {
             selection = KeyNavigator.selection(nav, displays: s.displays)
         } else {
             selection = engine.select(origin: s.origin, cursor: s.cursor, displays: s.displays,
-                                      anchor: s.anchor, pointing: s.pointing)
+                                      anchor: s.anchor, pointing: s.pointing, edgeDirections: true)
             if case .span = selection { s.pointing = true } else { s.pointing = false }
             if s.pointing { s.pointed = true }
         }
@@ -419,6 +456,10 @@ final class Coordinator {
               executor.setColumns(.delta(delta), on: display) != nil else { return }
         // setColumns mutated settings → settingsChanged already refreshed `displays`.
         session?.displays = displays.displays
+        guard let ticket = windows.mutationContext.acceptingLayoutChange(s.mutationTicket, on: [display.id.storageKey]) else {
+            input?.abortSession(); cancelSession(); return
+        }
+        session?.mutationTicket = ticket
         session?.anchor = nil
         if let nav = s.nav {
             session?.nav = KeyNavigator.reduce(nav, delta > 0 ? .columnsPlus : .columnsMinus, displays: displays.displays)
@@ -432,12 +473,21 @@ final class Coordinator {
         // A tap: pressed and released without ever leaving the middle.
         if s.selection == .none, !s.leftDeadZone, model.settings.ring.tapTilesWindows {
             s.lookup.cancel()
-            Task { await run(.tileWindows(display: .cursor), source: .ring) }
+            Task {
+                await WindowMutationScope.$ticket.withValue(s.mutationTicket) {
+                    await run(.tileWindows(display: .cursor), source: .ring)
+                }
+            }
             return
         }
         guard s.targetFrame != nil else { s.lookup.cancel(); return }
         // Not awaited: a glide must never hold up the next ring or hotkey.
         Task {
+            await WindowMutationScope.$ticket.withValue(s.mutationTicket) { await applyReleased(s) }
+        }
+    }
+
+    private func applyReleased(_ s: Session) async {
             // Released before the lookup finished: wait for it rather than guess the window.
             var resolved = s
             if resolved.target == nil, let found = await s.lookup.value {
@@ -452,9 +502,8 @@ final class Coordinator {
             let result = await executor.place(target, current: resolved.current, goal: frame)
             if case let .failed(reason) = result {
                 log.notice("apply failed for \(target.bundleID ?? "?", privacy: .public): \(reason, privacy: .public)")
-                showHUD("Can't move this window")
+                showHUD(reason)
             }
-        }
     }
 
     private func cancelSession() {
@@ -475,26 +524,38 @@ final class Coordinator {
     // MARK: - Changes
 
     private func displaysChanged() {
-        executor.splitWatcher.stop()
-        executor.splitWatcher.armSoon(after: .seconds(1))  // windows settle onto the new layout first
+        executor.splitWatcher.contextsChanged(spaceNotification: false)
         input?.updatePrimaryHeight(DisplayService.primaryHeight)
         presenter.updateDisplays(displays.displays)
+        input?.abortSession()
         cancelSession() // spec §7: display unplugged mid-session
+    }
+
+    private func workspaceChanged() {
+        guard let s = session else { return }
+        let points = [s.origin, s.cursor] + (s.current.map { [CGPoint(x: $0.midX, y: $0.midY)] } ?? [])
+        let keys = Set(s.displays.filter { display in points.contains(where: { display.frame.contains($0) }) }.map { $0.id.storageKey })
+        guard !windows.mutationContext.isCurrent(s.mutationTicket, on: keys, refreshSpaces: true) else { return }
+        input?.abortSession()
+        cancelSession()
     }
 
     private func settingsChanged(_ settings: TesseraSettings) {
         engine = SelectionEngine(ring: settings.ring)
-        if settings.learnSplits { executor.splitWatcher.armSoon() } else { executor.splitWatcher.stop() }
+        executor.splitWatcher.configurationChanged(settings)
         applyInputConfig()
         displays.refresh()
         presenter.updateDisplays(displays.displays)
         onSettingsChange?(settings)
         saveTask?.cancel()
-        saveTask = Task { [store, log] in
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
-            do { try await store.save(settings) } catch {
-                log.error("settings save failed: \(error.localizedDescription, privacy: .public)")
+        saveTask = Task { [weak self, store] in
+            guard !Task.isCancelled, self?.model.settings == settings else { return }
+            do {
+                try await store.save(settings)
+                self?.model.saveError = nil
+            } catch {
+                self?.model.saveError = "Settings couldn't be saved: \(error.localizedDescription)"
+                self?.log.error("settings save failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

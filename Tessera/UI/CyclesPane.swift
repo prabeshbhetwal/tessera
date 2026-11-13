@@ -7,8 +7,8 @@ struct CyclesPane: View {
 
     var body: some View {
         Form {
-            CyclesEditor(cycles: $model.settings.cycles)
-            ResetSection { model.settings.cycles = Cycle.defaults }
+            CyclesEditor(cycles: Binding(get: { model.settings.cycles }, set: model.updateCycles))
+            ResetSection { model.updateCycles(Cycle.defaults) }
         }
         .formStyle(.grouped)
     }

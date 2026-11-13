@@ -92,7 +92,7 @@ public struct TriggerMachine: Sendable {
             return TriggerResult(outputs: [.anchor(p)], suppress: true)
         case .leftMouseUp:
             // Pair every swallowed mouse-down with a swallowed mouse-up, even if the ring closed in between.
-            guard swallowNextMouseUp || isOpen else { return .ignored }
+            guard swallowNextMouseUp else { return .ignored }
             swallowNextMouseUp = false
             return TriggerResult(outputs: [], suppress: true)
         case .rightMouseDown:

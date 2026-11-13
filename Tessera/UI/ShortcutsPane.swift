@@ -8,15 +8,24 @@ struct ShortcutsPane: View {
 
     private static let placeholder = HotkeyBinding(id: "", hotkey: .none, command: .undo, enabled: false)
 
-    var body: some View {
+    private var conflicts: [String: String] {
         let recorded = model.settings.hotkeys.filter { !$0.hotkey.isNone }
-        let conflicts = HotkeyTable.conflicts(recorded, chord: model.settings.trigger, systemHotkeys: systemHotkeys)
+        var conflicts = HotkeyTable.conflicts(recorded, chord: model.settings.trigger, systemHotkeys: systemHotkeys)
+        for binding in model.settings.hotkeys {
+            if case let .cycle(name) = binding.command, !model.settings.cycles.contains(where: { $0.name == name }) {
+                conflicts[binding.id] = "Cycle \(name) is missing. Choose another cycle or remove this shortcut."
+            }
+        }
+        return conflicts
+    }
+
+    var body: some View {
         let cycleNames = model.settings.cycles.map(\.name)
         Form {
             Section {
                 Toggle("Use global hotkeys", isOn: $model.settings.hotkeysEnabled).settingAnchor("Use global hotkeys")
             } header: {
-                InfoHeader("Hotkeys", info: "Click a shortcut, or select it and press Space, then type the new one. Esc cancels, Delete clears. A warning means a clash, but the hotkey still works.")
+                InfoHeader("Hotkeys", info: "Click a shortcut, or select it and press Space, then type the new one. Esc cancels, Delete clears. Warnings identify shortcuts that may be intercepted. With duplicates, only the first enabled action runs.")
             } footer: {
                 if !model.settings.hotkeysEnabled {
                     Footer("All hotkeys are off. The ring still works; set its trigger in Ring › Trigger.")

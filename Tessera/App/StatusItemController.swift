@@ -162,7 +162,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let s = model.settings
         for entry in menu?.items ?? [] {
             entry.showShortcut(for: (entry.representedObject as? CommandBox)?.command, in: s.hotkeys,
-                               visible: s.menuBarItems.shortcutKeys)
+                               visible: s.menuBarItems.shortcutKeys && s.hotkeysEnabled)
         }
     }
 

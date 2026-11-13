@@ -13,7 +13,9 @@ struct SearchResultsPanel: View {
     @State private var suggested: [SettingsEntry] = []
     @State private var thinking = false
     /// Local matches for the current query, worked out once per change rather than on every redraw.
-    @State private var local: [SettingsEntry]
+    private var local: [SettingsEntry] { SettingsSearch.results(for: trimmed) }
+    @State private var suggestedQuery = ""
+    private var currentSuggestions: [SettingsEntry] { suggestedQuery == trimmed ? suggested : [] }
     @State private var selection: String?
     /// The rows' measured height; the list is that tall, up to `maxListHeight`.
     @State private var rowsHeight: CGFloat?
@@ -25,19 +27,12 @@ struct SearchResultsPanel: View {
     /// Taller than this, the list scrolls.
     private static let maxListHeight: CGFloat = 420
 
-    init(model: SettingsModel, navigation: SettingsNavigation) {
-        self.model = model
-        self.navigation = navigation
-        // Filled now, not in the task, so the panel never opens on a flash of "no matches".
-        _local = State(initialValue: SettingsSearch.results(for: navigation.query))
-    }
-
     private var usesAppleIntelligence: Bool { model.settings.searchUsesAppleIntelligence }
     private var trimmed: String { navigation.query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     /// Local matches the model didn't already pick, by pane.
     private var groups: [ResultGroup] {
-        let picked = Set(suggested.map(\.id))
+        let picked = Set(currentSuggestions.map(\.id))
         var groups: [ResultGroup] = []
         for entry in local where !picked.contains(entry.id) {
             if let i = groups.firstIndex(where: { $0.pane == entry.pane }) { groups[i].entries.append(entry) }
@@ -47,7 +42,7 @@ struct SearchResultsPanel: View {
     }
 
     /// Every result in the order shown, for ↑ ↓.
-    private var ordered: [SettingsEntry] { suggested + groups.flatMap(\.entries) }
+    private var ordered: [SettingsEntry] { currentSuggestions + groups.flatMap(\.entries) }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -73,7 +68,8 @@ struct SearchResultsPanel: View {
         }
         // The switch is part of the identity: turning it off cancels a model request and drops its picks.
         .task(id: SearchRun(query: trimmed, usesAppleIntelligence: usesAppleIntelligence)) {
-            local = SettingsSearch.results(for: trimmed)
+            suggested = []
+            selection = nil
             if let selected = selection, !ordered.contains(where: { $0.id == selected }) { selection = nil }
             guard usesAppleIntelligence, SettingsAssistant.isAvailable, SettingsAssistant.shouldAsk(trimmed, localResults: local.count)
             else { suggested = []; thinking = false; return }
@@ -84,7 +80,9 @@ struct SearchResultsPanel: View {
             guard !Task.isCancelled else { return }
             let picks = await SettingsAssistant.suggest(for: trimmed)
             guard !Task.isCancelled else { return }
+            suggestedQuery = trimmed
             suggested = picks
+            if let selected = selection, !ordered.contains(where: { $0.id == selected }) { selection = nil }
             thinking = false
         }
     }
@@ -107,9 +105,9 @@ struct SearchResultsPanel: View {
 
     private var rows: some View {
         VStack(alignment: .leading, spacing: 1) {
-            if thinking || !suggested.isEmpty {
+            if thinking || !currentSuggestions.isEmpty {
                 GroupHeader(title: "Best match") { Image(systemName: "sparkle") }
-                ForEach(suggested) { row($0, showsPane: true) }
+                ForEach(currentSuggestions) { row($0, showsPane: true) }
                 if thinking {
                     Label("Reading your search…", systemImage: "sparkle")
                         .foregroundStyle(.secondary)
@@ -183,6 +181,9 @@ struct SearchResultsPanel: View {
         guard !ids.isEmpty else { return }
         let current = selection.flatMap { ids.firstIndex(of: $0) } ?? (step > 0 ? -1 : ids.count)
         selection = ids[min(max(current + step, 0), ids.count - 1)]
+        if let entry = ordered.first(where: { $0.id == selection }) {
+            AccessibilityNotification.Announcement(entry.title).post()
+        }
     }
 
     /// ⌥Return: flips the result's switch where it has one the pane would let change, and says the new state.

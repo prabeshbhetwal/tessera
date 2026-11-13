@@ -18,6 +18,10 @@ final class SettingsModel {
         }
     }
 
+    var saveError: String?
+    @ObservationIgnored var retrySave: (() -> Void)?
+    @ObservationIgnored var importSettings: ((TesseraSettings) async throws -> Void)?
+
     @ObservationIgnored private var storage: TesseraSettings
     @ObservationIgnored var onChange: (@MainActor (TesseraSettings) -> Void)?
 

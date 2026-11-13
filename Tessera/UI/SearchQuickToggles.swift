@@ -20,7 +20,7 @@ enum SearchQuickToggles {
 
     private static let all: [String: Switch] = {
         let all: [String: Switch] = [
-            "general/Apple Intelligence search": Switch(path: \.searchUsesAppleIntelligence),
+            "general/Apple Intelligence search": Switch(path: \.searchUsesAppleIntelligence, enabled: { _ in SettingsAssistant.isAvailable }),
             "general/Show the menu bar icon": Switch(path: \.showMenuBarIcon),
             "general/Show each item's shortcut": Switch(path: \.menuBarItems.shortcutKeys, enabled: menuBar),
             "general/Status line (how to snap)": Switch(path: \.menuBarItems.statusLine, enabled: menuBar),

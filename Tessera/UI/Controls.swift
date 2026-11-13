@@ -223,6 +223,7 @@ extension Callout where Action == EmptyView {
 /// Final section of every pane: one verb everywhere, with an optional line saying what is kept.
 struct ResetSection: View {
     var keeps: String? = nil
+    @State private var confirmingReset = false
     let action: () -> Void
 
     init(keeps: String? = nil, action: @escaping () -> Void) {
@@ -235,7 +236,11 @@ struct ResetSection: View {
             HStack {
                 if let keeps { Caption(keeps) }
                 Spacer()
-                Button("Restore Defaults", action: action).settingAnchor("Restore Defaults")
+                Button("Restore Defaults") { confirmingReset = true }
+                    .settingAnchor("Restore Defaults")
+                    .confirmationDialog("Restore this pane's defaults?", isPresented: $confirmingReset, titleVisibility: .visible) {
+                        Button("Restore Defaults", role: .destructive, action: action)
+                    } message: { Text(keeps ?? "This replaces this pane's custom settings.") }
             }
         }
     }

@@ -1,0 +1,39 @@
+id,finding,implementation_status,verification
+T01,Recent settings can disappear on quit,Implemented,Native termination flush; save errors exposed
+T02,Save failures are invisible,Implemented,Visible save failure and Retry action
+T03,Import accepts hotkeys that swallow normal typing,Implemented,Core unsafe-input regression
+T04,Fast Ring keyboard input can choose the wrong display,Implemented,Lookup awaited before keyboard navigation
+T05,Opening Ring during a drag loses the mouse release,Implemented,Core mouse-release regression
+T06,Display changes leave invisible input capture,Implemented,Abort session on display changes; native abort check
+T07,Configuration rebuild briefly bypasses app exclusion,Implemented,Native excluded-app generation regression
+T08,Ring navigation can shadow configured hotkeys without warning,Implemented,Core conflict regression
+T09,More than one shortcut recorder can remain active,Implemented,Exclusive recorder-start ownership protocol
+T10,Outward directions are unreachable near a physical screen edge,Implemented; live validation pending,Core relative edge-motion regressions; physical device check pending
+T11,Column limit is not a hard limit,Implemented,Core hard-cap regressions
+T12,Displayed column count can disagree with snapping,Implemented,Effective profile used in pane
+T13,New-window delay accepts values the runtime ignores,Implemented,Editable binding clamps to runtime range
+T14,Undo cannot cancel the first animated move,Implemented,Native animated Undo regression
+T15,Temporary Accessibility failure consumes undo history,Implemented,Native retryable Undo regression
+T16,Minimum-height correction does not preserve the bottom edge,Implemented,Native constrained bottom-anchor regression
+T17,Partial or constrained tiling is reported as complete,Implemented,Verified read-back and partial-placement feedback
+T18,Reopening a still-running app misses a lone surviving neighbour,Implemented; live validation pending,"Closed context consumed for reopen, new-window AX observer"
+T19,Beta.24 retains only one rejoin display per app,Implemented; live validation pending,Restoration context retained per display
+T20,Delayed tiling can overwrite a newer manual arrangement,Implemented; live validation pending,All held/group windows checked before delayed move
+T21,Duplicate cycle names make a cycle unreachable,Implemented,Core duplicate-name validation and UI validation
+T22,"Rename, delete and reset leave broken cycle hotkeys",Implemented,Native cycle rename/removal regressions
+T23,A changed search can act on a previous query,Implemented,Query-scoped suggestions; valid active selection retained
+T24,Settings import replaces customisation without a recovery path,Implemented,Core backup/import regressions including fresh profile
+T25,Destructive customisation actions have no undo or confirmation,Implemented,Theme deletion and defaults confirmation
+T26,Specific display requires an opaque ID unavailable in Settings,Implemented,Connected-display name picker
+T27,Missing Accessibility blocks unrelated Settings tasks,Implemented,Settings opens without Accessibility permission
+T28,Shortcut errors and results lack an announcement path,Implemented; live validation pending,Outcome accessibility announcements
+T29,Search switches share the name Quick switch,Implemented; live validation pending,Quick toggle uses setting title
+T30,Search arrow navigation does not expose the active result,Implemented; live validation pending,Search navigation announces active result
+T31,Long HUD messages can extend beyond the display,Implemented,HUD width constrained and wrapping enabled
+T32,Duplicate-shortcut guidance claims a shadowed binding works,Implemented,Accurate first-enabled-binding guidance
+T33,Ring tint preview does not match low tint values,Implemented,Sample uses configured tint opacity
+T34,Search bypasses Apple Intelligence availability gating,Implemented,Search availability matches pane
+T35,Make room when a window opens overstates current support,Implemented; live validation pending,Window-created AX observation including already-running apps
+T36,Portrait Ring selections are still called columns,Implemented,Core portrait-feedback regression
+T37,Paused global-hotkey gating misses submenus,Implemented,Submenu equivalents respect master switch
+T38,Release guard checks certificate name rather than continuity,Implemented,Pinned certificate requirement; installed signature check

@@ -6,8 +6,9 @@ struct CyclesEditor: View {
     @Binding var cycles: [Cycle]
     @FocusState private var focusedStep: StepID?
     @State private var removingCycle: Int?
+    @State private var nameError: String?
 
-    private static let info = "Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle doesn't update the hotkeys that run it."
+    private static let info = "Each press of a cycle's hotkey moves the window to its next step. Reorder steps with the arrows, or select a step's number and press ⌘↑ or ⌘↓. Renaming a cycle updates its shortcuts. Removing a cycle disables its shortcuts."
 
     private struct StepID: Hashable {
         let cycle: Int
@@ -18,7 +19,16 @@ struct CyclesEditor: View {
         ForEach(cycles.indices, id: \.self) { c in
             let cycle = cycleBinding(c)
             Section {
-                TextField("Name", text: cycle.name)
+                TextField("Name", text: Binding(get: { cycle.wrappedValue.name }, set: { name in
+                    guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                          !cycles.enumerated().contains(where: { $0.offset != c && $0.element.name == name }) else {
+                        nameError = "Use a non-empty name that no other cycle uses."
+                        return
+                    }
+                    nameError = nil
+                    cycle.wrappedValue.name = name
+                }))
+                if let nameError { Caption(nameError) }
                 DisplaySelectorEditor(title: "Display", selector: cycle.display)
                 ForEach(cycles[c].steps.indices, id: \.self) { s in
                     stepRow(cycle: c, step: s)
@@ -190,6 +200,11 @@ struct ColumnStepper: View {
 struct DisplaySelectorEditor: View {
     let title: String
     @Binding var selector: DisplaySelector
+    private var connected: [(id: String, name: String)] {
+        NSScreen.screens.compactMap { screen in
+            DisplayService.context(for: screen, settings: .defaults).map { ($0.id.storageKey, screen.localizedName) }
+        }
+    }
 
     private enum Kind: Hashable { case current, cursor, index, id }
 
@@ -210,7 +225,7 @@ struct DisplaySelectorEditor: View {
                     case .current: selector = .current
                     case .cursor: selector = .cursor
                     case .index: selector = .index(1)
-                    case .id: selector = .id("")
+                    case .id: selector = connected.first.map { .id($0.id) } ?? .current
                     }
                 }) {
                     Text("Window's display").tag(Kind.current)
@@ -228,8 +243,10 @@ struct DisplaySelectorEditor: View {
                         .labelsHidden()
                         .accessibilityValue("\(n)")
                 case .id(let key):
-                    TextField("Display ID", text: Binding(get: { key }, set: { selector = .id($0) }))
-                        .frame(minWidth: 120)
+                    Picker("Display", selection: Binding(get: { key }, set: { selector = .id($0) })) {
+                        if !connected.contains(where: { $0.id == key }) { Text("Not connected").tag(key) }
+                        ForEach(connected, id: \.id) { Text($0.name).tag($0.id) }
+                    }.labelsHidden().frame(minWidth: 120)
                 default:
                     EmptyView()
                 }

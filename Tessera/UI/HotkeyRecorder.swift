@@ -3,6 +3,7 @@ import SwiftUI
 import TesseraCore
 
 extension Notification.Name {
+    static let tesseraRecorderWillStart = Notification.Name("TesseraRecorderWillStart")
     /// Posted with `userInfo["active": Bool]` when a recorder starts or stops capturing keys,
     /// so global hotkeys and the trigger can be paused while the user types a new shortcut.
     static let tesseraRecorderActive = Notification.Name("TesseraRecorderActive")
@@ -120,6 +121,7 @@ struct HotkeyRecorder: View {
     @State private var liveModifiers: Modifiers = []
     @State private var rejected = false
     @State private var monitor: Any?
+    @State private var recorderID = UUID()
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 2) {
@@ -129,6 +131,9 @@ struct HotkeyRecorder: View {
             }
         }
         .onDisappear { stop() }
+        .onReceive(NotificationCenter.default.publisher(for: .tesseraRecorderWillStart)) { note in
+            if note.object as? UUID != recorderID { stop() }
+        }
         // Recording pauses Tessera's trigger and hotkeys system-wide; never leave it on when focus goes elsewhere.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in stop() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in stop() }
@@ -141,6 +146,8 @@ struct HotkeyRecorder: View {
     }
 
     private func start() {
+        guard !recording else { return }
+        NotificationCenter.default.post(name: .tesseraRecorderWillStart, object: recorderID)
         pending = nil
         liveModifiers = []
         rejected = false

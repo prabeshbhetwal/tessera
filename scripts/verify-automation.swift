@@ -26,7 +26,16 @@ import TesseraCore
     @MainActor private static func verify() async throws {
         let url = URL(fileURLWithPath: "/tmp/tessera-socket-\(UUID().uuidString).sock")
         let executor = TestExecutor()
-        CommandBridge.executor = executor
+        CommandBridge.executor = nil
+        let starting = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            CommandBridge.executor = executor
+        }
+        let started = await CommandBridge.execute(.listDisplays)
+        await starting.value
+        guard started.ok else { throw Failure(message: "Cold-start command was rejected before executor became ready") }
+        executor.calls = 0
+        print("PASS: Cold-start commands wait for the executor")
         let server = SocketServer(url: url)
         server.start()
         defer { server.stop(); CommandBridge.executor = nil }

@@ -72,6 +72,18 @@ public actor SettingsStore {
         try Self.write(s, to: fileURL, createFolder: true)
     }
 
+    /// Keeps the previous file before an explicit import replaces it. Failed backups leave settings untouched.
+    public func replace(with settings: TesseraSettings, previous: TesseraSettings? = nil) throws {
+        try SettingsValidation.validate(settings)
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if previous != nil || FileManager.default.fileExists(atPath: fileURL.path) {
+            let previous = try previous.map { try JSONEncoder().encode($0) } ?? Data(contentsOf: fileURL)
+            let backup = fileURL.deletingLastPathComponent().appendingPathComponent("settings.before-import-\(UUID().uuidString).json")
+            try previous.write(to: backup, options: .withoutOverwriting)
+        }
+        try save(settings)
+    }
+
     public func export(_ s: TesseraSettings, to url: URL) throws {
         try SettingsValidation.validate(s)
         try Self.write(s, to: url, createFolder: false)

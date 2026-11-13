@@ -20,9 +20,13 @@ final class SplitWatcher {
     var onHelpEvent: ((HelpEvent) -> Void)?
     /// The watched group changed (a window joined or left) and the watch ended; `SplitWatchers` re-arms.
     var onEnded: (() -> Void)?
+    var onReflowBegan: (() -> Void)?
+    var onReflowEnded: (() -> Void)?
+    var onHandBegan: (() -> Void)?
+    var onManualDeparture: (() -> Void)?
     /// A watched window closed or was minimised (see `closed`): the group as it last settled, its display's storage
     /// key, and whether a minimise rather than a close ended the watch.
-    var onWindowClosed: ((_ group: [(window: WindowRef, frame: CGRect)], _ displayKey: String, _ minimised: Bool) -> Void)?
+    var onWindowClosed: ((_ group: [(window: WindowRef, frame: CGRect)], _ displayKey: String, _ minimised: Bool, _ baselineAt: ContinuousClock.Instant) -> Void)?
 
     private static let notifications = [kAXMovedNotification, kAXResizedNotification, kAXUIElementDestroyedNotification,
                                         kAXWindowMiniaturizedNotification]
@@ -44,10 +48,18 @@ final class SplitWatcher {
     private var pending: Task<Void, Never>?
     /// Bumped by every `stop()`, so a debounce or learn begun under an earlier watch never writes.
     private var generation = 0
+    private var watchContext: WindowMutationContext.Ticket?
+    var revision: Int { generation }
+    var settledGroup: (group: ManagedWindowGroup, at: ContinuousClock.Instant) { (baseline, baselineAt) }
     /// The group as it last settled, to tell which window the person changed (see `reflow`).
-    private var baseline: [(window: WindowRef, frame: CGRect)] = []
+    private var baseline: [(window: WindowRef, frame: CGRect)] = [] {
+        didSet { baselineAt = .now }
+    }
+    private var baselineAt: ContinuousClock.Instant = .now
     /// A hand adjustment is waiting for its debounce; a baseline read now would absorb it.
     private var adjusting = false
+    /// Only actual mouse adjustments may replace a remembered split.
+    private var byHand = false
 
     init(windows: WindowService, displays: DisplayService, model: SettingsModel) {
         self.windows = windows
@@ -62,6 +74,8 @@ final class SplitWatcher {
         key = SplitKey(group, on: display)
         self.learns = learns
         watched = group.map(\.window)
+        baseline = group  // close/minimise can arrive before the delayed read-back
+        watchContext = WindowMutationScope.ticket ?? windows.mutationContext.capture()
 
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         for (pid, refs) in Dictionary(grouping: group.map(\.window), by: \.pid) {
@@ -113,9 +127,35 @@ final class SplitWatcher {
         }
         observers = []
         key = nil
+        watchContext = nil
         watched = []
         baseline = []
         adjusting = false
+        byHand = false
+    }
+
+    /// Updates a known group without a gap in its close/minimise subscriptions.
+    func updateBaseline(_ group: [(window: WindowRef, frame: CGRect)], learns: Bool) {
+        cancelAdjustment()
+        self.learns = learns
+        baseline = group
+        watchContext = WindowMutationScope.ticket ?? windows.mutationContext.capture()
+    }
+
+    func renewContext(_ ticket: WindowMutationContext.Ticket) {
+        cancelAdjustment()
+        watchContext = ticket
+        refreshBaseline()
+    }
+    func acceptHandContext(_ ticket: WindowMutationContext.Ticket) { watchContext = ticket }
+
+    /// Discards pre-command learning work without dropping lifecycle subscriptions.
+    func cancelAdjustment() {
+        generation += 1
+        pending?.cancel()
+        pending = nil
+        adjusting = false
+        byHand = false
     }
 
     /// Brackets each of Tessera's own moves (`CommandExecutor.place`; balance every begin with an end). Moves and
@@ -132,8 +172,9 @@ final class SplitWatcher {
         refreshBaseline()
     }
 
-    fileprivate func handle(_ notification: String) {
-        guard key != nil else { return }  // queued before stop()
+    func handle(_ notification: String, element: AXUIElement) {
+        // A queued callback from an earlier group must not close or adjust its replacement.
+        guard key != nil, watched.contains(where: { CFEqual($0.element, element) }) else { return }
         switch notification {
         case kAXUIElementDestroyedNotification:
             closed()
@@ -143,6 +184,7 @@ final class SplitWatcher {
         default:
             if quiet {
                 adjusting = true
+                if NSEvent.pressedMouseButtons != 0, !byHand { byHand = true; onHandBegan?() }
                 schedule()
             }
         }
@@ -151,10 +193,16 @@ final class SplitWatcher {
     /// A watched window closed or was `minimised`, or its app quit: the watch ends, and `onWindowClosed` gets the group
     /// as it last settled.
     func closed(minimised: Bool = false) {
+        if minimised, !model.settings.minimiseFillsGap {
+            stop()
+            onEnded?()
+            return
+        }
         guard let display = key?.display else { return }
         let group = baseline
+        let observedAt = baselineAt
         stop()
-        onWindowClosed?(group, display, minimised)
+        onWindowClosed?(group, display, minimised, observedAt)
     }
 
     /// Watching a window of the app with this process ID.
@@ -176,9 +224,12 @@ final class SplitWatcher {
     private func schedule() {
         pending?.cancel()
         let generation = self.generation
+        let ticket = watchContext
         pending = Task { [weak self] in
-            do { try await Task.sleep(for: Self.debounce) } catch { return }
-            await self?.learnNow(generation)
+            await WindowMutationScope.$ticket.withValue(ticket) {
+                do { try await Task.sleep(for: Self.debounce) } catch { return }
+                await self?.learnNow(generation)
+            }
         }
     }
 
@@ -204,8 +255,20 @@ final class SplitWatcher {
         // The display is gone, or a window joined, left or moved to another display: this is no longer the
         // arrangement that was tiled.
         guard let group else {
-            stop()
-            onEnded?()
+            var removed: [Bool] = []
+            for window in watched {
+                if let kind = await windows.removalKind(of: window) { removed.append(kind) }
+            }
+            guard generation == self.generation, !Task.isCancelled else { return }
+            if !removed.isEmpty { closed(minimised: removed.allSatisfy { $0 }) }
+            else {
+                if byHand, let ticket = watchContext,
+                   windows.mutationContext.isCurrent(ticket, on: [key.display], refreshSpaces: true) {
+                    onManualDeparture?()
+                    stop()
+                }
+                onEnded?()
+            }
             return
         }
         let (display, visible) = group
@@ -217,7 +280,9 @@ final class SplitWatcher {
         baseline = visible
         // An arrangement that can't be learned (say, windows overlapping) is skipped, and so is one that only repeats
         // the stored split (a slow app's late notification); the next adjustment tries again.
-        guard learns else { return }
+        let handMade = byHand
+        byHand = false
+        guard learns, handMade else { return }
         let previous = SplitMemory.lookup(key, in: model.settings.learnedSplits)
         switch save(visible, display: display, onlyIfChanged: true) {
         case .failure(let rejection):
@@ -238,10 +303,13 @@ final class SplitWatcher {
     /// The watched display as it is now (so a gap or padding edited since the watch began counts) and the windows on
     /// it; nil when the display is gone or its windows are no longer the watched group.
     private func currentGroup() async -> (display: DisplayContext, visible: [(window: WindowRef, frame: CGRect)])? {
-        guard let key, let display = displays.displays.first(where: { $0.id.storageKey == key.display }) else { return nil }
-        let visible = await windows.visibleWindows(on: display.frame, primaryHeight: DisplayService.primaryHeight,
+        guard let key, let ticket = watchContext,
+              windows.mutationContext.isCurrent(ticket, on: [key.display], refreshSpaces: true),
+              let display = displays.displays.first(where: { $0.id.storageKey == key.display }), ticket.topology.contains(display) else { return nil }
+        let visible = await windows.visibleWindows(on: display.frame, primaryHeight: ticket.topology.primaryHeight,
                                                    excluding: Set(model.settings.excludedBundleIDs))
-        guard SplitKey(visible, on: display) == key else { return nil }
+        guard windows.mutationContext.isCurrent(ticket, on: [key.display], refreshSpaces: true) else { return nil }
+        guard SplitKey(visible, on: display) == key, watches(visible) else { return nil }
         return (display: display, visible: visible)
     }
 
@@ -259,8 +327,8 @@ final class SplitWatcher {
         guard NSEvent.pressedMouseButtons == 0 else { return true }
         let moves = visible.indices.filter { visible[$0].frame != goals[$0] }.map { (index: $0, window: visible[$0].window) }
         let generation = self.generation
-        beginOwnMove()
-        defer { endOwnMove() }
+        onReflowBegan?()
+        defer { onReflowEnded?() }
         let (results, undoMarker) = await windows.moveTogether(  // one ⌃⌥Z puts the neighbours back
             moves.map { (window: $0.window, goal: goals[$0.index]) }, primaryHeight: DisplayService.primaryHeight,
             duration: model.glideSeconds)
@@ -288,11 +356,12 @@ final class SplitWatcher {
 }
 
 /// AX calls this on the main run loop, where `watch` adds every observer's source; `refcon` is the watcher.
-private func splitWatcherCallback(_: AXObserver, _: AXUIElement, _ notification: CFString, _ refcon: UnsafeMutableRawPointer?) {
+private func splitWatcherCallback(_: AXObserver, _ element: AXUIElement, _ notification: CFString, _ refcon: UnsafeMutableRawPointer?) {
     guard let refcon else { return }
     let watcher = Unmanaged<SplitWatcher>.fromOpaque(refcon)
     let name = notification as String
+    nonisolated(unsafe) let element = element
     MainActor.assumeIsolated {
-        watcher.takeUnretainedValue().handle(name)
+        watcher.takeUnretainedValue().handle(name, element: element)
     }
 }

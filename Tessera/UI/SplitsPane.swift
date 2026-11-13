@@ -46,7 +46,10 @@ struct SplitsPane: View {
                 .settingAnchor("Make room on")
                 LabeledContent {
                     HStack(spacing: 6) {
-                        TextField("Seconds", value: $model.settings.splitNewWindowWait, format: .number)
+                        TextField("Seconds", value: Binding(
+                            get: { model.settings.splitNewWindowWaitSeconds },
+                            set: { model.settings.splitNewWindowWait = min(max($0, 0), TesseraSettings.maxNewWindowWait) }
+                        ), format: .number)
                             .labelsHidden().multilineTextAlignment(.trailing).frame(width: 44)
                         Stepper("Seconds", value: $model.settings.splitNewWindowWait,
                                 in: 0...TesseraSettings.maxNewWindowWait).labelsHidden()

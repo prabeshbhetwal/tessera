@@ -82,6 +82,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let coordinator else { return .terminateNow }
+        Task {
+            do {
+                try await coordinator.flushSettings()
+                sender.reply(toApplicationShouldTerminate: true)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "Settings couldn't be saved"
+                alert.informativeText = "\(error.localizedDescription) Cancel quitting to retry, or quit without saving recent changes."
+                alert.addButton(withTitle: "Cancel")
+                alert.addButton(withTitle: "Quit Without Saving")
+                sender.reply(toApplicationShouldTerminate: alert.runModal() == .alertSecondButtonReturn)
+            }
+        }
+        return .terminateLater
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         socketServer.stop()
         coordinator?.stop()

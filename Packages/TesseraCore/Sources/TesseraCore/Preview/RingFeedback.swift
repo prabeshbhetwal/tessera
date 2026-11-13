@@ -4,15 +4,15 @@ public struct RingFeedback: Equatable, Sendable {
     public let hint: String
 
     public static func make(selection: Selection, ring: RingSettings, keyboard: Bool,
-                            keyboardEnabled: Bool, tapToTile: Bool, cancelling: Bool) -> RingFeedback {
+                            keyboardEnabled: Bool, tapToTile: Bool, cancelling: Bool, portrait: Bool = false) -> RingFeedback {
         let apply = keyboard ? "↵ Apply · esc Cancel" : "Release to snap"
         switch selection {
         case let .wedge(_, action):
             return RingFeedback(title: action.displayName, hint: apply)
         case let .span(_, span):
             let lo = span.columns.lowerBound + 1, hi = span.columns.upperBound + 1
-            let columns = lo == hi ? "Column \(lo)" : "Columns \(lo)–\(hi)"
-            let band = switch span.band { case .full: ""; case .top: " · top"; case .bottom: " · bottom" }
+            let columns = lo == hi ? "\(portrait ? "Row" : "Column") \(lo)" : "\(portrait ? "Rows" : "Columns") \(lo)–\(hi)"
+            let band: String = if portrait { "" } else { switch span.band { case .full: ""; case .top: " · top"; case .bottom: " · bottom" } }
             return RingFeedback(title: columns + band, hint: apply)
         case .none:
             if tapToTile {

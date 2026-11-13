@@ -23,6 +23,8 @@ jobs:
         run: swift test --package-path Packages/TesseraCore --scratch-path "$RUNNER_TEMP/tessera-core" --jobs 2
       - name: CLI socket regression checks
         run: TESSERA_AUTOMATION_SCRATCH="$RUNNER_TEMP/tessera-core" bash scripts/verify-automation.sh
+      - name: Window actor and settings reliability checks
+        run: TESSERA_RELIABILITY_SCRATCH="$RUNNER_TEMP/tessera-core" bash scripts/verify-window-reliability.sh
       - name: Production Ring rendering and geometry checks
         run: TESSERA_RING_SCRATCH="$RUNNER_TEMP/tessera-core" bash scripts/verify-ring-rendering.sh "$RUNNER_TEMP/tessera-ring-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.png"
       # SwiftPM reads Sparkle's binary zip from this cache before downloading it. GitHub's release

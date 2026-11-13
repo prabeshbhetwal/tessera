@@ -32,6 +32,8 @@ final class MinimisedWindows {
 
     /// Stops watching the windows of an app that quit.
     func forget(pid: pid_t) { forget { $0.pid == pid } }
+    func forget(window: WindowRef) { forget { $0 == window } }
+    func forgetAll() { forget { _ in true } }
 
     private func forget(where matches: (WindowRef) -> Bool) {
         for entry in entries where matches(entry.window) {
