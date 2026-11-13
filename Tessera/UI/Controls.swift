@@ -67,13 +67,14 @@ struct Caption: View {
     }
 }
 
-extension Binding where Value: Equatable {
+extension Binding where Value: Equatable & Sendable {
     /// Binding for a picker that rebuilds a value when its option changes (a kind, a mode, a theme).
     /// `apply` runs only when a different option is picked: picking the current one again is a no-op, so it
     /// can never reset what that option already holds (e.g. re-picking "Action" turning "Left half" into the
     /// default). Use it for every such picker.
-    static func choice(_ current: Value, apply: @escaping (Value) -> Void) -> Binding {
-        Binding(get: { current }, set: { if $0 != current { apply($0) } })
+    @MainActor static func choice(_ current: Value, apply: @escaping @MainActor (Value) -> Void) -> Binding {
+        // SwiftUI writes a picker's binding on the main thread.
+        Binding(get: { current }, set: { new in MainActor.assumeIsolated { if new != current { apply(new) } } })
     }
 }
 
