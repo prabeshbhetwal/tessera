@@ -2,7 +2,7 @@
 
 1.0 is a promise: Tessera installs on anyone's Mac by following the README (one documented first-open step), does what the User Guide says, and never breaks a person's settings or layouts on update. Until every **Must** box is ticked, releases stay `0.x`.
 
-Status as of 0.2.0-beta.22 (11 Nov 2026).
+Status as of 0.2.0-beta.25 (12 Nov 2026).
 
 ## Path
 
@@ -17,6 +17,7 @@ Status as of 0.2.0-beta.22 (11 Nov 2026).
 Releases are signed with the self-made "Tessera Local Signing" certificate, not Apple's paid Developer ID (no budget for the Apple Developer Program yet). On another Mac, macOS blocks the first open with "Apple could not verify…". 1.0 ships this way, with the first open documented; Developer ID waits for budget (see Later).
 - [ ] **First-open steps in the README and User Guide**, with a screenshot: open Tessera once, get the warning, then System Settings › Privacy & Security › **Open Anyway**. One time only; Sparkle updates after that open without it.
 - [ ] **Same certificate for every release.** The signature stays the same, so macOS keeps the Accessibility grant across updates. Back up the "Tessera Local Signing" certificate and its private key (export from Keychain Access to an encrypted `.p12`, stored off this Mac): losing it means every user re-grants Accessibility.
+- [ ] **Back up the Sparkle EdDSA private key.** Export it with Sparkle's `generate_keys -x` and store the file encrypted, off this Mac: losing it means installed copies can't verify future updates signed with a new key. Before publishing, check that `generate_keys -p` matches `SUPublicEDKey` in `project.yml`.
 - [ ] **Clean-Mac install test.** On a Mac (or a new macOS user account) that has never run Tessera: download from the release page, follow the README's first-open steps, finish onboarding, grant Accessibility, tile windows. No Terminal steps.
 - [ ] **Update test from the oldest supported build.** An installed 0.x release takes the 1.0 update through Sparkle and keeps its settings, learned splits and Accessibility grant.
 
