@@ -35,4 +35,5 @@ docs/superpowers/
 docs/ring-icon-only-*
 graphify-out/
 .codegraph/
-Tessera 2.xcodeproj/
+# Numbered copies left when iCloud syncs over a regenerated project (Tessera 2/3/4…)
+Tessera [0-9]*.xcodeproj/
