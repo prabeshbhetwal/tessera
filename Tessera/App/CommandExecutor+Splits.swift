@@ -100,10 +100,12 @@ extension CommandExecutor {
                                           landed: outcomes.map(\.landed), gap: display.profile.gap,
                                           primaryHeight: DisplayService.primaryHeight, duration: model.glideSeconds,
                                           batch: batch)
+        // ⌃⌥Z pressed mid-Tile already put the windows back; report that, not a Tile result.
+        let (undoMarker, undone) = await windows.finishBatch(batch)  // one ⌃⌥Z puts every tiled window back
+        if undone { throw Failure(message: "Tile undone") }
         // Where each window is now: where its move landed, or where it was when it didn't move.
         let placed = ordered.indices.map { (window: ordered[$0].window, frame: landed[$0] ?? ordered[$0].frame) }
         let constrained = outcomes.filter(\.constrained).count
-        let undoMarker = await windows.mergeMoves(batch)  // one ⌃⌥Z puts every tiled window back
         // After the moves, so their settling is already ignored.
         splitWatcher.watch(placed, display: display, learns: !evenly)
         let n = ordered.count
