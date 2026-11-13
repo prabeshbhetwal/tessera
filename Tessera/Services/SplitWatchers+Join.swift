@@ -64,8 +64,19 @@ extension SplitWatchers {
                         // waits its own turn.
                         var waiting = (now: first, allowed: first)
                         while true {
+                            // Only the groups on the displays the newcomers wait on: a hand change to a split on
+                            // another display must not cancel this join.
                             var baseline: [(WindowRef, CGRect)] = []
-                            for ref in tiled.values.flatMap({ $0 }) + waiting.allowed {
+                            var waitingOn = Set<String>()
+                            for ref in waiting.allowed {
+                                guard let frame = await self.windows.frame(of: ref) else { continue }
+                                baseline.append((ref, frame))
+                                if let display = self.displays.displays.display(at: CGPoint(x: frame.midX, y: frame.midY)) {
+                                    waitingOn.insert(display.id.storageKey)
+                                }
+                            }
+                            let groups = waitingOn.isEmpty ? tiled.values.flatMap { $0 } : waitingOn.flatMap { tiled[$0] ?? [] }
+                            for ref in groups {
                                 if let frame = await self.windows.frame(of: ref) { baseline.append((ref, frame)) }
                             }
                             do { try await Task.sleep(for: .seconds(wait)) } catch { return }

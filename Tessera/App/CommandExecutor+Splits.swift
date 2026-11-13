@@ -155,6 +155,7 @@ extension CommandExecutor {
     }
 
     func undoLast() async throws(Failure) {
+        splitWatcher.undoSupersedesRecovery()
         splitWatcher.cancelPendingWork()
         // Bracketed so the restore is never read as a hand adjustment; its end re-arms the watchers.
         splitWatcher.beginOwnMove()

@@ -39,6 +39,14 @@ extension SplitWatchers {
         }
     }
 
+    /// ⌃⌥Z supersedes automatic recovery still under way: once Undo puts the windows back, the vacancy that recovery
+    /// was filling must not be filled again by the next re-arm.
+    func undoSupersedesRecovery() {
+        let interrupted = Set(pendingFills.keys).union(pendingResumes.keys)
+        guard !interrupted.isEmpty else { return }
+        explicitLayout(on: interrupted, ticket: windows.mutationContext.capture())
+    }
+
     func explicitLayout(on displays: Set<String>, ticket: WindowMutationContext.Ticket) {
         cancelLayouts(displays)
         for key in displays {
