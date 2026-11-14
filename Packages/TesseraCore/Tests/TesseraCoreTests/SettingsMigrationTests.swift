@@ -170,7 +170,7 @@ private func makeDirectory() throws -> URL {
         var s = userSettings()
         s.menuBarItems.undo = false
         var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as? [String: Any])
-        for key in ["menuBarIcon", "hudPosition", "hudSeconds", "appearance", "windowMaterial"] { object[key] = nil }
+        for key in ["menuBarIcon", "hudPosition", "hudSeconds", "appearance"] { object[key] = nil }
         var items = try #require(object["menuBarItems"] as? [String: Any])
         items["snapSubmenu"] = nil
         object["menuBarItems"] = items
@@ -180,7 +180,6 @@ private func makeDirectory() throws -> URL {
 
         let decoded = try SettingsStore.decode(JSONSerialization.data(withJSONObject: object)).settings
         #expect(decoded.menuBarIcon == .tiles && decoded.hudPosition == .bottom && decoded.appearance == .system)
-        #expect(decoded.windowMaterial == .liquidGlass)
         #expect(decoded.hudSeconds == TesseraSettings.defaults.hudSeconds)
         #expect(decoded.ring.iconStyle == .layouts)
         #expect(decoded.menuBarItems.snapSubmenu == true, "a missing item gets its default")

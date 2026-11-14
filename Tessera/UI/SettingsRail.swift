@@ -9,7 +9,8 @@ struct SettingsRail: View {
     @FocusState private var focused: Bool
 
     /// A 40 pt hit area around each 24 pt icon tile, with an even 8 pt margin either side.
-    static let width: CGFloat = 56
+    /// Wide enough that the window's close and minimise buttons, which sit over the rail, stay centred on it.
+    static let width: CGFloat = 60
 
     private static let order = SettingsGroup.allCases.flatMap(\.panes)
 

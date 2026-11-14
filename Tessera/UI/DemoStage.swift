@@ -82,7 +82,8 @@ private struct DemoCueModifier: ViewModifier {
             pending?.cancel()
             guard inside, state?.cue != cue else { return }
             pending = Task {
-                try? await Task.sleep(for: .milliseconds(250))
+                // Just long enough that sweeping the pointer across rows doesn't flicker the stage; 250 ms felt slow.
+                try? await Task.sleep(for: .milliseconds(80))
                 if !Task.isCancelled { state?.cue = cue }
             }
         }
@@ -151,7 +152,9 @@ struct StagePlayer<Accessory: View>: View {
         instant.disablesAnimations = true
         withTransaction(instant) { index = 0 }
         for next in 1..<frames.count {
-            try? await Task.sleep(for: .milliseconds(next == 1 ? 450 : 750))
+            // The first step starts almost at once, so pointing at a control answers immediately; later steps keep
+            // a pace the eye can follow.
+            try? await Task.sleep(for: .milliseconds(next == 1 ? 150 : 750))
             guard !Task.isCancelled else { return }
             let animation: Animation? = if let seconds = frames[next].seconds {
                 seconds > 0 ? .easeInOut(duration: seconds) : nil
