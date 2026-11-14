@@ -136,6 +136,9 @@ struct SettingsView: View {
     private var sidebar: some View {
         let rail = navigation.compactSidebar
         let width = listWidth
+        // Liquid Glass floats the sidebar as a pane inset from the window's edges; its rows sit inside the pane.
+        let inset: CGFloat = glassFloats ? Self.glassInset : 0
+        let column = (rail ? SettingsRail.width : width) + inset * 2
         return ZStack(alignment: .topLeading) {
             if rail {
                 SettingsRail(navigation: navigation).transition(.opacity)
@@ -150,12 +153,28 @@ struct SettingsView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { SidebarBrand(navigation: navigation, compact: rail) }
         .frame(width: rail ? SettingsRail.width : width, alignment: .leading)
         .clipped()
-        // In the window look (General › Window look): floating Liquid Glass, frosted, or solid. A hairline before the
-        // pane, except when the glass floats free of the window's edges.
-        .background { WindowBackdrop(look: model.settings.windowMaterial, surface: .sidebar) }
-        .overlay(alignment: .trailing) { if !glassFloats { Divider() } }
+        .padding(.horizontal, inset)
+        .padding(.bottom, inset)
+        .frame(width: column, alignment: .leading)
+        // The look (General › Window look) runs the full height, under the title bar and its window buttons, as the
+        // System Settings sidebar does. Liquid Glass adds the floating pane; the others meet the pane at a hairline.
+        .background {
+            ZStack {
+                WindowBackdrop(look: model.settings.windowMaterial, surface: .sidebar)
+                if glassFloats { SidebarGlassPane(inset: Self.glassInset) }
+            }
+            .ignoresSafeArea(.container, edges: .top)
+        }
+        .overlay(alignment: .trailing) {
+            // A vertical hairline. (A bare Divider in an overlay draws horizontal: it ruled a stray line across the list.)
+            if !glassFloats { Color(nsColor: .separatorColor).frame(width: 1).ignoresSafeArea(.container, edges: .top) }
+        }
         .overlay(alignment: .trailing) { resizeHandle(from: rail ? SettingsRail.width : width) }
+        .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: glassFloats)
     }
+
+    /// How far the Liquid Glass sidebar floats in from the window's edges.
+    static let glassInset: CGFloat = 8
 
     /// The sidebar's edge: drag it to size the pane list between its fitted width and `maxSidebarWidth`. Dragged
     /// past halfway from the fitted width to the rail, it glides to icons only; dragged back out, to names again.
@@ -192,7 +211,10 @@ struct SettingsView: View {
                 .scrollContentBackground(.hidden)
                 // Opaque cards: text in them never depends on what is behind the window.
                 .backgroundStyle(Color(nsColor: .controlBackgroundColor))
-                .background { WindowBackdrop(look: model.settings.windowMaterial, surface: .pane) }
+                .background {
+                    WindowBackdrop(look: model.settings.windowMaterial, surface: .pane)
+                        .ignoresSafeArea(.container, edges: .top)
+                }
                 if SettingsDemo.exists(for: navigation.pane) && stageFits {
                     SettingsDemo(pane: navigation.pane, settings: model.settings)
                 }

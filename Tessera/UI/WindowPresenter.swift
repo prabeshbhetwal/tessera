@@ -75,6 +75,10 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
         // stays for the Window menu and VoiceOver; the sidebar's foot shows the app's name instead.
         window.toolbarStyle = .unifiedCompact
         window.titleVisibility = .hidden
+        // Content runs under the title bar, so the sidebar's look reaches the top edge and the window buttons sit on
+        // it, as in System Settings. SwiftUI keeps the list and the form below the toolbar (safe area).
+        window.styleMask.insert(.fullSizeContentView)
+        window.titlebarAppearsTransparent = true
         window.collectionBehavior.insert(.fullScreenNone)
         window.center()
         window.setFrameAutosaveName("TesseraSettings")

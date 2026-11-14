@@ -12,7 +12,7 @@ struct StageColumn<Content: View>: View {
         content
             .frame(width: Self.width)
             .frame(maxHeight: .infinity)
-            .background { WindowBackdrop(look: look, surface: .stage) }
+            .background { WindowBackdrop(look: look, surface: .stage).ignoresSafeArea(.container, edges: .top) }
             .clipped()
     }
 }
