@@ -14,21 +14,32 @@ struct SettingsDemo: View {
         }
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         StageColumn {
-            switch pane {
-            case .ring: RingDemo(settings: settings)
-            case .shortcuts: ShortcutsDemo(settings: settings)
-            case .cycles: CyclesDemo(settings: settings)
-            case .displays: DisplaysDemo(settings: settings)
-            case .splits: SplitsDemo(settings: settings)
-            case .motion: MotionDemo(settings: settings)
-            case .overlay: AppearanceDemo(settings: settings)
-            case .general, .excludedApps, .updates, .about: EmptyView()
+            ZStack {
+                story
+                    // A new pane starts its own story rather than finishing the last one's. It fades in over the
+                    // backdrop; the mock desktop never slides.
+                    .id(pane)
+                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
             }
+            .animation(SettingsMotion.paneChange(reduceMotion: reduceMotion), value: pane)
         }
-        // A new pane starts its own story rather than finishing the last one's.
-        .id(pane)
+    }
+
+    @ViewBuilder private var story: some View {
+        switch pane {
+        case .ring: RingDemo(settings: settings)
+        case .shortcuts: ShortcutsDemo(settings: settings)
+        case .cycles: CyclesDemo(settings: settings)
+        case .displays: DisplaysDemo(settings: settings)
+        case .splits: SplitsDemo(settings: settings)
+        case .motion: MotionDemo(settings: settings)
+        case .overlay: AppearanceDemo(settings: settings)
+        case .general, .excludedApps, .updates, .about: EmptyView()
+        }
     }
 }
 

@@ -51,7 +51,7 @@ struct SidebarBrand: View {
             .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         // Not a keyboard stop: About is in the pane list, and as the window's first stop it wore a focus ring.
         .focusable(false)
         .help("About Tessera")

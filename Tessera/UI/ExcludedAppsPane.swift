@@ -19,6 +19,25 @@ struct ExcludedAppsPane: View {
         Self.runningApps().filter { !model.settings.excludedBundleIDs.contains($0.bundleID) }
     }
 
+    /// No apps yet, or none matching the filter: the pane's own symbol over a line saying what to do, in the same
+    /// shape as the search's "no matches".
+    private var emptyState: some View {
+        let none = model.settings.excludedBundleIDs.isEmpty
+        return VStack(spacing: 6) {
+            Image(systemName: none ? SettingsPane.excludedApps.symbol : "magnifyingglass")
+                .font(.system(size: 24, weight: .light))
+                .foregroundStyle(.tertiary)
+                .padding(.bottom, 2)
+            Text(none ? "No excluded apps" : "No apps match \u{201C}\(query)\u{201D}").font(.headline).lineLimit(2)
+            Text(none ? "Tessera works in every app. Add one below to keep it out." : "Try another name.")
+                .foregroundStyle(.secondary)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 18)
+        .transition(.opacity)
+    }
+
     var body: some View {
         Form {
             Section {
@@ -32,12 +51,7 @@ struct ExcludedAppsPane: View {
                             .labelsHidden()
                     }
                 }
-                if shown.isEmpty {
-                    Text(model.settings.excludedBundleIDs.isEmpty ? "No excluded apps. Add one below." : "No apps match \u{201C}\(query)\u{201D}")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                }
+                if shown.isEmpty { emptyState }
                 ForEach(shown, id: \.self) { bundleID in
                     HStack {
                         AppIcon(bundleID: bundleID)
@@ -79,6 +93,8 @@ struct ExcludedAppsPane: View {
             ResetSection { model.settings.excludedBundleIDs = [] }
         }
         .formStyle(.grouped)
+        // Rows added, removed or filtered fade in and out; the empty state takes their place the same way.
+        .animation(SettingsMotion.quick, value: shown)
     }
 
     private func add(_ bundleID: String) {
