@@ -3,6 +3,22 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.31</title>
+            <pubDate>Sat, 14 Nov 2026 04:48:06 +0000</pubDate>
+            <sparkle:version>20261114.044553</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.31</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">Settings looks the way a Mac app should, and the preview answers the pointer straight away.
+
+- One look, Apple's own: a frosted sidebar running the full height of the window, with the settings and the preview on solid backgrounds, as in System Settings, Finder and Mail. The Window look option is gone.
+- Liquid Glass from 0.2.0-beta.30 is withdrawn.
+- The Settings window shows only close and minimise; they sit centred over the folded sidebar.
+- A stray line across the sidebar is gone.
+- Pointing at a setting starts its preview in about a quarter of a second instead of almost a second.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.31/Tessera-0.2.0-beta.31.zip" length="6248080" type="application/octet-stream" sparkle:edSignature="lj1/b1uqWVcz2u/VMcP8qLvbfPJL0IvVN6LG+6q7yp5Yxz/WQS33kb3L6DqyU8dhJHYyJv7DCoznoHpJXKyuDw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.30</title>
             <pubDate>Sat, 14 Nov 2026 01:26:34 +0000</pubDate>
             <sparkle:version>20261114.012349</sparkle:version>
