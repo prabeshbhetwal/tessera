@@ -143,10 +143,10 @@ struct SettingsView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { SidebarBrand(navigation: navigation, compact: rail) }
         .frame(width: rail ? SettingsRail.width : width, alignment: .leading)
         .clipped()
-        // The look (General › Window look) runs the full height, under the title bar and its window buttons, as the
+        // The sidebar runs the full height, under the title bar and its window buttons, as the
         // System Settings sidebar does, and meets the pane at a hairline.
         .background {
-            WindowBackdrop(look: model.settings.windowMaterial, surface: .sidebar).ignoresSafeArea(.container, edges: .top)
+            WindowBackdrop(surface: .sidebar).ignoresSafeArea(.container, edges: .top)
         }
         .overlay(alignment: .trailing) {
             // A vertical hairline. (A bare Divider in an overlay draws horizontal: it ruled a stray line across the list.)
@@ -192,7 +192,7 @@ struct SettingsView: View {
                 // Opaque cards: text in them never depends on what is behind the window.
                 .backgroundStyle(Color(nsColor: .controlBackgroundColor))
                 .background {
-                    WindowBackdrop(look: model.settings.windowMaterial, surface: .pane)
+                    WindowBackdrop(surface: .pane)
                         .ignoresSafeArea(.container, edges: .top)
                 }
                 if SettingsDemo.exists(for: navigation.pane) && stageFits {

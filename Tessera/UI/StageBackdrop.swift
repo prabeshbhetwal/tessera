@@ -5,14 +5,13 @@ import TesseraCore
 /// The Settings window's right-hand stage: edge to edge, on the window look's backdrop (translucent unless Solid).
 struct StageColumn<Content: View>: View {
     static var width: CGFloat { 420 }
-    var look: WindowMaterial = .frosted
     @ViewBuilder var content: Content
 
     var body: some View {
         content
             .frame(width: Self.width)
             .frame(maxHeight: .infinity)
-            .background { WindowBackdrop(look: look, surface: .stage).ignoresSafeArea(.container, edges: .top) }
+            .background { WindowBackdrop(surface: .stage).ignoresSafeArea(.container, edges: .top) }
             .clipped()
     }
 }

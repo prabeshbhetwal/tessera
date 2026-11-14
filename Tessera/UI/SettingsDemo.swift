@@ -15,7 +15,7 @@ struct SettingsDemo: View {
     }
 
     var body: some View {
-        StageColumn(look: settings.windowMaterial) {
+        StageColumn {
             switch pane {
             case .ring: RingDemo(settings: settings)
             case .shortcuts: ShortcutsDemo(settings: settings)

@@ -110,7 +110,6 @@ enum SettingNames {
         "menuBarItems.explain": "the What Just Happened? menu item",
         "menuBarItems.shortcutKeys": "the menu shortcuts setting",
         "appearance": "the light or dark setting",
-        "windowMaterial": "the Settings window look",
         "searchUsesAppleIntelligence": "the Apple Intelligence search setting",
         "snapDuration": "the snap duration",
         "learnSplits": "learning from your adjustments",

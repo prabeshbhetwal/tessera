@@ -9,7 +9,6 @@ public enum SettingsCatalog {
     static let general: [E] = [
         E("general", "App", "Launch at login", ["start automatically open when mac starts"]),
         E("general", "App", "Light or dark", anchor: "Appearance", ["light dark mode match system look theme windows"]),
-        E("general", "App", "Window look", ["liquid glass frosted translucent transparent blur solid opaque material sidebar preview"]),
         E("general", "App", "Understand searches with Apple Intelligence", anchor: "Apple Intelligence search",
           ["settings search on device model smart ai"]),
         E("general", "Menu bar", "Show the menu bar icon", ["status item top bar"]),
