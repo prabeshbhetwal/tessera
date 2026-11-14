@@ -3,6 +3,21 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.30</title>
+            <pubDate>Sat, 14 Nov 2026 01:26:34 +0000</pubDate>
+            <sparkle:version>20261114.012349</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.30</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">Settings has a new look, and you choose how it's drawn.
+
+- New: General › App › Window look. Liquid Glass (the default), Frosted or Solid for the whole Settings window: the sidebar, the settings and the preview.
+- Liquid Glass and Frosted let your desktop's colours show softly through, with your settings on solid cards. Liquid Glass also floats the sidebar as a pane of glass (macOS 26; Frosted before it).
+- Solid draws the window opaque. Reduce Transparency and Increase Contrast always draw it plain and opaque.
+- The preview beside each pane no longer shows a picture behind it.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.30/Tessera-0.2.0-beta.30.zip" length="6287971" type="application/octet-stream" sparkle:edSignature="v2ePTFrgrqHoLQu7P/EpP284zvfys+VRLorxkMeBlz9CieYDpj0f13hFfIWDW4TK6Kyy68RNqqOyRJ2bv7jjBQ==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.29</title>
             <pubDate>Fri, 13 Nov 2026 18:32:19 +0000</pubDate>
             <sparkle:version>20261113.183106</sparkle:version>
