@@ -113,6 +113,9 @@ struct StagePlayer<Accessory: View>: View {
     @Environment(DemoCueState.self) private var cues: DemoCueState?
     @State private var index = 0
     @State private var replays = 0
+    /// The replay the last run answered, so a click (and only a click) rewinds rather than jumps.
+    @State private var answered = 0
+    @State private var hovering = false
 
     private var shown: Int { min(index, max(frames.count - 1, 0)) }
 
@@ -121,8 +124,11 @@ struct StagePlayer<Accessory: View>: View {
         ZStack(alignment: .bottom) {
             MockDesktop(display: display, settings: settings, frame: frame, ghost: ghost, overlay: overlay)
                 .frame(maxHeight: .infinity, alignment: .top)
+                .overlay(alignment: .topTrailing) { if showsReplayHint { ReplayHint().transition(.opacity) } }
+                .animation(SettingsMotion.quick, value: showsReplayHint)
                 .contentShape(Rectangle())
                 .onTapGesture { replays += 1 }
+                .help(reduceMotion ? "" : "Click to play it again")
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Demo")
                 .accessibilityValue("\(frame.caption) \(detail)")
@@ -133,7 +139,16 @@ struct StagePlayer<Accessory: View>: View {
         }
         .task(id: Replay(frames: frames, replays: replays)) { await play() }
         // Pointing at the stage lights the form row it is acting out: the link runs both ways.
-        .onHover { inside in cues?.spotlight = inside ? cues?.cue?.anchor ?? anchor : nil }
+        .onHover { inside in
+            hovering = inside
+            cues?.spotlight = inside ? cues?.cue?.anchor ?? anchor : nil
+        }
+    }
+
+    /// While the pointer rests on a finished story: a hint that a click plays it again. Not a control (the stage
+    /// itself is the button, and its VoiceOver action stays); none under Reduce Motion, where nothing replays.
+    private var showsReplayHint: Bool {
+        hovering && !reduceMotion && frames.count > 1 && index >= frames.count - 1 && cues?.editing != true
     }
 
     /// Where the live window started, outlined once it has moved.
@@ -144,17 +159,26 @@ struct StagePlayer<Accessory: View>: View {
     }
 
     private func play() async {
+        // A click rewinds: the windows go back to where the story starts before it plays again. A setting
+        // or cue change starts the new story at once.
+        let clicked = replays != answered
+        answered = replays
         guard frames.count > 1, !reduceMotion, cues?.editing != true else {
             index = max(frames.count - 1, 0)
             return
         }
-        var instant = Transaction()
-        instant.disablesAnimations = true
-        withTransaction(instant) { index = 0 }
+        let rewinds = clicked && index != 0
+        if rewinds {
+            withAnimation(SettingsMotion.rewind) { index = 0 }
+        } else {
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { index = 0 }
+        }
         for next in 1..<frames.count {
             // The first step starts almost at once, so pointing at a control answers immediately; later steps keep
-            // a pace the eye can follow.
-            try? await Task.sleep(for: .milliseconds(next == 1 ? 150 : 750))
+            // a pace the eye can follow. After a rewind the first step waits for the windows to get back.
+            try? await Task.sleep(for: .milliseconds(next == 1 ? (rewinds ? 250 : 150) : 750))
             guard !Task.isCancelled else { return }
             let animation: Animation? = if let seconds = frames[next].seconds {
                 seconds > 0 ? .easeInOut(duration: seconds) : nil
@@ -176,6 +200,23 @@ extension StagePlayer where Accessory == EmptyView {
          overlay: ((StageGeometry) -> AnyView)? = nil) {
         self.init(display: display, settings: settings, frames: frames, detail: detail, anchor: anchor,
                   overlay: overlay) { _ in EmptyView() }
+    }
+}
+
+/// The small round "play again" glyph in the stage's corner, under the mock menu bar. Decorative: the click goes
+/// through to the stage.
+private struct ReplayHint: View {
+    var body: some View {
+        Image(systemName: "arrow.counterclockwise")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .frame(width: 24, height: 24)
+            .stageGlass(cornerRadius: 12, opaque: true)
+            .overlay(Circle().strokeBorder(.separator, lineWidth: 0.5))
+            .padding(.top, 34)
+            .padding(.trailing, 12)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
 

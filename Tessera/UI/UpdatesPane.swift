@@ -33,11 +33,15 @@ struct UpdatesPane: View {
                     // Sparkle reports false while a check or update session runs, and before the updater has
                     // started, so the wording stays neutral rather than claiming a check is under way.
                     if !updates.canCheckForUpdates {
-                        ProgressView().controlSize(.small)
-                        Text("Waiting for the updater…").font(.caption).foregroundStyle(.secondary)
+                        Group {
+                            ProgressView().controlSize(.small)
+                            Text("Waiting for the updater…").font(.caption).foregroundStyle(.secondary)
+                        }
+                        .transition(.opacity)
                     }
                     Spacer()
                 }
+                .animation(SettingsMotion.quick, value: updates.canCheckForUpdates)
             }
 
             Section {

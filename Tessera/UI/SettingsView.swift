@@ -66,10 +66,10 @@ struct SettingsView: View {
             if navigation.showsResults {
                 SearchResultsPanel(model: model, navigation: navigation)
                     .padding(.top, 6)
-                    .transition(dropTransition)
+                    .transition(SettingsMotion.drop(reduceMotion: reduceMotion))
             }
         }
-        .animation(dropAnimation, value: navigation.showsResults)
+        .animation(SettingsMotion.dropAnimation(reduceMotion: reduceMotion), value: navigation.showsResults)
         .toolbar {
             ToolbarItem(placement: .navigation) { sidebarButton }
             ToolbarItem(placement: .primaryAction) {
@@ -155,7 +155,6 @@ struct SettingsView: View {
         .overlay(alignment: .trailing) { resizeHandle(from: rail ? SettingsRail.width : width) }
     }
 
-
     /// The sidebar's edge: drag it to size the pane list between its fitted width and `maxSidebarWidth`. Dragged
     /// past halfway from the fitted width to the rail, it glides to icons only; dragged back out, to names again.
     private func resizeHandle(from width: CGFloat) -> some View {
@@ -183,10 +182,17 @@ struct SettingsView: View {
         ScrollViewReader { proxy in
             // The stage runs the pane's full height, beside the header as well as the form.
             HStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
-                    paneView
+                ZStack {
+                    // Keyed by pane: the new pane arrives inside this frame, so the form's width change when the
+                    // stage comes or goes is never animated, and the old pane leaves at once.
+                    VStack(spacing: 0) {
+                        if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
+                        paneView
+                    }
+                    .id(navigation.pane)
+                    .transition(SettingsMotion.arrival(reduceMotion: reduceMotion))
                 }
+                .animation(SettingsMotion.paneChange(reduceMotion: reduceMotion), value: navigation.pane)
                 // The window look runs behind the form too; its cards stay opaque on top.
                 .scrollContentBackground(.hidden)
                 // Opaque cards: text in them never depends on what is behind the window.
@@ -216,17 +222,7 @@ struct SettingsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The sidebar's glide between names and icons. Instant with Reduce Motion.
-    private var glide: Animation? { reduceMotion ? nil : .smooth(duration: 0.3) }
-
-    /// The search results drop from the field: a short fall and grow from under it. A fade with Reduce Motion.
-    private var dropTransition: AnyTransition {
-        reduceMotion ? .opacity
-            : .opacity.combined(with: .scale(scale: 0.96, anchor: .top)).combined(with: .offset(y: -6))
-    }
-
-    private var dropAnimation: Animation {
-        reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.28, bounce: 0.12)
-    }
+    private var glide: Animation? { reduceMotion ? nil : SettingsMotion.glide }
 
     /// Behind the open results: a click anywhere else in the window folds them away, keeping the search text.
     private var dismissResults: some View {

@@ -7,6 +7,10 @@ import SwiftUI
 struct SettingsRail: View {
     @Bindable var navigation: SettingsNavigation
     @FocusState private var focused: Bool
+    @State private var hovered: SettingsPane?
+    /// The one selection plate, which glides from icon to icon.
+    @Namespace private var plate
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// A 40 pt hit area around each 24 pt icon tile, with an even 8 pt margin either side.
     /// Wide enough that the window's close and minimise buttons, which sit over the rail, stay centred on it.
@@ -23,9 +27,13 @@ struct SettingsRail: View {
                     Button { navigation.pane = pane; focused = true } label: {
                         PaneIcon(pane: pane, size: 24)
                             .railCell(selection: !selected ? nil
-                                      : focused ? AnyShapeStyle(.tint.opacity(0.4)) : AnyShapeStyle(.quaternary))
+                                      : focused ? AnyShapeStyle(.tint.opacity(0.4)) : AnyShapeStyle(.quaternary),
+                                      hovered: hovered == pane, plate: plate)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableStyle())
+                    .onHover { inside in
+                        if inside { hovered = pane } else if hovered == pane { hovered = nil }
+                    }
                     .focusable(false)
                     .help(pane.title)
                     .accessibilityLabel(pane.title)
@@ -35,6 +43,9 @@ struct SettingsRail: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 8)
+        // The plate glides to a clicked icon; ↑ ↓ and Reduce Motion move it at once. Hover fades either way.
+        .animation(reduceMotion || SettingsMotion.fromKeyboard ? nil : SettingsMotion.settle, value: navigation.pane)
+        .animation(SettingsMotion.quick, value: hovered)
         .frame(width: Self.width)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Settings panes")
@@ -53,11 +64,17 @@ struct SettingsRail: View {
 }
 
 private extension View {
-    /// One rail cell: a 40 × 32 pt hit area, with the sidebar's rounded selection behind it when one is given.
-    func railCell(selection: AnyShapeStyle?) -> some View {
-        frame(width: 40, height: 32)
+    /// One rail cell: a 40 × 32 pt hit area, with the sidebar's rounded selection behind it when one is given (one
+    /// plate, matched across cells so it moves rather than blinks), else a faint plate while the pointer is on it.
+    func railCell(selection: AnyShapeStyle?, hovered: Bool, plate: Namespace.ID) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+        return frame(width: 40, height: 32)
             .background {
-                if let selection { RoundedRectangle(cornerRadius: 6, style: .continuous).fill(selection) }
+                if let selection {
+                    shape.fill(selection).matchedGeometryEffect(id: "selection", in: plate)
+                } else if hovered {
+                    shape.fill(.quinary).transition(.opacity)
+                }
             }
             .contentShape(Rectangle())
     }

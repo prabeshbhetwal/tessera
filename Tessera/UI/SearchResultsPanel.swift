@@ -51,11 +51,15 @@ struct SearchResultsPanel: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        let empty = ordered.isEmpty && !thinking
         VStack(spacing: 0) {
-            if ordered.isEmpty, !thinking { noMatches } else { list }
+            // Typing between "no matches" and some cross-fades; the results' height itself never animates, so typing
+            // doesn't make the panel wobble.
+            if empty { noMatches.transition(.opacity) } else { list.transition(.opacity) }
             Divider()
             footer
         }
+        .animation(SettingsMotion.quick, value: empty)
         .frame(width: Self.width)
         // Solid, a step up from the window: a translucent material let the pane's controls smear through.
         .background(Color(nsColor: .controlBackgroundColor))
@@ -84,8 +88,10 @@ struct SearchResultsPanel: View {
             guard !Task.isCancelled else { return }
             let picks = await SettingsAssistant.suggest(for: trimmed)
             guard !Task.isCancelled else { return }
-            suggested = picks
-            thinking = false
+            withAnimation(SettingsMotion.quick) {
+                suggested = picks
+                thinking = false
+            }
         }
     }
 
@@ -109,7 +115,8 @@ struct SearchResultsPanel: View {
         VStack(alignment: .leading, spacing: 1) {
             if thinking || !suggested.isEmpty {
                 GroupHeader(title: "Best match") { Image(systemName: "sparkle") }
-                ForEach(suggested) { row($0, showsPane: true) }
+                // The model's picks arrive after a pause in typing: they fade in rather than pop.
+                ForEach(suggested) { row($0, showsPane: true).transition(.opacity) }
                 if thinking {
                     Label("Reading your search…", systemImage: "sparkle")
                         .foregroundStyle(.secondary)
