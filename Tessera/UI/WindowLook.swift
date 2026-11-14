@@ -4,8 +4,7 @@ import TesseraCore
 
 /// What each part of the Settings window sits on, in the look chosen in General › Window look: the sidebar, the pane
 /// behind the form, and the stage. Form cards stay on top, so text never depends on the desktop. Reduce Transparency
-/// and Increase Contrast draw Solid; Liquid Glass needs macOS 26 and draws as Frosted before it. Switching looks
-/// cross-fades (instantly with Reduce Motion).
+/// and Increase Contrast draw Solid. Switching looks cross-fades (instantly with Reduce Motion).
 struct WindowBackdrop: View {
     enum Surface { case sidebar, pane, stage }
 
@@ -16,11 +15,9 @@ struct WindowBackdrop: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.colorScheme) private var colorScheme
 
-    /// The look actually drawn, after Reduce Transparency and the macOS version.
+    /// The look actually drawn, after Reduce Transparency.
     static func effective(_ look: WindowMaterial, reduceTransparency: Bool) -> WindowMaterial {
-        if reduceTransparency { return .solid }
-        if look == .liquidGlass, #unavailable(macOS 26) { return .frosted }
-        return look
+        reduceTransparency ? .solid : look
     }
 
     private var drawn: WindowMaterial {
@@ -29,7 +26,6 @@ struct WindowBackdrop: View {
 
     var body: some View {
         ZStack {
-            // Liquid Glass and Frosted share this layer; the sidebar's glass pane is drawn on top by `SidebarGlassPane`.
             if drawn == .solid {
                 solid.transition(.opacity)
             } else {
@@ -67,26 +63,6 @@ struct WindowBackdrop: View {
         case .sidebar: .sidebar
         case .pane: .windowBackground  // made for text, so section headers on it stay readable
         case .stage: .underWindowBackground
-        }
-    }
-}
-
-/// The Liquid Glass sidebar: one pane of glass floating `inset` in from the window's top, left and bottom edges, its
-/// corners concentric with the window's, the window buttons sitting on it as in System Settings.
-struct SidebarGlassPane: View {
-    let inset: CGFloat
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        if #available(macOS 26, *) {
-            let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
-            // In dark mode the glass is shaded a little, or its lift leaves white labels at the 4.5:1 edge.
-            let glass: Glass = colorScheme == .dark ? .regular.tint(.black.opacity(0.25)) : .regular
-            shape.fill(.clear)
-                .glassEffect(glass, in: shape)
-                .padding(inset)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98, anchor: .leading)))
         }
     }
 }

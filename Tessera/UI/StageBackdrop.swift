@@ -5,7 +5,7 @@ import TesseraCore
 /// The Settings window's right-hand stage: edge to edge, on the window look's backdrop (translucent unless Solid).
 struct StageColumn<Content: View>: View {
     static var width: CGFloat { 420 }
-    var look: WindowMaterial = .liquidGlass
+    var look: WindowMaterial = .frosted
     @ViewBuilder var content: Content
 
     var body: some View {

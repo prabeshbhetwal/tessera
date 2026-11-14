@@ -17,9 +17,7 @@ struct GeneralPane: View {
             let setting = reduceTransparency ? "Reduce Transparency" : "Increase Contrast"
             return "\(setting) is on in System Settings › Accessibility, so Settings is drawn solid."
         }
-        let look = model.settings.windowMaterial
-        return WindowBackdrop.effective(look, reduceTransparency: false) == look ? nil
-            : "Liquid Glass needs macOS 26. It shows as Frosted on this Mac."
+        return nil
     }
 
     private static let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "settings-ui")
@@ -48,7 +46,7 @@ struct GeneralPane: View {
                     .settingAnchor("Apple Intelligence search")
             } header: {
                 InfoHeader("App", info: "Light or dark, and the window look, change Tessera’s own windows; the ring’s colours "
-                    + "are in Appearance. Liquid Glass and Frosted let your desktop show through the sidebar and preview. "
+                    + "are in Appearance. Frosted lets your desktop show softly through the window. "
                     + "Apple Intelligence lets Settings search understand a whole sentence. It runs on your Mac, and nothing leaves it.")
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
@@ -131,7 +129,7 @@ struct GeneralPane: View {
                 model.settings.menuBarIcon = .tiles
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
-                model.settings.windowMaterial = .liquidGlass
+                model.settings.windowMaterial = .frosted
                 model.settings.searchUsesAppleIntelligence = TesseraSettings.defaults.searchUsesAppleIntelligence
                 model.settings.help.autoShow = true
                 model.settings.help.dimScreen = true

@@ -12,12 +12,19 @@ struct WindowMaterialTests {
     }
 
     /// A look from a newer build must not set the whole settings file aside.
-    @Test func unknownLookLoadsAsLiquidGlass() throws {
+    @Test func unknownLookLoadsAsFrosted() throws {
         var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(TesseraSettings.defaults)) as? [String: Any])
         object["windowMaterial"] = "holographic"
         object["appearance"] = "dark"
         let settings = try SettingsStore.decode(JSONSerialization.data(withJSONObject: object)).settings
-        #expect(settings.windowMaterial == .liquidGlass)
+        #expect(settings.windowMaterial == .frosted)
         #expect(settings.appearance == .dark, "the rest of the file still loads")
+    }
+
+    /// 0.2.0-beta.30 saved "liquidGlass", a look that has since been withdrawn: it loads as Frosted.
+    @Test func withdrawnLiquidGlassLoadsAsFrosted() throws {
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(TesseraSettings.defaults)) as? [String: Any])
+        object["windowMaterial"] = "liquidGlass"
+        #expect(try SettingsStore.decode(JSONSerialization.data(withJSONObject: object)).settings.windowMaterial == .frosted)
     }
 }

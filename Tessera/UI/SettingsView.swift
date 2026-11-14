@@ -29,13 +29,6 @@ struct SettingsView: View {
 
     /// The narrowest the form gets before the stage folds away.
     static let minFormWidth: CGFloat = 520
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var contrast
-    /// The sidebar is a floating pane of Liquid Glass, so it needs no divider beside it.
-    private var glassFloats: Bool {
-        contrast != .increased
-            && WindowBackdrop.effective(model.settings.windowMaterial, reduceTransparency: reduceTransparency) == .liquidGlass
-    }
     private var stageFits: Bool { paneWidth >= StageColumn<EmptyView>.width + Self.minFormWidth }
 
     /// The narrowest the pane list goes: the longest pane name in full at the system's sidebar text size, after the
@@ -136,9 +129,6 @@ struct SettingsView: View {
     private var sidebar: some View {
         let rail = navigation.compactSidebar
         let width = listWidth
-        // Liquid Glass floats the sidebar as a pane inset from the window's edges; its rows sit inside the pane.
-        let inset: CGFloat = glassFloats ? Self.glassInset : 0
-        let column = (rail ? SettingsRail.width : width) + inset * 2
         return ZStack(alignment: .topLeading) {
             if rail {
                 SettingsRail(navigation: navigation).transition(.opacity)
@@ -153,28 +143,18 @@ struct SettingsView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { SidebarBrand(navigation: navigation, compact: rail) }
         .frame(width: rail ? SettingsRail.width : width, alignment: .leading)
         .clipped()
-        .padding(.horizontal, inset)
-        .padding(.bottom, inset)
-        .frame(width: column, alignment: .leading)
         // The look (General › Window look) runs the full height, under the title bar and its window buttons, as the
-        // System Settings sidebar does. Liquid Glass adds the floating pane; the others meet the pane at a hairline.
+        // System Settings sidebar does, and meets the pane at a hairline.
         .background {
-            ZStack {
-                WindowBackdrop(look: model.settings.windowMaterial, surface: .sidebar)
-                if glassFloats { SidebarGlassPane(inset: Self.glassInset) }
-            }
-            .ignoresSafeArea(.container, edges: .top)
+            WindowBackdrop(look: model.settings.windowMaterial, surface: .sidebar).ignoresSafeArea(.container, edges: .top)
         }
         .overlay(alignment: .trailing) {
             // A vertical hairline. (A bare Divider in an overlay draws horizontal: it ruled a stray line across the list.)
-            if !glassFloats { Color(nsColor: .separatorColor).frame(width: 1).ignoresSafeArea(.container, edges: .top) }
+            Color(nsColor: .separatorColor).frame(width: 1).ignoresSafeArea(.container, edges: .top)
         }
         .overlay(alignment: .trailing) { resizeHandle(from: rail ? SettingsRail.width : width) }
-        .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: glassFloats)
     }
 
-    /// How far the Liquid Glass sidebar floats in from the window's edges.
-    static let glassInset: CGFloat = 8
 
     /// The sidebar's edge: drag it to size the pane list between its fitted width and `maxSidebarWidth`. Dragged
     /// past halfway from the fitted width to the rail, it glides to icons only; dragged back out, to names again.

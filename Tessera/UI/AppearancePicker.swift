@@ -91,7 +91,7 @@ struct MiniWindow: View {
     }
 }
 
-/// Liquid Glass, Frosted or Solid for the Settings window, each a small window on a toned desk so the sidebar shows
+/// Frosted or Solid for the Settings window, each a small window on a toned desk so the sidebar shows
 /// how much of the desk comes through.
 struct WindowLookPicker: View {
     @Binding var selection: WindowMaterial
@@ -127,11 +127,6 @@ private struct LookThumbnail: View {
 
     @ViewBuilder private var sidebar: some View {
         switch look {
-        case .liquidGlass:
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(.white.opacity(0.42))
-                .overlay(RoundedRectangle(cornerRadius: 3, style: .continuous).strokeBorder(.white.opacity(0.8), lineWidth: 0.5))
-                .padding(2.5)
         case .frosted: Rectangle().fill(.white.opacity(0.3))
         case .solid: Color(nsColor: .underPageBackgroundColor)
         }

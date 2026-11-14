@@ -180,7 +180,7 @@ private func makeDirectory() throws -> URL {
 
         let decoded = try SettingsStore.decode(JSONSerialization.data(withJSONObject: object)).settings
         #expect(decoded.menuBarIcon == .tiles && decoded.hudPosition == .bottom && decoded.appearance == .system)
-        #expect(decoded.windowMaterial == .liquidGlass)
+        #expect(decoded.windowMaterial == .frosted)
         #expect(decoded.hudSeconds == TesseraSettings.defaults.hudSeconds)
         #expect(decoded.ring.iconStyle == .layouts)
         #expect(decoded.menuBarItems.snapSubmenu == true, "a missing item gets its default")
