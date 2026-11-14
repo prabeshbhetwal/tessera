@@ -3,6 +3,24 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.32</title>
+            <pubDate>Sat, 14 Nov 2026 04:56:57 +0000</pubDate>
+            <sparkle:version>20261114.045403</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.32</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">Settings moves with you: quiet, quick motion that shows where things go, and never gets in the way.
+
+- Clicking a pane in the sidebar fades its settings in with a small rise; the preview's new story fades in beside it. Keyboard switching (⌘1 to ⌘9, arrow keys) stays instant.
+- With the sidebar folded to icons, the selection glides from icon to icon, and the icon under the pointer is softly highlighted.
+- Clicking the preview replays it: the windows slide back to where they started, then play again. A small replay sign appears when you point at a finished preview.
+- Picture choices (light or dark, preview style) and the sidebar icons give a little press when clicked, and their edge firms up under the pointer.
+- Search results fade between "no matches" and results; Apple Intelligence picks fade in instead of popping.
+- Excluded Apps shows a clear empty state when no apps are excluded.
+- With Reduce Motion on, nothing moves or scales: changes fade or happen at once.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.32/Tessera-0.2.0-beta.32.zip" length="6317558" type="application/octet-stream" sparkle:edSignature="0VHoOA+SQe90FnGl2QNpUmvMgwEdFY/Ed0D385tg839Qvzzeh9c7kp5A+w3nazBGvcGUpfSJ84LDjppfVdFkCw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.31</title>
             <pubDate>Sat, 14 Nov 2026 04:48:06 +0000</pubDate>
             <sparkle:version>20261114.044553</sparkle:version>
