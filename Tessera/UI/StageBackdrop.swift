@@ -18,17 +18,24 @@ struct StageColumn<Content: View>: View {
 }
 
 extension View {
-    /// Liquid Glass on macOS 26 and later; a frosted material before that. `clear` is the lighter variant.
-    /// `tint` lays the window background colour under the glass, so text and edges stay readable on any
-    /// wallpaper (and under Reduce Transparency).
-    @ViewBuilder func stageGlass(cornerRadius: CGFloat, clear: Bool = false, tint: Double = 0.3) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        let tinted = background(Color(nsColor: .windowBackgroundColor).opacity(tint), in: shape)
-        if #available(macOS 26, *) {
-            tinted.glassEffect(clear ? .clear : .regular, in: shape)
-        } else {
-            tinted.background(clear ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial), in: shape)
-        }
+    /// A surface on the stage, drawn as a plain fill, never glass or a material, so the stage adds no blur of its own.
+    /// Decorative surfaces keep a little translucency; `opaque` ones carry text. Opaque under Reduce Transparency and
+    /// Increase Contrast.
+    func stageGlass(cornerRadius: CGFloat, clear: Bool = false, opaque: Bool = false) -> some View {
+        modifier(StageFill(cornerRadius: cornerRadius, opacity: opaque ? 1 : clear ? 0.72 : 0.88))
+    }
+}
+
+private struct StageFill: ViewModifier {
+    let cornerRadius: CGFloat
+    let opacity: Double
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        let solid = reduceTransparency || contrast == .increased
+        content.background(Color(nsColor: .controlBackgroundColor).opacity(solid ? 1 : opacity),
+                           in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }
 

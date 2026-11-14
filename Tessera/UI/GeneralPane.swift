@@ -9,13 +9,16 @@ struct GeneralPane: View {
     /// Read once per appearance; `SMAppService.status` is IPC and must never run in `body`.
     @State private var loginNeedsApproval = false
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
 
     /// Why the window doesn't look the way the picker says, when it doesn't.
     private var windowLookNote: String? {
+        if reduceTransparency || contrast == .increased {
+            let setting = reduceTransparency ? "Reduce Transparency" : "Increase Contrast"
+            return "\(setting) is on in System Settings › Accessibility, so Settings is drawn solid."
+        }
         let look = model.settings.windowMaterial
-        let drawn = WindowBackdrop.effective(look, reduceTransparency: reduceTransparency)
-        if drawn == look { return nil }
-        return reduceTransparency ? "Reduce Transparency is on in System Settings › Accessibility, so Settings is drawn solid."
+        return WindowBackdrop.effective(look, reduceTransparency: false) == look ? nil
             : "Liquid Glass needs macOS 26. It shows as Frosted on this Mac."
     }
 

@@ -30,9 +30,11 @@ struct SettingsView: View {
     /// The narrowest the form gets before the stage folds away.
     static let minFormWidth: CGFloat = 520
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
     /// The sidebar is a floating pane of Liquid Glass, so it needs no divider beside it.
     private var glassFloats: Bool {
-        WindowBackdrop.effective(model.settings.windowMaterial, reduceTransparency: reduceTransparency) == .liquidGlass
+        contrast != .increased
+            && WindowBackdrop.effective(model.settings.windowMaterial, reduceTransparency: reduceTransparency) == .liquidGlass
     }
     private var stageFits: Bool { paneWidth >= StageColumn<EmptyView>.width + Self.minFormWidth }
 
@@ -186,6 +188,11 @@ struct SettingsView: View {
                     if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
                     paneView
                 }
+                // The window look runs behind the form too; its cards stay opaque on top.
+                .scrollContentBackground(.hidden)
+                // Opaque cards: text in them never depends on what is behind the window.
+                .backgroundStyle(Color(nsColor: .controlBackgroundColor))
+                .background { WindowBackdrop(look: model.settings.windowMaterial, surface: .pane) }
                 if SettingsDemo.exists(for: navigation.pane) && stageFits {
                     SettingsDemo(pane: navigation.pane, settings: model.settings)
                 }

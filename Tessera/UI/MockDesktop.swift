@@ -95,7 +95,7 @@ struct MockDesktop: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 18)
-        .stageGlass(cornerRadius: 0, clear: true, tint: 0.15)
+        .stageGlass(cornerRadius: 0, clear: true)
         .accessibilityHidden(true)
     }
 
@@ -216,7 +216,7 @@ private struct StageWindow: View {
             .frame(height: 13)
             Color.clear
         }
-        .stageGlass(cornerRadius: 6, tint: 0.55)
+        .stageGlass(cornerRadius: 6)
         .overlay(shape.strokeBorder(.white.opacity(0.35), lineWidth: 0.5))
         .overlay { if dimmed { shape.fill(Color(hex: theme.dimHex).opacity(theme.preview.dimStrength)) } }
         .overlay {
