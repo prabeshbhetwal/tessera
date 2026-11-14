@@ -29,6 +29,13 @@ struct SettingsView: View {
 
     /// The narrowest the form gets before the stage folds away.
     static let minFormWidth: CGFloat = 520
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    /// The sidebar is a floating pane of Liquid Glass, so it needs no divider beside it.
+    private var glassFloats: Bool {
+        contrast != .increased
+            && WindowBackdrop.effective(model.settings.windowMaterial, reduceTransparency: reduceTransparency) == .liquidGlass
+    }
     private var stageFits: Bool { paneWidth >= StageColumn<EmptyView>.width + Self.minFormWidth }
 
     /// The narrowest the pane list goes: the longest pane name in full at the system's sidebar text size, after the
@@ -143,9 +150,10 @@ struct SettingsView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { SidebarBrand(navigation: navigation, compact: rail) }
         .frame(width: rail ? SettingsRail.width : width, alignment: .leading)
         .clipped()
-        // Frosted, over whatever is behind the window, like the System Settings sidebar; a hairline before the pane.
-        .background { WindowGlass() }
-        .overlay(alignment: .trailing) { Divider() }
+        // In the window look (General › Window look): floating Liquid Glass, frosted, or solid. A hairline before the
+        // pane, except when the glass floats free of the window's edges.
+        .background { WindowBackdrop(look: model.settings.windowMaterial, surface: .sidebar) }
+        .overlay(alignment: .trailing) { if !glassFloats { Divider() } }
         .overlay(alignment: .trailing) { resizeHandle(from: rail ? SettingsRail.width : width) }
     }
 
@@ -180,6 +188,11 @@ struct SettingsView: View {
                     if navigation.pane != .about { PaneHeader(pane: navigation.pane) }
                     paneView
                 }
+                // The window look runs behind the form too; its cards stay opaque on top.
+                .scrollContentBackground(.hidden)
+                // Opaque cards: text in them never depends on what is behind the window.
+                .backgroundStyle(Color(nsColor: .controlBackgroundColor))
+                .background { WindowBackdrop(look: model.settings.windowMaterial, surface: .pane) }
                 if SettingsDemo.exists(for: navigation.pane) && stageFits {
                     SettingsDemo(pane: navigation.pane, settings: model.settings)
                 }

@@ -8,6 +8,19 @@ struct GeneralPane: View {
     @State private var loginError: String?
     /// Read once per appearance; `SMAppService.status` is IPC and must never run in `body`.
     @State private var loginNeedsApproval = false
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    /// Why the window doesn't look the way the picker says, when it doesn't.
+    private var windowLookNote: String? {
+        if reduceTransparency || contrast == .increased {
+            let setting = reduceTransparency ? "Reduce Transparency" : "Increase Contrast"
+            return "\(setting) is on in System Settings › Accessibility, so Settings is drawn solid."
+        }
+        let look = model.settings.windowMaterial
+        return WindowBackdrop.effective(look, reduceTransparency: false) == look ? nil
+            : "Liquid Glass needs macOS 26. It shows as Frosted on this Mac."
+    }
 
     private static let log = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "settings-ui")
     /// The on-device model ships with macOS 26; earlier systems can never enable the assistant.
@@ -28,17 +41,23 @@ struct GeneralPane: View {
                 }
                 AppearancePicker(selection: $model.settings.appearance)
                     .settingAnchor("Appearance")
+                WindowLookPicker(selection: $model.settings.windowMaterial)
+                    .settingAnchor("Window look")
                 Toggle("Understand searches with Apple Intelligence", isOn: $model.settings.searchUsesAppleIntelligence)
                     .disabled(!SettingsAssistant.isAvailable)
                     .settingAnchor("Apple Intelligence search")
             } header: {
-                InfoHeader("App", info: "Light or dark changes Tessera’s own windows; the ring’s colours are in Appearance. "
+                InfoHeader("App", info: "Light or dark, and the window look, change Tessera’s own windows; the ring’s colours "
+                    + "are in Appearance. Liquid Glass and Frosted let your desktop show through the sidebar and preview. "
                     + "Apple Intelligence lets Settings search understand a whole sentence. It runs on your Mac, and nothing leaves it.")
             } footer: {
-                if !SettingsAssistant.isAvailable {
-                    Footer(Self.supportsAppleIntelligenceOS
-                        ? "Needs Apple Intelligence, which is off or not ready on this Mac."
-                        : "Needs macOS 26 or later with Apple Intelligence.")
+                VStack(alignment: .leading, spacing: 4) {
+                    if let windowLookNote { Footer(windowLookNote) }
+                    if !SettingsAssistant.isAvailable {
+                        Footer(Self.supportsAppleIntelligenceOS
+                            ? "Needs Apple Intelligence, which is off or not ready on this Mac."
+                            : "Needs macOS 26 or later with Apple Intelligence.")
+                    }
                 }
             }
 
@@ -112,6 +131,7 @@ struct GeneralPane: View {
                 model.settings.menuBarIcon = .tiles
                 model.settings.menuBarItems = MenuBarItems()
                 model.settings.appearance = .system
+                model.settings.windowMaterial = .liquidGlass
                 model.settings.searchUsesAppleIntelligence = TesseraSettings.defaults.searchUsesAppleIntelligence
                 model.settings.help.autoShow = true
                 model.settings.help.dimScreen = true

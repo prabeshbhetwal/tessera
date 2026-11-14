@@ -1,7 +1,7 @@
 import SwiftUI
 import TesseraCore
 
-/// The stage beside a pane's form: a mock desktop on the person's wallpaper that acts out the pane's settings.
+/// The stage beside a pane's form: a mock desktop on a translucent backdrop that acts out the pane's settings.
 /// General, Excluded Apps, Updates and About have none; their form takes the full width.
 struct SettingsDemo: View {
     let pane: SettingsPane
@@ -15,7 +15,7 @@ struct SettingsDemo: View {
     }
 
     var body: some View {
-        StageColumn {
+        StageColumn(look: settings.windowMaterial) {
             switch pane {
             case .ring: RingDemo(settings: settings)
             case .shortcuts: ShortcutsDemo(settings: settings)

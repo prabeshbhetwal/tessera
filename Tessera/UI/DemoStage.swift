@@ -205,7 +205,7 @@ private struct StageFooter<Accessory: View>: View {
         .padding(.horizontal, 22)
         .padding(.vertical, 20)
         .frame(height: 190, alignment: .top)
-        .stageGlass(cornerRadius: 0, tint: 0.62)
+        .stageGlass(cornerRadius: 0, opaque: true)
         .overlay(alignment: .top) { Rectangle().fill(.separator).frame(height: 1) }
         .accessibilityHidden(true)
     }
