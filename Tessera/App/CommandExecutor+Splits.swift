@@ -22,8 +22,9 @@ extension CommandExecutor {
         let frontFrame: CGRect? = if let front { await windows.frame(of: front) } else { nil }
         let display = try resolve(selector == .current && frontFrame == nil ? .cursor : selector, windowFrame: frontFrame)
         let ticket = WindowMutationScope.ticket ?? windows.mutationContext.capture()
-        let (found, skipped) = await windows.visibleWindowsCounted(
+        let read = await windows.visibleWindowsCounted(
             on: display.frame, primaryHeight: DisplayService.primaryHeight, excluding: Set(model.settings.excludedBundleIDs))
+        let (found, skipped) = (read.found, read.skipped)
         // The windows were read on the Space and display layout the command started on, or not at all.
         guard windows.mutationContext.isCurrent(ticket, on: [display.id.storageKey], refreshSpaces: true),
               displays.displays.contains(display) else { throw Failure(message: "Display or Space changed; try again") }
@@ -156,11 +157,15 @@ extension CommandExecutor {
 
     func undoLast() async throws(Failure) {
         splitWatcher.undoSupersedesRecovery()
-        splitWatcher.cancelPendingWork()
+        splitWatcher.cancelPendingWork(includingLooks: false)
         // Bracketed so the restore is never read as a hand adjustment; its end re-arms the watchers.
         splitWatcher.beginOwnMove()
         // Apps excluded since the move are left alone: no command moves an excluded app's windows.
         let outcome = await windows.undoLast(excluding: Set(model.settings.excludedBundleIDs))
+        // Only the displays Undo touched: a pending look elsewhere (an app still opening) carries on.
+        let undone = await windows.lastUndoneFrames
+        let touched = Set(undone.compactMap { frame in displays.displays.display(at: CGPoint(x: frame.midX, y: frame.midY))?.id.storageKey })
+        if !touched.isEmpty { windows.mutationContext.supersedeLayouts(on: touched) }
         splitWatcher.endOwnMove()
         switch outcome {
         case .restored: return

@@ -40,8 +40,10 @@ struct SplitsPane: View {
                 Picker("Make room on", selection: $model.settings.splitNewWindowScope) {
                     Text("Displays already tiled").tag(SplitNewWindowScope.tiledDisplays)
                     Text("Also wherever the apps have a split").tag(SplitNewWindowScope.rememberedSplits)
+                    Text("Any display with two or more apps").tag(SplitNewWindowScope.everyDisplay)
                 }
                 .pickerStyle(.radioGroup)
+                .help("Equal shares start only when you open an app beside one window each of other apps, up to the display's columns.")
                 .disabled(!model.settings.learnSplits || !model.settings.splitTilesNewWindow)
                 .settingAnchor("Make room on")
                 LabeledContent {

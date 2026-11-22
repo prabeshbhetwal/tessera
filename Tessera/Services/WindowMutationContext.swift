@@ -8,6 +8,9 @@ final class WindowMutationContext: @unchecked Sendable {
         let topologyVersion: UInt64
         let workspaceVersions: [String: UInt64]
         let workspaces: [String: UInt64]
+        /// Bumped per display by an explicit layout (Tile, a placement, a hand change) and by a Space switch whose
+        /// identity can't be read: automatic work queued before it must not act after it.
+        var layoutEpochs: [String: UInt64] = [:]
     }
     struct Change {
         let topology: Bool
@@ -21,7 +24,12 @@ final class WindowMutationContext: @unchecked Sendable {
         var workspaces: [String: UInt64]
         var trustworthySpaces: Bool
         var pendingTopology = false
+        /// The topology the last `consumeChanges` saw: a sample that strays and comes back (display sleep) is no change.
+        var consumedTopology: WindowTopology
+        var layoutEpochs: [String: UInt64] = [:]
         var pendingDisplays: Set<String> = []
+        /// Displays marked only because the topology strayed from the last consumed one: cleared if it comes back.
+        var strayDisplays: Set<String> = []
     }
     private let state: OSAllocatedUnfairLock<State>
     private let sampling = OSAllocatedUnfairLock(initialState: ())
@@ -34,13 +42,14 @@ final class WindowMutationContext: @unchecked Sendable {
         workspaceReader = workspaces
         let first = topology(), spaces = workspaces()
         state = OSAllocatedUnfairLock(initialState: State(topology: first, workspaces: spaces ?? [:],
-            trustworthySpaces: spaces.map { first.keys.isSubset(of: Set($0.keys)) } ?? false))
+            trustworthySpaces: spaces.map { first.keys.isSubset(of: Set($0.keys)) } ?? false, consumedTopology: first))
     }
 
     func capture() -> Ticket {
         refresh(spaces: true)
         return state.withLock { Ticket(topology: $0.topology, topologyVersion: $0.topologyVersion,
-                                      workspaceVersions: $0.workspaceVersions, workspaces: $0.workspaces) }
+                                      workspaceVersions: $0.workspaceVersions, workspaces: $0.workspaces,
+                                      layoutEpochs: $0.layoutEpochs) }
     }
 
     func isCurrent(_ ticket: Ticket, on displays: Set<String>, refreshSpaces: Bool = false) -> Bool {
@@ -57,14 +66,30 @@ final class WindowMutationContext: @unchecked Sendable {
         refresh(spaces: true)
         return state.withLock { state in
             if spaceNotification, !state.trustworthySpaces {
-                for key in state.topology.keys { state.workspaceVersions[key, default: 0] += 1 }
+                for key in state.topology.keys {
+                    state.workspaceVersions[key, default: 0] += 1
+                    state.layoutEpochs[key, default: 0] += 1
+                }
                 state.pendingDisplays.formUnion(state.topology.keys)
             }
             let change = Change(topology: state.pendingTopology, displays: state.pendingDisplays,
                                 workspaces: state.workspaces)
             state.pendingTopology = false
+            state.consumedTopology = state.topology
             state.pendingDisplays = []
+            state.strayDisplays = []
             return change
+        }
+    }
+
+    /// Undo: automatic work queued on these displays must not redo what was just undone.
+    func supersedeLayouts(on displays: Set<String>) {
+        // The version too: work that already passed its epoch check (a join mid-read) fails `isCurrent` before it moves.
+        state.withLock { state in
+            for key in displays {
+                state.layoutEpochs[key, default: 0] += 1
+                state.workspaceVersions[key, default: 0] += 1
+            }
         }
     }
 
@@ -85,10 +110,11 @@ final class WindowMutationContext: @unchecked Sendable {
             var versions = ticket.workspaceVersions
             for key in displays {
                 state.workspaceVersions[key, default: 0] += 1
+                state.layoutEpochs[key, default: 0] += 1
                 versions[key] = state.workspaceVersions[key]
             }
             return Ticket(topology: ticket.topology, topologyVersion: ticket.topologyVersion,
-                          workspaceVersions: versions, workspaces: ticket.workspaces)
+                          workspaceVersions: versions, workspaces: ticket.workspaces, layoutEpochs: state.layoutEpochs)
         }
     }
 
@@ -101,7 +127,7 @@ final class WindowMutationContext: @unchecked Sendable {
             var versions = ticket.workspaceVersions
             for key in displays { versions[key] = state.workspaceVersions[key, default: 0] }
             return Ticket(topology: ticket.topology, topologyVersion: ticket.topologyVersion,
-                          workspaceVersions: versions, workspaces: ticket.workspaces)
+                          workspaceVersions: versions, workspaces: ticket.workspaces, layoutEpochs: ticket.layoutEpochs)
         }
     }
 
@@ -114,10 +140,18 @@ final class WindowMutationContext: @unchecked Sendable {
             let workspaceIDs = spaces ? workspaceReader() : nil
             state.withLock { state in
                 if topology != state.topology {
-                    state.pendingDisplays.formUnion(state.topology.keys.union(topology.keys))
+                    let touched = state.topology.keys.union(topology.keys)
+                    if topology == state.consumedTopology {
+                        // Back to what was last consumed (display sleep): nothing changed after all.
+                        state.pendingDisplays.subtract(state.strayDisplays)
+                        state.strayDisplays = []
+                    } else {
+                        state.strayDisplays.formUnion(touched.subtracting(state.pendingDisplays))
+                        state.pendingDisplays.formUnion(touched)
+                    }
                     state.topology = topology
                     state.topologyVersion += 1
-                    state.pendingTopology = true
+                    state.pendingTopology = topology != state.consumedTopology
                 }
                 // A failed Space read (common mid-transition) keeps the last map: treating it as "no Spaces" would
                 // invalidate every display now and again on the next good read. Notifications still invalidate

@@ -262,8 +262,9 @@ public struct TesseraSettings: Codable, Equatable, Sendable {
     /// When a new window opens beside a side-by-side group, the group is tiled again with it: the learned split for
     /// the apps now there when there is one, otherwise equal shares. Needs `learnSplits`.
     public var splitTilesNewWindow = true
-    /// Which displays `splitTilesNewWindow` acts on. Files that already hold a value keep it.
-    public var splitNewWindowScope: SplitNewWindowScope = .rememberedSplits
+    /// Which displays `splitTilesNewWindow` acts on. A file holding the oldest value moves to the default once
+    /// (`SplitNewWindowScope.init(from:)`).
+    public var splitNewWindowScope: SplitNewWindowScope = .everyDisplay
     /// Seconds a new window must stay open before `splitTilesNewWindow` tiles it in equal shares, when the apps now
     /// beside it have no learned split, so a window opened for a moment (Wispr Flow, Finder) is left alone. A learned
     /// split applies at once. 0 tiles right away. Read it through `splitNewWindowWaitSeconds`, which clamps.

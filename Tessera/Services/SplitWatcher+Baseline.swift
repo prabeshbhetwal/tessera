@@ -17,6 +17,12 @@ extension SplitWatcher {
         watchContext = ticket
         refreshBaseline()
     }
+    /// A Space or layout bump sampled since the watch began leaves the same group unwatched in effect (`currentGroup`
+    /// answers nil); a re-arm that finds the group unchanged renews it.
+    func renewIfStale(_ ticket: WindowMutationContext.Ticket) {
+        guard let key, let old = watchContext, !windows.mutationContext.isCurrent(old, on: [key.display]) else { return }
+        renewContext(ticket)
+    }
     func acceptHandContext(_ ticket: WindowMutationContext.Ticket) { watchContext = ticket }
 
     /// Discards pre-command learning work without dropping lifecycle subscriptions.

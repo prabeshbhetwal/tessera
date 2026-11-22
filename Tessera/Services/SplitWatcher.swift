@@ -90,7 +90,7 @@ final class SplitWatcher {
                     AXObserverAddNotification(observer, element, name as CFString, refcon)
                 }
             }
-            CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
+            CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
             observers.append((observer, elements))
         }
         baseline = group  // the frames now, so a window closed before the refresh below lands leaves its tiled gap to fill
@@ -123,7 +123,7 @@ final class SplitWatcher {
                 }
             }
             let source = AXObserverGetRunLoopSource(observer)
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .defaultMode)
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
             CFRunLoopSourceInvalidate(source)
         }
         observers = []

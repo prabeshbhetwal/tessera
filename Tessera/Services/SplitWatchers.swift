@@ -22,6 +22,8 @@ final class SplitWatchers {
     /// Keyed by `DisplayID.storageKey`.
     private(set) var watchers: [String: SplitWatcher] = [:]
     private(set) var ownMoves = 0
+    /// Moves of Tessera's own begun so far: a wait that sees windows move tells them from a hand change by it.
+    private(set) var ownMoveCount = 0
     var pendingArm: Task<Void, Never>?
     /// Covering the space a closed window left (see `fillSoon`), keyed by `DisplayID.storageKey`.
     var pendingFills: [String: Task<Void, Never>] = [:]
@@ -33,6 +35,10 @@ final class SplitWatchers {
     /// Apps whose launch or restored window a look in `pendingJoins` is still waiting for, so their own activation
     /// doesn't replace that look.
     var firstWindowLooks: Set<pid_t> = []
+    /// The looks among them started by a launch: every window the app shows during one is new.
+    var launchLooks: Set<pid_t> = []
+    /// The Space and layout each pending look began on.
+    var lookOrigins: [pid_t: WindowMutationContext.Ticket] = [:]
     /// Creation events can replace the same app's queued look; every unprocessed newcomer must survive replacement.
     var pendingNewWindows: [pid_t: Set<CGWindowID>] = [:]
     /// When each app was last unhidden: its windows reappearing are not new windows joining.
@@ -59,6 +65,10 @@ final class SplitWatchers {
     let lifecycle: WindowLifecycleMonitor
 
     let lifecycleLog = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "split-lifecycle")
+    let decisionLog = Logger(subsystem: "com.prabeshbhetwal.Tessera", category: "split-decision")
+    /// Watched windows seen off screen while their app still answers for them (a window closed by ordering it out),
+    /// by consecutive checks.
+    private var offScreenChecks: [CGWindowID: Int] = [:]
     var missingAttempts: [String: Int] = [:]
     private var lifecycleTimer: Timer?
     var reconciliation: Task<Void, Never>?
@@ -120,8 +130,9 @@ final class SplitWatchers {
         for watcher in watchers.values { watcher.stop() }
     }
 
-    /// Undo cancels queued layout work while keeping lifecycle notifications subscribed.
-    func cancelPendingWork() {
+    /// Undo cancels queued layout work while keeping lifecycle notifications subscribed. Looks for new windows can
+    /// stay (`includingLooks` false): each one checks its own display's layout epoch and topology before it moves.
+    func cancelPendingWork(includingLooks: Bool = true) {
         for task in pendingResumes.values { task.cancel() }
         pendingResumes = [:]
         resumeIDs = [:]
@@ -136,15 +147,20 @@ final class SplitWatchers {
         pendingFills = [:]
         fillIDs = [:]
         fillGroups = [:]
+        offScreenChecks = [:]
+        guard includingLooks else { return }
         for task in pendingJoins.values { task.cancel() }
         pendingJoins = [:]
         firstWindowLooks = []
+        launchLooks = []
+        lookOrigins = [:]
         pendingNewWindows = [:]
     }
 
     /// See `SplitWatcher.beginOwnMove`. Every display hears it: a move can cross displays.
     func beginOwnMove() {
         ownMoves += 1
+        ownMoveCount += 1
         pendingArm?.cancel()
         for watcher in watchers.values { watcher.beginOwnMove() }
     }
@@ -187,6 +203,11 @@ final class SplitWatchers {
         guard !groups.isEmpty else { return }
         let rows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
         let visible = Set(rows.compactMap { $0[kCGWindowNumber as String] as? CGWindowID })
+        // An empty list is the window server not answering (fast user switching), not every window closing.
+        guard !rows.isEmpty else { return }
+        // "Twice running": a window seen again, or no longer watched, starts over.
+        let watchedIDs = Set(watchers.values.flatMap { $0.watched.compactMap(\.windowID) })
+        offScreenChecks = offScreenChecks.filter { watchedIDs.contains($0.key) && !visible.contains($0.key) }
         guard groups.contains(where: { $0.1.contains { $0.windowID.map { !visible.contains($0) } ?? false } }) else { return }
         // Sampled only once a watched window has gone missing: this runs every second on the main thread.
         let ticket = windows.mutationContext.capture()
@@ -196,9 +217,28 @@ final class SplitWatchers {
                 guard let self else { return }
                 for (watcher, observed, revision) in groups {
                     var removed: [Bool] = []
+                    var orderedOut: [CGWindowID] = []
                     for window in observed where window.windowID.map({ !visible.contains($0) }) == true {
                         if let kind = await self.windows.removalKind(of: window) { removed.append(kind) }
+                        else if let id = window.windowID, NSRunningApplication(processIdentifier: window.pid)?.isHidden == false {
+                            // Neither destroyed nor minimised, its app not hidden, and still off screen on a second
+                            // check: closed by ordering out (Slack, WhatsApp). It left the group like any closed window.
+                            self.offScreenChecks[id, default: 0] += 1
+                            // Its app must no longer list it either: Stage Manager and Mission Control take windows
+                            // off screen without closing them.
+                            if self.offScreenChecks[id, default: 0] >= 2, await self.windows.isOrderedOut(window) {
+                                removed.append(false)
+                                orderedOut.append(id)
+                                self.offScreenChecks[id] = nil
+                            }
+                        }
                     }
+                    // Still this group, this Space, nothing of Tessera's moving: otherwise the confirmation is void.
+                    let stands = !Task.isCancelled && self.ownMoves == 0 && watcher.revision == revision && watcher.watched == observed
+                        && !observed.contains(where: { self.model.settings.excludedBundleIDs.contains($0.bundleID ?? "") })
+                        && (watcher.key?.display).map { self.windows.mutationContext.isCurrent(ticket, on: [$0], refreshSpaces: true) } == true
+                    // Marked closed only now, so nothing reads "closed" for a confirmation that did not stand.
+                    if stands, !orderedOut.isEmpty { await self.windows.markOrderedOut(orderedOut) }
                     guard !Task.isCancelled, self.ownMoves == 0 else { return }
                     guard !observed.contains(where: { self.model.settings.excludedBundleIDs.contains($0.bundleID ?? "") }) else { continue }
                     guard let displayKey = watcher.key?.display,
