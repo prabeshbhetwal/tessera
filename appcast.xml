@@ -3,6 +3,23 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.33</title>
+            <pubDate>Sun, 22 Nov 2026 07:51:16 +0000</pubDate>
+            <sparkle:version>20261122.074941</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.33</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">## Auto-tiling fixes
+
+- **Opening apps on an empty display now tiles them.** A new default for *Make room on*, **Any display with two or more apps**: open an app beside one window each of other apps and they are arranged in your learned split, or in equal shares, after a one-second pause. A window alone is never moved. If you had **Displays already tiled** selected, it moves to the new default once; choose it again to keep it.
+- **⌘N joins a layout but never starts one**; reopening an app from the Dock counts as opening it.
+- **Fewer missed tiles:** slow apps (browsers, Electron apps) are asked again instead of being skipped; a display stuck after a closed window is freed; several races that dropped a new window are fixed.
+- **Your actions win:** a Tile, snap, hand move or ⌃⌥Z stops any pending automatic tile on that display.
+- **Undo:** a tile the new window refused is put back in the same ⌃⌥Z step.
+- **Diagnostics:** every decision is logged with its reason (`log show --predicate 'category == "split-decision"'`).</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.33/Tessera-0.2.0-beta.33.zip" length="3872974" type="application/octet-stream" sparkle:edSignature="Ld1bmqaP7t9Wrdq/ifT8jjENTidu9UudcWTDPSwAFBAmHSWbwRdJ9RE0uot6wa2rqS95sMcIj6Y0k5pIbO1uAA==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.32</title>
             <pubDate>Sat, 14 Nov 2026 04:56:57 +0000</pubDate>
             <sparkle:version>20261114.045403</sparkle:version>
