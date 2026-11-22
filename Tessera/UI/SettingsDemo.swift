@@ -23,7 +23,7 @@ struct SettingsDemo: View {
                     // A new pane starts its own story rather than finishing the last one's. It fades in over the
                     // backdrop; the mock desktop never slides.
                     .id(pane)
-                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
+                    .transition(.asymmetric(insertion: .opacity, removal: SettingsMotion.departure))
             }
             .animation(SettingsMotion.paneChange(reduceMotion: reduceMotion), value: pane)
         }

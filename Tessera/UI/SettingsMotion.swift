@@ -25,8 +25,12 @@ enum SettingsMotion {
 
     /// A pane's header and form arriving: a fade and a 6 pt rise (a fade only under Reduce Motion). Leaves at once.
     static func arrival(reduceMotion: Bool) -> AnyTransition {
-        .asymmetric(insertion: reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 6)), removal: .identity)
+        .asymmetric(insertion: reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 6)), removal: departure)
     }
+
+    /// An old pane leaving: gone on the next frame. `.identity` is not enough: inside the change's animation SwiftUI
+    /// keeps the old pane drawn at full opacity until the arrival finishes, so both panes' text overlaps.
+    static var departure: AnyTransition { .opacity.animation(nil) }
 
     /// The search results dropping from the field: a short fall and grow from under it. A fade with Reduce Motion.
     static func drop(reduceMotion: Bool) -> AnyTransition {
