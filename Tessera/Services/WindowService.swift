@@ -53,6 +53,10 @@ actor WindowService {
 
     var undo = WindowUndoHistory()
     /// Verified landings, so a close that arrives before a watch refreshes its baseline still knows where a window was.
+    /// Windows confirmed closed by ordering out (`confirmOrderedOut`), until they show again.
+    var orderedOut: Set<CGWindowID> = []
+    /// Where the last ⌃⌥Z put windows back (AppKit frames), so only those displays' automatic work is superseded.
+    var lastUndoneFrames: [CGRect] = []
     var placements: [UndoKey: (placement: WindowPlacementSnapshot, at: ContinuousClock.Instant)] = [:]
     /// The generation of each window's latest move, so a glide still running gives way to the newer
     /// move. Generations come from one monotonic counter, so a value never repeats after a reset.

@@ -52,7 +52,7 @@ import Testing
         #expect(s.splitOnCloseKeepsRunning == .retile)
         #expect(s.minimiseFillsGap)
         #expect(s.splitTilesNewWindow)
-        #expect(s.splitNewWindowScope == .rememberedSplits)
+        #expect(s.splitNewWindowScope == .everyDisplay)
         #expect(s.learnedSplits.isEmpty)
     }
 
@@ -69,15 +69,20 @@ import Testing
         }
     }
 
-    /// A file from before the minimise choice gains re-tile, and keeps the new-window scope it already held.
-    @Test func oldFileGainsMinimiseKeepsScope() throws {
+    /// A file from before the minimise choice gains re-tile. The old default scope, which never tiled an empty display,
+    /// moves to every display once; the narrow scope chosen since then is kept under its new name.
+    @Test func oldFileGainsMinimiseAndWiderScope() throws {
         var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(TesseraSettings.defaults)) as! [String: Any]
         object["splitOnMinimise"] = nil
         object["splitNewWindowScope"] = "tiledDisplays"
         let migrated = try SettingsMigration.migrate(JSONSerialization.data(withJSONObject: object))
         let decoded = try JSONDecoder().decode(TesseraSettings.self, from: migrated.data)
         #expect(decoded.splitOnMinimise == .retile)
-        #expect(decoded.splitNewWindowScope == .tiledDisplays)
+        #expect(decoded.splitNewWindowScope == .everyDisplay)
+        var narrow = TesseraSettings.defaults
+        narrow.splitNewWindowScope = .tiledDisplays
+        let kept = try JSONDecoder().decode(TesseraSettings.self, from: JSONEncoder().encode(narrow))
+        #expect(kept.splitNewWindowScope == .tiledDisplays)
     }
 
     /// A v2 file written before learned splits existed must load with defaults, not be quarantined.

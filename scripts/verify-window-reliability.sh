@@ -19,7 +19,7 @@ xcrun swiftc -parse-as-library -swift-version 6 -I "$MODULES" \
   Tessera/Services/SplitWatchers+Startup.swift Tessera/Services/SplitWatchers+Notifications.swift \
   Tessera/Services/SplitWatchers+Manual.swift \
   Tessera/Services/SplitWatchers+Configuration.swift Tessera/Services/SplitWatchers+Convergence.swift Tessera/Services/WindowLayoutPolicy.swift \
-  Tessera/Services/SplitWatchers+Fill.swift Tessera/Services/SplitWatchers+Join.swift Tessera/Services/MinimisedWindows.swift \
+  Tessera/Services/SplitWatchers+Fill.swift Tessera/Services/SplitWatchers+Join.swift Tessera/Services/SplitWatchers+JoinLook.swift Tessera/Services/MinimisedWindows.swift \
   Tessera/Services/WindowService+Together.swift Tessera/Help/HelpEvent+App.swift \
   Tessera/App/SettingsModel.swift \
   scripts/verify-window-reliability.swift scripts/verify-split-lifecycle.swift scripts/verify-window-context.swift scripts/verify-workspace-recovery.swift \

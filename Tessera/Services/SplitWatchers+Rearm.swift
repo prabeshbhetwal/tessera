@@ -7,17 +7,31 @@ extension SplitWatchers {
         let ticket = WindowMutationScope.ticket ?? windows.mutationContext.capture()
         guard ticket.topology.contains(display) else { return }
         let origin = workspaceKey(display.id.storageKey, ticket: ticket)
-        if pendingFills[origin.display] == nil, let record = workspaceStore[origin], record.recoveryPending {
-            if record.retryAfter.map({ $0 <= .now }) ?? true { resumeWorkspace(origin) }
-            return
-        }
         let current = watchers[display.id.storageKey]
         let revision = current?.revision
-        let found = await windows.visibleWindows(on: display.frame, primaryHeight: ticket.topology.primaryHeight,
-                                                excluding: Set(model.settings.excludedBundleIDs))
+        // A pending recovery's own windows count even when covered: only their absence gives the display away.
+        let recovering = pendingFills[origin.display] == nil && workspaceStore[origin]?.recoveryPending == true
+        let read = await windows.visibleWindowsCounted(on: display.frame, primaryHeight: ticket.topology.primaryHeight,
+                                                      excluding: Set(model.settings.excludedBundleIDs),
+                                                      retaining: recovering ? (workspaceStore[origin]?.members.map(\.window) ?? []) : [])
+        let found = read.found
         guard !Task.isCancelled, watchers[display.id.storageKey] === current,
               current?.revision == revision, displays.displays.contains(display),
               windows.mutationContext.isCurrent(ticket, on: [display.id.storageKey], refreshSpaces: true) else { return }
+        if pendingFills[origin.display] == nil, let record = workspaceStore[origin], record.recoveryPending {
+            // A recovery waits for its own windows. Once two or more other windows hold the display and none of the
+            // record's is among them, the space it kept is gone: let them be watched, or nothing joins here again.
+            let related = found.contains { entry in record.members.contains { $0.window == entry.window } }
+            // An app that did not answer may hold the recovery's own windows: no evidence the space is gone.
+            guard !related, found.count > 1, read.skipped == 0 else {
+                if record.retryAfter.map({ $0 <= .now }) ?? true { resumeWorkspace(origin) }
+                return
+            }
+            lifecycleLog.notice("Recovery abandoned: other windows hold the display")
+            workspaceStore[origin]?.recoveryPending = false
+            workspaceStore[origin]?.recovery = nil
+            workspaceStore[origin]?.retryAfter = nil
+        }
         await arm(found, on: display)
     }
 
@@ -79,7 +93,8 @@ extension SplitWatchers {
             }
         }
         // Same windows, or a hand adjustment mid-way (a drag can overlap windows for a moment): leave it be.
-        if current?.watches(found) == true || current?.isBusy == true { return }
+        if current?.isBusy == true { return }
+        if let current, current.watches(found) { current.renewIfStale(ticket); return }
         let usable = GridGeometry.usableFrame(display.visibleFrame, profile: display.profile)
         let frames = found.map { (bundleID: $0.window.bundleID, frame: $0.frame) }
         guard found.count > 1, case .success = SplitLearner.learn(frames, usable: usable, gap: display.profile.gap)

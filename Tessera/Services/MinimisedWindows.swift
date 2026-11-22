@@ -26,7 +26,7 @@ final class MinimisedWindows {
             AXObserverAddNotification(observer, window.element, $0 as CFString, refcon) == .success
         }
         guard !added.isEmpty else { return }  // gone already: nothing would ever restore it
-        CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
+        CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
         entries.append((window, others, displayKey, observer))
     }
 
@@ -41,7 +41,7 @@ final class MinimisedWindows {
                 AXObserverRemoveNotification(entry.observer, entry.window.element, name as CFString)
             }
             let source = AXObserverGetRunLoopSource(entry.observer)
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .defaultMode)
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
             CFRunLoopSourceInvalidate(source)
         }
         entries.removeAll { matches($0.window) }

@@ -104,10 +104,21 @@ public enum SplitGapPlacement: String, Codable, CaseIterable, Equatable, Sendabl
 }
 
 /// How a gap behaves when a neighbouring slot grows.
-/// Where a newly opened window is tiled in: only beside windows already side by side, or also wherever the apps now on
-/// the display have a learned split.
+/// Where a newly opened window is tiled in: only beside windows already side by side, also wherever the apps now on
+/// the display have a learned split, or on any display holding two or more apps (equal shares when no split is learned).
 public enum SplitNewWindowScope: String, Codable, CaseIterable, Equatable, Sendable {
-    case tiledDisplays, rememberedSplits
+    case tiledDisplays = "existingGroups", rememberedSplits, everyDisplay
+
+    /// "tiledDisplays" was the default before 0.2.0-beta.18 and left an empty display untiled for good, so a file that
+    /// still holds it moves to `everyDisplay` once. Choosing the narrow scope again saves it under its new name.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        if raw == "tiledDisplays" { self = .everyDisplay; return }
+        guard let value = Self(rawValue: raw) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown scope \(raw)"))
+        }
+        self = value
+    }
 }
 
 extension TesseraSettings {

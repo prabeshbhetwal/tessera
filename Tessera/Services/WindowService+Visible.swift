@@ -9,7 +9,10 @@ extension WindowService {
     /// dialogs, fixed-size windows (their size isn't settable), anything smaller than a tiny utility window, and windows
     /// wholly covered by others (fixed-size windows still count as covers): a buried duplicate
     /// is not one the user sees. Kept anyway: windows in `retaining` (a split's own members), and new windows of
-    /// `joiningPID` (not in `existingWindowIDs`) that its expanded survivor may cover. Front-most first.
+    /// `joiningPID` (not in `existingWindowIDs`) that its expanded survivor may cover. `keepingCoveredByNewcomer`
+    /// judges the other windows as if the joining app's new windows were not there (a display with no group, where a
+    /// newcomer opens over the only other window); what was already buried stays out. `patient` asks one silent app
+    /// again with a longer timeout. `skipped` counts only apps with a window on this display. Front-most first.
     func visibleWindows(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>, retaining: [WindowRef] = [],
                         includingNewWindowsOf joiningPID: pid_t? = nil, existingWindowIDs: Set<CGWindowID> = [])
         -> [(window: WindowRef, frame: CGRect)] {
@@ -21,13 +24,16 @@ extension WindowService {
     /// (timed out or refused), so Tile can say so instead of ignoring them.
     func visibleWindowsCounted(on display: CGRect, primaryHeight: CGFloat, excluding: Set<String>,
                                retaining: [WindowRef] = [], includingNewWindowsOf joiningPID: pid_t? = nil,
-                               existingWindowIDs: Set<CGWindowID> = [])
-        -> (found: [(window: WindowRef, frame: CGRect)], skipped: Int) {
-        if let visibleOverride { return (visibleOverride(display, primaryHeight, excluding, retaining), 0) }
+                               existingWindowIDs: Set<CGWindowID> = [], keepingCoveredByNewcomer: Bool = false,
+                               patient: Bool = false)
+        -> (found: [(window: WindowRef, frame: CGRect)], skipped: Int, unread: [CGRect]) {
+        if let visibleOverride { return (visibleOverride(display, primaryHeight, excluding, retaining), 0, []) }
         let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return ([], 0) }
+        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return ([], 0, []) }
         let ownPID = ProcessInfo.processInfo.processIdentifier
         var windowsByPID: [pid_t: Set<CGWindowID>] = [:]
+        var pidsHere: Set<pid_t> = []
+        var framesHere: [pid_t: [CGRect]] = [:]
         var depth: [CGWindowID: Int] = [:]  // the list runs front to back
         for (z, info) in list.enumerated() {
             guard (info[kCGWindowLayer as String] as? Int) == 0,
@@ -36,18 +42,34 @@ extension WindowService {
             // CG gives which windows are on screen and their stacking. Their CG bounds are presentation geometry,
             // which Mission Control transforms, so size and position come from AX below.
             windowsByPID[pid, default: []].insert(id)
+            orderedOut.remove(id)
+            // CG bounds are good enough to say which display an unreadable app's windows are on.
+            if let bounds = (info[kCGWindowBounds as String] as? NSDictionary).flatMap({ CGRect(dictionaryRepresentation: $0) }) {
+                let frame = CoordinateSpace.fromAX(bounds, primaryHeight: primaryHeight)
+                if display.contains(CGPoint(x: frame.midX, y: frame.midY)) { pidsHere.insert(pid); framesHere[pid, default: []].append(frame) }
+            }
             depth[id] = z
         }
 
         var result: [(window: WindowRef, frame: CGRect, resizable: Bool)] = []
         var skipped = 0
+        var unread: [CGRect] = []
+        var patient = patient
         for (pid, ids) in windowsByPID {
             guard let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular, !app.isHidden,
                   !excluding.contains(app.bundleIdentifier ?? "") else { continue }
             let axApp = AXUIElementCreateApplication(pid)
             AXUIElementSetMessagingTimeout(axApp, Self.timeout)
-            guard let windows = AX.value(axApp, kAXWindowsAttribute) as? [AXUIElement] else {
-                skipped += 1
+            var answer = AX.value(axApp, kAXWindowsAttribute) as? [AXUIElement]
+            // A busy Chromium or Electron app often misses the short timeout. One slower ask per read, on this actor
+            // and off the main thread, before its windows are left out; a second silent app is not waited for.
+            if answer == nil, patient, pidsHere.contains(pid) {
+                patient = false
+                AXUIElementSetMessagingTimeout(axApp, 1)
+                answer = AX.value(axApp, kAXWindowsAttribute) as? [AXUIElement]
+            }
+            guard let windows = answer else {
+                if pidsHere.contains(pid) { skipped += 1; unread += framesHere[pid] ?? [] }
                 Self.log.notice("skipped \(app.bundleIdentifier ?? "?", privacy: .public): its windows couldn't be read")
                 continue
             }
@@ -72,8 +94,17 @@ extension WindowService {
             retaining.contains(entry.window)
                 || (entry.window.pid == joiningPID && entry.window.windowID.map { !existingWindowIDs.contains($0) } == true)
         }
-        let found = WindowVisibility.selectedIndices(ordered.map(\.frame), resizable: ordered.map(\.resizable), forced: forced)
+        let newcomer = ordered.map { entry in
+            entry.window.pid == joiningPID && entry.window.windowID.map { !existingWindowIDs.contains($0) } == true
+        }
+        // The others as they were before the newcomer opened over them.
+        // A fixed-size newcomer (a splash, an About box) is never tiled, so it still covers what is under it.
+        let others = keepingCoveredByNewcomer ? ordered.indices.filter { !(newcomer[$0] && ordered[$0].resizable) }
+            : Array(ordered.indices)
+        let kept = Set(WindowVisibility.selectedIndices(others.map { ordered[$0].frame }, resizable: others.map { ordered[$0].resizable },
+                                                        forced: others.map { forced[$0] }).map { others[$0] })
+        let found = ordered.indices.filter { kept.contains($0) || (keepingCoveredByNewcomer && newcomer[$0] && ordered[$0].resizable) }
             .map { (window: ordered[$0].window, frame: ordered[$0].frame) }
-        return (found, skipped)
+        return (found, skipped, unread)
     }
 }

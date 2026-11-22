@@ -164,6 +164,8 @@ extension SplitWatchers {
               workspaceStore[origin]?.revision == revision else { return .notYet }
         workspaceStore.reserve(protected, at: origin)
         for ref in protectedMinis { trackMinimised(ref, others: left.map(\.window), displayKey: displayKey, rejoin: false) }
+        // A closed member's window ID is new again if the app shows that same window later (Dock reopen).
+        lifecycle.forget(closedRefs)
         for ref in closedRefs where !left.isEmpty {
             if let bundle = ref.bundleID { closedOutOf[bundle, default: [:]][displayKey] = left.map(\.window) }
         }

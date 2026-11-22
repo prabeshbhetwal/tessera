@@ -59,7 +59,7 @@ public enum SettingsCatalog {
         E("splits", "Learning", "When a window closes but its app keeps running",
           ["close button red dock still running background app retile gap empty space wispr slack"]),
         E("splits", "Learning", "Make room when a window opens", ["new window opens tile automatically fit in"]),
-        E("splits", "Learning", "Make room on", ["new window which displays tiled remembered split"]),
+        E("splits", "Learning", "Make room on", ["new window which displays tiled remembered split every any display two apps equal shares empty start"]),
         E("splits", "Learning", "Wait before tiling a new app",
           ["delay seconds timer brief quick open wispr finder new window tile later"]),
         E("splits", "Learning", "Restore last order", ["window order arrangement"]),

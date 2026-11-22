@@ -1,4 +1,5 @@
 import AppKit
+import TesseraCore
 
 /// ⌃⌥Z. Kept apart from `WindowService.swift` for its line limit.
 extension WindowService {
@@ -8,6 +9,7 @@ extension WindowService {
     /// before it tried; a step every live window refused is put back, so the next ⌃⌥Z can try again; a step held only
     /// by excluded apps is dropped and undo stops there, never reaching back to an older, unrelated step.
     func undoLast(excluding: Set<String> = []) -> UndoOutcome {
+        lastUndoneFrames = []
         var unfinished = takeUnfinishedMoves()
         while let step = unfinished ?? undo.popStep() {
             unfinished = nil
@@ -49,7 +51,8 @@ extension WindowService {
 
     /// Puts each window of `moves` back. Nil when every window is gone, so the caller tries the step before.
     private func restore(_ moves: [WindowUndoHistory.Move], order: Int, excluding: Set<String>) -> UndoOutcome? {
-        let displays = (WindowMutationScope.ticket ?? mutationContext.capture()).topology.recoveryDisplays
+        let topology = (WindowMutationScope.ticket ?? mutationContext.capture()).topology
+        let displays = topology.recoveryDisplays
         var restored = false
         var refused: WindowRef?
         var excluded = false
@@ -61,8 +64,13 @@ extension WindowService {
             glideStart[move.key] = nil
             // Mapped onto a display that is still connected, so Undo never strands a window off screen.
             let frame = move.placement?.resolved(in: displays) ?? move.frame
+            let leaving = readFrame(move.ref)
             // Origin display unknown here, so use the cross-display order (safe on one display too).
             guard let error = setFrame(frame, on: move.ref, crossingDisplays: true) else {
+                // Both ends of a restore that happened: the display the window left and the one it went back to.
+                for end in [leaving, frame].compactMap({ $0 }) {
+                    lastUndoneFrames.append(CoordinateSpace.fromAX(end, primaryHeight: topology.primaryHeight))
+                }
                 if let actual = readFrame(move.ref) { rememberPlacement(actual, of: move.ref) }
                 restored = true
                 continue

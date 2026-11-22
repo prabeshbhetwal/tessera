@@ -60,7 +60,8 @@ extension SplitWatchers {
 
         if change.topology {
             startupRestore?.cancel()
-            cancelPendingWork()
+            // Looks stay: one begun before the change stops itself on the topology check; one begun after it is valid.
+            cancelPendingWork(includingLooks: false)
         } else {
             for key in affected {
                 pendingFills[key]?.cancel(); pendingFills[key] = nil
