@@ -44,22 +44,22 @@ extension WindowService {
             for (index, result) in zip(refused, again) { results[index] = result }
         }
         var landed = results.map(\.landed)
-        if let before = undoingIfRefused, !retrying.isEmpty, before.count == moves.count,
-           retrying.allSatisfy({ !moves.indices.contains($0) || landed[$0] == nil }) {
-            // Only windows still where this move left them: one the user dragged meanwhile stays where they put it.
+        // A required window (the newcomer) that still refuses: the rest goes back in this same step, since a group with
+        // an unfilled slot is never accepted.
+        if let before = undoingIfRefused, before.count == moves.count,
+           retrying.contains(where: { moves.indices.contains($0) && landed[$0] == nil }) {
+            // Every window not where it began, except one the user dragged since this move left it: put it back. A
+            // newcomer that moved part way before failing is asked back too.
             let back = moves.indices.filter { index in
-                guard let there = landed[index], let now = frame(of: moves[index].window) else { return false }
-                return now.insetBy(dx: -2, dy: -2).contains(there) && there.insetBy(dx: -2, dy: -2).contains(now)
+                guard let now = frame(of: moves[index].window), !Self.near(now, before[index]) else { return false }
+                if let there = landed[index] { return Self.near(now, there) }
+                return retrying.contains(index)
             }
-            let returned = await applyResults(back.map { (window: moves[$0].window, goal: before[$0]) },
-                                              primaryHeight: primaryHeight, duration: duration, batch: batch)
-            // Everything is verifiably back where it was: no undo step is left for a move that, in effect, never
-            // happened. A window that refused to go back keeps its ⌃⌥Z.
-            let allBack = zip(back, returned).allSatisfy { index, result in
-                result.landed.map { abs($0.minX - before[index].minX) <= 2 && abs($0.minY - before[index].minY) <= 2
-                    && abs($0.width - before[index].width) <= 2 && abs($0.height - before[index].height) <= 2 } ?? false
-            }
-            if allBack, back.count == moves.indices.filter({ landed[$0] != nil }).count {
+            _ = await applyResults(back.map { (window: moves[$0].window, goal: before[$0]) },
+                                   primaryHeight: primaryHeight, duration: duration, batch: batch)
+            // The undo step goes only when every window is verifiably where it began; otherwise ⌃⌥Z keeps it.
+            let allBack = moves.indices.allSatisfy { index in frame(of: moves[index].window).map { Self.near($0, before[index]) } ?? false }
+            if allBack {
                 _ = undo.takeBatch(batch)
                 batchOrders[batch] = nil
                 cancelledBatches.remove(batch)
@@ -87,6 +87,11 @@ extension WindowService {
         var result = landed
         for (index, frame) in zip(again, refreshed) where frame != nil { result[index] = frame }
         return result
+    }
+
+    /// Same frame within 2 pt (apps round to whole points).
+    static func near(_ a: CGRect, _ b: CGRect) -> Bool {
+        abs(a.minX - b.minX) <= 2 && abs(a.minY - b.minY) <= 2 && abs(a.width - b.width) <= 2 && abs(a.height - b.height) <= 2
     }
 
     private func applyAll(_ moves: [(window: WindowRef, goal: CGRect)], primaryHeight: CGFloat, duration: Double,

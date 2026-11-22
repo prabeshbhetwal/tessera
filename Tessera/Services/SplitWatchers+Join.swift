@@ -121,6 +121,9 @@ extension SplitWatchers {
             var reason = "noWindowYet"
             // Holds add their own wait; the look still ends close to its schedule.
             let deadline = ContinuousClock.now + .milliseconds(delays.reduce(0, +) + 3000)
+            // Once a newcomer was held on a display, every later look stays there: one dragged elsewhere meanwhile is
+            // not tiled on the display it was dragged to.
+            var pinned: Set<String>?
             for (index, delay) in delays.enumerated() {
                 do { try await Task.sleep(for: .milliseconds(delay)) } catch { return }
                 guard let self else { return }
@@ -129,6 +132,7 @@ extension SplitWatchers {
                 attempt.holds = wait > 0
                 attempt.settles = true
                 attempt.lastAttempt = index == delays.count - 1
+                attempt.displaysOnly = pinned
                 let (look, why) = await self.look(attempt)
                 switch look {
                 case .tiled:
@@ -140,7 +144,8 @@ extension SplitWatchers {
                 case .notFound: reason = why
                 case .held(let first):
                     // A first-sighting settle is one second; the "Wait before tiling" setting is for equal shares.
-                    let outcome = await self.hold(first, request: request, wait: why == "settle" ? 1 : max(wait, 1), until: deadline)
+                    let outcome = await self.hold(first, request: request, wait: why == "settle" ? 1 : max(wait, 1), until: deadline,
+                                                  pinned: &pinned)
                     if Task.isCancelled { return }
                     // The window that waited is gone (a sign-in or loading window): the app's real one may still come.
                     if !outcome.tiled, !outcome.stop, index < delays.count - 1, ContinuousClock.now < deadline {
@@ -169,11 +174,10 @@ extension SplitWatchers {
 
     /// No learned split for these apps: only a window still open after the wait is tiled in, so one opened for a moment
     /// (Wispr Flow, Finder) is left alone. A window the app opens during the wait waits its own turn.
-    private func hold(_ first: [WindowRef], request: JoinRequest, wait: Int, until deadline: ContinuousClock.Instant) async
-        -> (tiled: Bool, stop: Bool, reason: String) {
+    private func hold(_ first: [WindowRef], request: JoinRequest, wait: Int, until deadline: ContinuousClock.Instant,
+                      pinned: inout Set<String>?) async -> (tiled: Bool, stop: Bool, reason: String) {
         var waiting = (now: first, allowed: first)
         var tiledAny = false
-        var pinned: Set<String>?
         waiting: while true {
             // Baseline only once Tessera's own glides have settled, or a frame read mid-glide looks like a hand change.
             for _ in 0..<30 where ownMoves > 0 {
