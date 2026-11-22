@@ -3,6 +3,16 @@
     <channel>
         <title>Tessera</title>
         <item>
+            <title>Tessera 0.2.0-beta.34</title>
+            <pubDate>Sun, 22 Nov 2026 08:45:20 +0000</pubDate>
+            <sparkle:version>20261122.084309</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-beta.34</sparkle:shortVersionString>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown">- Settings: switching tabs no longer draws the old and new pane on top of each other. The old pane leaves at once and the new one fades in.</description>
+            <enclosure url="https://github.com/prabeshbhetwal/tessera/releases/download/v0.2.0-beta.34/Tessera-0.2.0-beta.34.zip" length="3873220" type="application/octet-stream" sparkle:edSignature="QSIjIWmEgYfjQ2jiIIreyjcFqxUUuvgrqTxCE0DXYCtpfWNDfwnU4Xm72WNvxoU0x9XyXSLnSqLcHB9vczSUAw==" />
+        </item>
+        <item>
             <title>Tessera 0.2.0-beta.33</title>
             <pubDate>Sun, 22 Nov 2026 07:51:16 +0000</pubDate>
             <sparkle:version>20261122.074941</sparkle:version>
